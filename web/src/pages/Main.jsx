@@ -12,6 +12,8 @@ import { WalletModal } from '../components/Wallet.jsx';
 import { MarketModal } from '../components/Market.jsx';
 import { SettingsModal } from '../components/Settings.jsx';
 import { StoryCreateModal, StoryViewer } from '../components/Stories.jsx';
+import { PostModal, SharePostModal, LightboxModal } from '../components/Feed.jsx';
+import { UserListModal, GiftPremiumModal } from '../components/ProfileView.jsx';
 
 const MODALS = {
   userProfile: UserProfileModal,
@@ -28,6 +30,11 @@ const MODALS = {
   settings: SettingsModal,
   storyCreate: StoryCreateModal,
   storyViewer: StoryViewer,
+  post: PostModal,
+  sharePost: SharePostModal,
+  lightbox: LightboxModal,
+  userList: UserListModal,
+  giftPremium: GiftPremiumModal,
 };
 
 export function ModalHost() {
@@ -86,7 +93,12 @@ function useDeepLinks() {
     const m = location.pathname.match(/^\/@([a-zA-Z0-9_]+)$/);
     const j = location.pathname.match(/^\/join\/([a-f0-9]+)$/);
     const g = location.pathname.match(/^\/gift\/(.+)$/);
-    if (g) {
+    const pm = location.pathname.match(/^\/post\/(\d+)$/);
+    if (pm) {
+      st.setTab('feed');
+      st.openModal('post', { postId: Number(pm[1]) });
+      navigate('/', { replace: true });
+    } else if (g) {
       const slug = decodeURIComponent(g[1]);
       (/^\d+$/.test(slug) ? Promise.resolve({ userGift: { id: Number(slug) } }) : api(`/collectibles/${encodeURIComponent(slug)}`))
         .then((r) => st.openModal('giftDetails', { userGiftId: r.userGift.id }))

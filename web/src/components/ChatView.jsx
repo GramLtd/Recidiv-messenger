@@ -11,6 +11,7 @@ import { audioDuration, titleFromFile } from '../player.js';
 import { GiftArt } from './GiftArt.jsx';
 import { colorFor, dayLabel, lastSeen, membersLabel, timeHM, fileSize } from '../util.js';
 import { ChatWallpaper } from './ProfileExtras.jsx';
+import { PostPreview } from './Feed.jsx';
 import { playSend, playIncoming } from '../sound.js';
 
 const QUICK_REACTIONS = ['❤️', '🔥', '👍', '😂', '😮', '😢', '💀', '🤡'];
@@ -26,6 +27,7 @@ function MessageContent({ m, chat, onOpenMedia }) {
       {m.type === 'video' && media && <video src={mediaUrl(media.url)} controls preload="metadata" playsInline />}
       {m.type === 'voice' && media && <audio src={mediaUrl(media.url)} controls preload="metadata" />}
       {m.type === 'audio' && media && <AudioMessage media={media} />}
+      {m.type === 'post' && media && <PostPreview media={media} />}
       {m.type === 'file' && media && (
         <a className="file-box" href={mediaUrl(media.url)} target="_blank" rel="noreferrer" download={media.name} style={{ color: 'inherit' }}>
           <span className="file-icon"><FileText size={22} /></span>

@@ -17,6 +17,7 @@ import walletRoutes, { webhooks } from './routes/wallet.js';
 import adminRoutes from './routes/admin.js';
 import musicRoutes from './routes/music.js';
 import walletLinkRoutes from './routes/wallets.js';
+import socialRoutes from './routes/social.js';
 
 const app = express();
 app.set('trust proxy', true);
@@ -27,7 +28,7 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/webhooks', webhooks);
 app.use('/api/admin', requireAuth, requireAdmin, adminRoutes);
-app.use('/api', requireAuth, userRoutes, chatRoutes, storyRoutes, giftRoutes, marketRoutes, walletRoutes, musicRoutes, walletLinkRoutes);
+app.use('/api', requireAuth, userRoutes, chatRoutes, storyRoutes, giftRoutes, marketRoutes, walletRoutes, musicRoutes, walletLinkRoutes, socialRoutes);
 // TonConnect manifest for whatever domain the app is opened on (wallets check it for ton_proof).
 app.get('/tonconnect-manifest.json', (req, res) => {
   const origin = `${req.protocol}://${req.get('host')}`;

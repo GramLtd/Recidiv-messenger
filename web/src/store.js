@@ -1,3 +1,4 @@
+import { loadTheme } from './theme.js';
 import { create } from 'zustand';
 import { io } from 'socket.io-client';
 import { api, setToken, getToken, API_ORIGIN } from './api.js';
@@ -214,8 +215,11 @@ export const useStore = create((set, get) => ({
 
 function notifyBrowser(chat, message) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const th = loadTheme();
+  if ((chat.type === 'group' && th.notifyGroups === false) || (chat.type === 'channel' && th.notifyChannels === false) || (chat.type === 'private' && th.notifyPrivate === false)) return;
   try {
-    const n = new Notification(chat.title, { body: message.text || 'Новое сообщение', icon: '/icon.svg', tag: `chat-${chat.id}` });
+    const body = th.notifyPreview === false ? 'Новое сообщение' : message.text || 'Новое сообщение';
+    const n = new Notification(chat.title, { body, icon: '/icon-192.png', tag: `chat-${chat.id}` });
     n.onclick = () => {
       window.focus();
       useStore.getState().openChat(chat.id);

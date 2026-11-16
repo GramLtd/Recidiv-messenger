@@ -1,11 +1,17 @@
 import { useState } from 'react';
-import { Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone } from 'lucide-react';
+import {
+  Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone, User as UserIcon, AtSign, Bookmark, Gift, Star, CreditCard, Wallet as WalletIcon,
+  Globe, Hand, MonitorSmartphone, Contrast, Type, HardDrive, Shield, MapPin,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Group, Row, NotificationsPage, PremiumPage, WalletCardPage, LanguagePage, PrivacyPage, DevicesPage, SecurityPage, FontsPage, StoragePage } from './SettingsPages.jsx';
+import { useT, useLang, LANGS } from '../i18n.js';
 import { useStore } from '../store.js';
 import { api, upload } from '../api.js';
-import { Avatar, Modal, Spark, Switch, useAsync, useAction } from './common.jsx';
+import { Avatar, Modal, Spark, Switch, useAsync, useAction, PremiumStar, nameStyleCss } from './common.jsx';
 import { AvatarCropper, BannerEditor, LinksEditor, WallpaperPicker } from './ProfileExtras.jsx';
 import { WalletsSection } from './Wallets.jsx';
-import { ACCENTS, BACKGROUNDS, loadTheme, saveTheme } from '../theme.js';
+import { ACCENTS, BACKGROUNDS, FONTS, loadTheme, saveTheme } from '../theme.js';
 
 const STATUS_EMOJI = ['', '🔴', '💀', '🔥', '⛓️', '👑', '💎', '🗝️', '⚡', '🎲', '🕷️', '🌙'];
 
@@ -24,7 +30,16 @@ function ProfileTab() {
       <label style={{ cursor: 'pointer', position: 'relative', alignSelf: 'center' }}>
         <Avatar src={avatar} name={name} id={me.id} size={100} />
         <span className="story-add" style={{ width: 32, height: 32 }}><Camera size={16} /></span>
-        <input type="file" accept="image/*" hidden onChange={(e) => { if (e.target.files[0]) setCropFile(e.target.files[0]); e.target.value = ''; }} />
+        <input type="file" accept="image/*" hidden onChange={async (e) => {
+          const f = e.target.files[0];
+          e.target.value = '';
+          if (!f) return;
+          if (f.type === 'image/gif' && me.premium) {
+            try { const url = (await upload(f)).url; setAvatar(url); setMe((await api.patch('/me', { avatar: url })).user); useStore.getState().toast('Живая аватарка установлена'); } catch (er) { useStore.getState().toast(er.message, 'error'); }
+            return;
+          }
+          setCropFile(f);
+        }} />
       </label>
       {cropFile && (
         <AvatarCropper
@@ -44,6 +59,7 @@ function ProfileTab() {
         />
       )}
       <BannerEditor />
+      <LocationField />
       <div className="field"><label>Имя</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={64} /></div>
       <div className="field"><label>О себе</label><textarea className="input" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={200} /><span className="hint">{bio.length}/200</span></div>
       <div className="field">
@@ -163,14 +179,6 @@ function AppearanceTab() {
         </div>
       </div>
       <WallpaperPicker />
-      <div className="list-item" style={{ background: 'var(--bg-2)' }}>
-        <div className="grow"><div className="bold">Звук отправки</div><div className="tiny muted">Короткий «свуш», когда вы отправляете сообщение</div></div>
-        <Switch on={theme.sendSound !== false} onChange={(v) => update({ sendSound: v })} />
-      </div>
-      <div className="list-item" style={{ background: 'var(--bg-2)' }}>
-        <div className="grow"><div className="bold">Звук входящих</div><div className="tiny muted">Когда сообщение приходит в открытый чат</div></div>
-        <Switch on={theme.inSound !== false} onChange={(v) => update({ inSound: v })} />
-      </div>
       <div className="field">
         <label>Размер текста: {theme.fontSize}px</label>
         <input type="range" min={13} max={19} value={theme.fontSize} onChange={(e) => update({ fontSize: Number(e.target.value) })} style={{ accentColor: 'var(--accent)' }} />
@@ -188,42 +196,100 @@ function AppearanceTab() {
   );
 }
 
-function PrivacyTab() {
+const PAGES = {
+  profile: ['Мой профиль', () => <ProfileTab />],
+  usernames: ['Юзернеймы', () => <UsernamesTab />],
+  theme: ['Оформление', () => <AppearanceTab />],
+  wallets: ['TON-кошельки', () => <WalletsSection />],
+  notifications: ['Уведомления', () => <NotificationsPage />],
+  premium: ['Recidivist Premium', () => <PremiumPage />],
+  wallet: ['Кошелёк', () => <WalletCardPage />],
+  language: ['Язык', () => <LanguagePage />],
+  privacy: ['Конфиденциальность', () => <PrivacyPage />],
+  devices: ['Устройства', () => <DevicesPage />],
+  security: ['Безопасность', () => <SecurityPage />],
+  fonts: ['Шрифты', () => <FontsPage />],
+  storage: ['Память', () => <StoragePage />],
+};
+
+export function SettingsModal({ tab: initialTab }) {
+  const t = useT();
+  const [page, setPage] = useState(initialTab && PAGES[initialTab] ? initialTab : null);
+  if (page) {
+    const [title, render] = PAGES[page];
+    return <Modal title={t(title)} back={() => setPage(null)} className={`settings-page sp-${page}`}><div key={page} className="sp-body">{render()}</div></Modal>;
+  }
+  return <SettingsHome open={setPage} />;
+}
+
+function SettingsHome({ open }) {
+  const t = useT();
+  const me = useStore((s) => s.me);
+  const chats = useStore((s) => s.chats);
+  const openModal = useStore((s) => s.openModal);
+  const openChat = useStore((s) => s.openChat);
+  const setTab = useStore((s) => s.setTab);
   const logout = useStore((s) => s.logout);
-  const toast = useStore((s) => s.toast);
-  const [perm, setPerm] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
+  const currency = useStore((s) => s.currency);
+  const lang = useLang((s) => s.lang);
+  const navigate = useNavigate();
+  const font = FONTS.find((f) => f.id === loadTheme().font) || FONTS[0];
+  const saved = chats.find((c) => c.type === 'saved');
+  const doLogout = async () => {
+    if (!confirm('Выйти из аккаунта? Для входа понадобится сид-фраза.')) return;
+    await api('/sessions/logout', { body: {} }).catch(() => {});
+    logout();
+  };
   return (
-    <div className="col" style={{ gap: 12 }}>
-      <div className="list-item" style={{ background: 'var(--bg-2)' }}>
-        <Bell size={22} className="accent" />
-        <div className="grow"><div className="bold">Уведомления браузера</div><div className="tiny muted">{perm === 'granted' ? 'включены' : perm === 'denied' ? 'запрещены в настройках браузера' : 'выключены'}</div></div>
-        {perm === 'default' && <button className="btn sm" onClick={async () => setPerm(await Notification.requestPermission())}>Включить</button>}
-      </div>
-      <div className="warn-box">
-        <ShieldCheck size={18} />
-        <span>Ваш аккаунт защищён сид-фразой из 12 слов. Сервер хранит только хеш ключа, выведенного из неё, — восстановить фразу невозможно. Храните её офлайн.</span>
-      </div>
-      <button className="btn danger-btn" onClick={() => { if (confirm('Выйти? Для входа понадобится сид-фраза.')) { logout(); toast('Вы вышли из аккаунта'); } }}><LogOut size={18} /> Выйти из аккаунта</button>
-    </div>
+    <Modal title={t('Настройки')} className="settings-home">
+      <button className="set-me" onClick={() => open('profile')}>
+        <Avatar src={me.avatar} name={me.displayName} id={me.id} size={64} />
+        <div className="grow" style={{ minWidth: 0, textAlign: 'left' }}>
+          <div className="row" style={{ gap: 5 }}><b className="ellipsis" style={nameStyleCss(me.nameStyle)}>{me.displayName}</b>{me.premium && <PremiumStar />}</div>
+          <div className="small muted ellipsis">{me.username ? `@${me.username}` : me.email}</div>
+        </div>
+        <span className="set-chev">›</span>
+      </button>
+      <Group>
+        <Row icon={UserIcon} color="#ff3b30" title={t('Мой профиль')} onClick={() => setTab('profile')} />
+        <Row icon={AtSign} color="#0a84ff" title={t('Юзернеймы')} value={me.username ? `@${me.username}` : ''} onClick={() => open('usernames')} />
+        {saved && <Row icon={Bookmark} color="#5ac8fa" title={t('Избранное')} onClick={() => { setTab('chats'); openChat(saved.id); }} />}
+      </Group>
+      <Group>
+        <Row icon={Bell} color="#ff453a" title={t('Уведомления')} onClick={() => open('notifications')} />
+        <Row icon={Gift} color="#af52de" title={t('Магазин')} onClick={() => openModal('giftShop')} />
+        <Row icon={Tag} color="#0a84ff" title={t('Маркет')} onClick={() => openModal('market')} />
+        <Row icon={Star} color="#f5a623" title="Recidivist Premium" value={me.premium ? 'активен' : ''} onClick={() => open('premium')} />
+        <Row icon={CreditCard} color="linear-gradient(135deg, #2c2c2e, #ff2d3d)" title={t('Кошелёк')} value={<Spark amount={me.balance} />} onClick={() => open('wallet')} />
+        <Row icon={WalletIcon} color="#0098ea" title={t('TON-кошельки')} onClick={() => open('wallets')} />
+      </Group>
+      <Group>
+        <Row icon={Globe} color="#bf5af2" title={t('Язык')} value={LANGS.find((l) => l.id === lang)?.name} onClick={() => open('language')} />
+        <Row icon={Hand} color="#0a84ff" title={t('Конфиденциальность')} onClick={() => open('privacy')} />
+        <Row icon={MonitorSmartphone} color="#ff9f0a" title={t('Устройства')} onClick={() => open('devices')} />
+        <Row icon={ShieldCheck} color="#34c759" title={t('Безопасность')} onClick={() => open('security')} />
+        <Row icon={Contrast} color="#3a3a3c" title={t('Оформление')} onClick={() => open('theme')} />
+        <Row icon={Type} color="#0a84ff" title={t('Шрифты')} value={font.name} onClick={() => open('fonts')} />
+        <Row icon={HardDrive} color="#8e8e93" title={t('Память')} onClick={() => open('storage')} />
+      </Group>
+      <Group>
+        {me.isAdmin && <Row icon={Shield} color="#ff3b30" title={t('Админ-панель')} onClick={() => navigate('/admin')} />}
+        <Row icon={LogOut} color="#ff453a" title={<span className="danger">{t('Выйти')}</span>} onClick={doLogout} />
+      </Group>
+      <div className="tiny muted center" style={{ padding: '6px 0 20px' }}>Recidivist · {currency.symbol} {currency.name}</div>
+    </Modal>
   );
 }
 
-export function SettingsModal({ tab: initialTab = 'profile' }) {
-  const [tab, setTab] = useState(initialTab);
+function LocationField() {
+  const me = useStore((s) => s.me);
+  const setMe = useStore((s) => s.setMe);
+  const [v, setV] = useState(me.location || '');
+  const save = async () => { if ((me.location || '') !== v) setMe((await api('/me/profile-extra', { body: { location: v } })).user); };
   return (
-    <Modal title="Настройки">
-      <div className="tabs">
-        <button className={tab === 'profile' ? 'on' : ''} onClick={() => setTab('profile')}>Профиль</button>
-        <button className={tab === 'usernames' ? 'on' : ''} onClick={() => setTab('usernames')}>Юзернеймы</button>
-        <button className={tab === 'theme' ? 'on' : ''} onClick={() => setTab('theme')}>Тема</button>
-        <button className={tab === 'wallets' ? 'on' : ''} onClick={() => setTab('wallets')}>Кошельки</button>
-        <button className={tab === 'privacy' ? 'on' : ''} onClick={() => setTab('privacy')}>Прочее</button>
-      </div>
-      {tab === 'profile' && <ProfileTab />}
-      {tab === 'usernames' && <UsernamesTab />}
-      {tab === 'theme' && <AppearanceTab />}
-      {tab === 'wallets' && <WalletsSection />}
-      {tab === 'privacy' && <PrivacyTab />}
-    </Modal>
+    <div className="field">
+      <label>Местоположение</label>
+      <div className="link-field"><span className="brand"><MapPin size={18} /></span><input className="input" value={v} maxLength={48} placeholder="Город или что угодно" onChange={(e) => setV(e.target.value)} onBlur={save} /></div>
+    </div>
   );
 }

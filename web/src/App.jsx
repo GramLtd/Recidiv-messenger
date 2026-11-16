@@ -4,6 +4,7 @@ import { useStore } from './store.js';
 import Auth from './pages/Auth.jsx';
 import Main from './pages/Main.jsx';
 import Admin from './pages/Admin.jsx';
+import { LockScreen } from './components/Lock.jsx';
 
 export default function App() {
   const me = useStore((s) => s.me);
@@ -19,9 +20,12 @@ export default function App() {
   if (!booted) return <div className="loading-screen"><div className="spinner" /></div>;
   if (!me) return <Auth />;
   return (
-    <Routes>
-      <Route path="/admin/*" element={me.isAdmin ? <Admin /> : <Navigate to="/" replace />} />
-      <Route path="*" element={<Main />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/admin/*" element={me.isAdmin ? <Admin /> : <Navigate to="/" replace />} />
+        <Route path="*" element={<Main />} />
+      </Routes>
+      <LockScreen />
+    </>
   );
 }

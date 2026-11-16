@@ -1,25 +1,27 @@
 import { useRef } from 'react';
-import { MessageCircle, Gift, Music2, Store, Settings } from 'lucide-react';
+import { MessageCircle, Music2, Settings, Newspaper } from 'lucide-react';
 import { useStore } from '../store.js';
 import { Avatar, InlinePage } from './common.jsx';
 import { ProfileView } from './ProfileView.jsx';
 import { GiftShopModal } from './Gifts.jsx';
+import { FeedPage } from './Feed.jsx';
+import { useT } from '../i18n.js';
 import { MarketModal } from './Market.jsx';
 import { SettingsModal } from './Settings.jsx';
 import { MusicPage, MiniPlayer } from './Music.jsx';
 import { usePlayer } from '../player.js';
 
 const TABS = [
+  { id: 'feed', icon: Newspaper, label: 'Лента' },
   { id: 'chats', icon: MessageCircle, label: 'Чаты' },
-  { id: 'gifts', icon: Gift, label: 'Подарки' },
-  { id: 'profile', label: 'Профиль' },
   { id: 'music', icon: Music2, label: 'Музыка' },
-  { id: 'market', icon: Store, label: 'Маркет' },
+  { id: 'profile', label: 'Профиль' },
   { id: 'settings', icon: Settings, label: 'Настройки' },
 ];
 
 /** Floating glass tab bar (like the reference design). */
 export function BottomNav() {
+  const t = useT();
   const tab = useStore((s) => s.tab);
   const setTab = useStore((s) => s.setTab);
   const me = useStore((s) => s.me);
@@ -29,20 +31,21 @@ export function BottomNav() {
   return (
     <nav className="bottom-nav">
       <div className="nav-indicator" style={{ transform: `translateX(${idx * 100}%)`, width: `${100 / TABS.length}%` }} />
-      {TABS.map((t) => {
-        const Icon = t.icon;
-        const on = t.id === tab;
+      {TABS.map((tb) => {
+        const Icon = tb.icon;
+        const on = tb.id === tab;
         return (
-          <button key={t.id} className={`nav-btn ${on ? 'on' : ''}`} onClick={() => setTab(t.id)} aria-label={t.label}>
-            {t.id === 'profile' ? (
-              <span className={`nav-avatar ${on ? 'on' : ''}`}><Avatar src={me.avatar} name={me.displayName} id={me.id} size={34} /></span>
+          <button key={tb.id} className={`nav-btn ${on ? 'on' : ''}`} onClick={() => setTab(tb.id)} aria-label={t(tb.label)}>
+            {tb.id === 'profile' ? (
+              <span className={`nav-avatar ${on ? 'on' : ''}`}><Avatar src={me.avatar} name={me.displayName} id={me.id} size={26} /></span>
             ) : (
               <span className="nav-icon">
-                <Icon size={24} strokeWidth={on ? 2.3 : 1.8} />
-                {t.id === 'chats' && unread > 0 && <span className="nav-badge">{unread > 99 ? '99+' : unread}</span>}
-                {t.id === 'music' && playing && <span className="nav-dot" />}
+                <Icon size={23} strokeWidth={on ? 2.3 : 1.8} />
+                {tb.id === 'chats' && unread > 0 && <span className="nav-badge">{unread > 99 ? '99+' : unread}</span>}
+                {tb.id === 'music' && playing && <span className="nav-dot" />}
               </span>
             )}
+            <span className="nav-label">{t(tb.label)}</span>
           </button>
         );
       })}
@@ -72,6 +75,7 @@ export function TabPage({ tab }) {
   const scroller = useRef();
   let page = null;
   if (tab === 'profile') page = <ProfilePage />;
+  else if (tab === 'feed') page = <FeedPage />;
   else if (tab === 'gifts') page = inline(GiftShopModal);
   else if (tab === 'market') page = inline(MarketModal);
   else if (tab === 'settings') page = inline(SettingsModal);

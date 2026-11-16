@@ -1,6 +1,7 @@
 import { db, SYSTEM_USER_ID, NUMBERS_BOT_ID, getSetting } from './db.js';
 import { emitToUser, emitToChat, isOnline, chatMemberIds } from './realtime.js';
-import { fail } from './auth.js';
+import { fail, currentViewer } from './auth.js';
+import { privacyOf, isPremium, canSeeLastSeen, parseJson as pj } from './privacy.js';
 
 export const now = () => Date.now();
 const parse = (s, d = null) => {
@@ -44,11 +45,23 @@ export function publicUser(u) {
     anonNumber: u.anon_number ? `+${u.anon_number.slice(0, 3)} ${u.anon_number.slice(3, 7)} ${u.anon_number.slice(7)}` : null,
     emojiStatus: u.emoji_status,
     wornGift: wornGift(u),
-    online: isOnline(u.id),
-    lastSeen: u.last_seen,
+    ...presenceFor(u),
+    premium: isPremium(u),
+    nameStyle: isPremium(u) ? pj(u.name_style, null) : null,
+    profileBg: isPremium(u) ? u.profile_bg || null : null,
+    location: u.location || null,
+    publicBalance: u.show_balance ? u.balance : null,
     banner: u.banner ? { url: u.banner, type: u.banner_type === 'video' ? 'video' : 'image' } : null,
     links: parseJson(u.links, {}),
   };
+}
+
+const presenceSelf = (u) => ({ online: isOnline(u.id), lastSeen: u.last_seen });
+/** Online / last seen as the current viewer is allowed to see it. */
+export function presenceFor(u) {
+  const viewer = currentViewer();
+  if (viewer && !canSeeLastSeen(u, viewer)) return { online: false, lastSeen: null, lastSeenHidden: true };
+  return { online: isOnline(u.id), lastSeen: u.last_seen };
 }
 
 function parseJson(v, d) {
@@ -82,11 +95,11 @@ export function normalizeLink(kind, raw) {
 
 export function lightUser(u) {
   if (!u) return null;
-  return { id: u.id, displayName: u.display_name, username: u.username, avatar: u.avatar, verified: !!u.verified, isBot: !!u.is_bot, wornGift: wornGift(u) };
+  return { id: u.id, displayName: u.display_name, username: u.username, avatar: u.avatar, verified: !!u.verified, isBot: !!u.is_bot, wornGift: wornGift(u), premium: isPremium(u), nameStyle: isPremium(u) ? pj(u.name_style, null) : null };
 }
 
 export function meUser(u) {
-  return { ...publicUser(u), email: u.email, balance: u.balance, isBanned: !!u.is_banned, createdAt: u.created_at, profileTrackId: u.profile_track_id, personalChannelId: u.personal_channel_id, isTester: !!u.is_tester, wallpaper: parseJson(u.wallpaper, null) };
+  return { ...publicUser(u), email: u.email, balance: u.balance, isBanned: !!u.is_banned, createdAt: u.created_at, profileTrackId: u.profile_track_id, personalChannelId: u.personal_channel_id, isTester: !!u.is_tester, wallpaper: parseJson(u.wallpaper, null), premiumUntil: u.premium_until || null, privacy: privacyOf(u), showBalance: !!u.show_balance, ...presenceSelf(u) };
 }
 
 // ---------------- ledger ----------------
@@ -160,7 +173,7 @@ export function createMessage({ chatId, senderId, type = 'text', text = '', medi
 export function messagePreview(m) {
   if (!m) return null;
   if (m.deleted) return 'Сообщение удалено';
-  const labels = { audio: '🎵 Музыка', transfer: '💸 Перевод', image: '🖼 Фото', video: '🎬 Видео', file: '📎 Файл', voice: '🎤 Голосовое', gift: '🎁 Подарок', sticker: 'Стикер' };
+  const labels = { post: '📰 Пост', audio: '🎵 Музыка', transfer: '💸 Перевод', image: '🖼 Фото', video: '🎬 Видео', file: '📎 Файл', voice: '🎤 Голосовое', gift: '🎁 Подарок', sticker: 'Стикер' };
   if (m.type === 'text' || m.type === 'system') return m.text;
   if (m.type === 'gift') return m.text ? (/^\p{Extended_Pictographic}/u.test(m.text) ? m.text : `🎁 ${m.text}`) : labels.gift;
   return m.text ? `${labels[m.type] || ''} ${m.text}` : labels[m.type] || m.type;

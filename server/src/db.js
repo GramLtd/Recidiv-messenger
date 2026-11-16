@@ -442,6 +442,55 @@ addColumn('users', 'banner', 'TEXT');
 addColumn('users', 'banner_type', 'TEXT');
 addColumn('users', 'links', 'TEXT');
 addColumn('users', 'wallpaper', 'TEXT');
+addColumn('users', 'premium_until', 'INTEGER');
+addColumn('users', 'name_style', 'TEXT');
+addColumn('users', 'profile_bg', 'TEXT');
+addColumn('users', 'location', 'TEXT');
+addColumn('users', 'show_balance', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('users', 'privacy', 'TEXT');
+addColumn('users', 'sessions_after', 'INTEGER');
+db.exec(`
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  device TEXT,
+  ip TEXT,
+  created_at INTEGER NOT NULL,
+  last_active INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+CREATE TABLE IF NOT EXISTS posts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  text TEXT NOT NULL DEFAULT '',
+  media TEXT,
+  repost_of INTEGER REFERENCES posts(id) ON DELETE SET NULL,
+  views INTEGER NOT NULL DEFAULT 0,
+  deleted INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id, id);
+CREATE TABLE IF NOT EXISTS post_likes (post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at INTEGER NOT NULL, PRIMARY KEY (post_id, user_id));
+CREATE TABLE IF NOT EXISTS post_views (post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE, user_id INTEGER NOT NULL, PRIMARY KEY (post_id, user_id));
+CREATE TABLE IF NOT EXISTS post_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_comments_post ON post_comments(post_id, id);
+CREATE TABLE IF NOT EXISTS post_tags (post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE, tag TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (post_id, tag));
+CREATE INDEX IF NOT EXISTS idx_post_tags_tag ON post_tags(tag, post_id);
+CREATE TABLE IF NOT EXISTS follows (follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, followee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at INTEGER NOT NULL, PRIMARY KEY (follower_id, followee_id));
+CREATE INDEX IF NOT EXISTS idx_follows_followee ON follows(followee_id);
+CREATE TABLE IF NOT EXISTS contacts (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, contact_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at INTEGER NOT NULL, PRIMARY KEY (user_id, contact_id));
+CREATE TABLE IF NOT EXISTS blocks (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, blocked_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at INTEGER NOT NULL, PRIMARY KEY (user_id, blocked_id));
+CREATE TABLE IF NOT EXISTS profile_views (viewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, viewed_at INTEGER NOT NULL, PRIMARY KEY (viewer_id, user_id));
+`);
+for (const [k, v] of Object.entries({ premium_price: '300', posts_per_day: '5', posts_per_day_premium: '20', post_cooldown: '30', post_cooldown_premium: '15' })) {
+  db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)').run(k, v);
+}
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_anon_number ON users(anon_number)');
 
 // ---------- in-app bot: anonymous numbers ----------

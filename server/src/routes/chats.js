@@ -2,10 +2,11 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { db, tx } from '../db.js';
 import { fail } from '../auth.js';
+import { isPremium, isContact, isBlocked, privacyOf } from '../privacy.js';
 import { INTERACTIVE_BOTS } from '../bots.js';
 import {
   serializeChat, serializeMessage, getOrCreatePrivateChat, getMember, getUser, createMessage, canPost,
-  assertUsernameFree, emitToUser, emitToChat, chatMemberIds, publicUser, now, sanitizeMedia, safeUploadUrl,
+  assertUsernameFree, emitToUser, emitToChat, chatMemberIds, publicUser, now, sanitizeMedia, safeUploadUrl, changeBalance, pushBalance,
 } from '../services.js';
 
 const r = Router();
@@ -56,6 +57,9 @@ r.post('/chats/private', (req, res) => {
 });
 
 function createGroupLike(req, type) {
+  const limit = isPremium(req.user) ? 10 : 3;
+  const owned = db.prepare("SELECT COUNT(*) c FROM chats WHERE owner_id = ? AND type = ?").get(req.user.id, type).c;
+  if (owned >= limit && !req.user.is_admin) fail(403, `Можно создать не больше ${limit} ${type === 'channel' ? 'каналов' : 'групп'}${isPremium(req.user) ? '' : ' (с Premium — 10)'}`);
   const title = String(req.body.title || '').trim().slice(0, 128);
   if (!title) fail(400, 'Укажите название');
   const username = req.body.username ? String(req.body.username).trim() : null;
@@ -251,6 +255,25 @@ r.post('/chats/:id/messages', (req, res) => {
   if (c.type === 'private') {
     const peer = db.prepare('SELECT u.* FROM chat_members m JOIN users u ON u.id = m.user_id WHERE m.chat_id = ? AND m.user_id != ?').get(c.id, req.user.id);
     if (peer?.is_bot && !INTERACTIVE_BOTS.has(peer.id)) fail(403, 'Этот аккаунт не принимает сообщения');
+    if (peer && peer.id !== req.user.id) {
+      if (isBlocked(peer.id, req.user.id)) fail(403, 'Пользователь ограничил вам отправку сообщений');
+      if (isBlocked(req.user.id, peer.id)) fail(403, 'Вы заблокировали этого пользователя — разблокируйте его в профиле');
+      // the peer's "who can message me" setting; once they wrote to you, the chat is open
+      const p = privacyOf(peer);
+      const replied = !!db.prepare('SELECT 1 FROM messages WHERE chat_id = ? AND sender_id = ? LIMIT 1').get(c.id, peer.id);
+      if (!replied && !isContact(peer.id, req.user.id) && !req.user.is_admin) {
+        if (p.messages === 'contacts') fail(403, 'Пользователь принимает сообщения только от контактов');
+        if (p.messages === 'premium' && !isPremium(req.user)) fail(403, 'Пользователь принимает сообщения только от Premium');
+        if (p.messages === 'paid' && !isPremium(req.user)) {
+          const price = Math.max(1, Number(p.messagePrice) || 1);
+          tx(() => {
+            changeBalance(req.user.id, -price, 'paid_message', `Платное сообщение ${peer.display_name}`, `user:${peer.id}`);
+            changeBalance(peer.id, price, 'paid_message_in', `Платное сообщение от ${req.user.display_name}`, `user:${req.user.id}`);
+          });
+          pushBalance(req.user.id, peer.id);
+        }
+      }
+    }
   }
   const text = String(req.body.text || '').slice(0, 4096);
   const media = sanitizeMedia(req.body.media);

@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  Menu, Search, Pencil, Users, Megaphone, User, Wallet, Gift, Store, Settings, Shield, Bookmark, LogOut, Plus, Pin, VolumeX,
-  CheckCheck, Check, X, Moon, Sun,
+  Search, Users, Megaphone, User, Bookmark, LogOut, Plus, Pin, VolumeX, Volume2, CheckCheck, Check, X, SquarePen, Trash2,
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api } from '../api.js';
-import { Avatar, Verified, Spark, WornGift } from './common.jsx';
+import { Avatar, Verified, WornGift, PremiumStar, StyledName } from './common.jsx';
+import { useT } from '../i18n.js';
 import { chatTime } from '../util.js';
-import { loadTheme, saveTheme } from '../theme.js';
 import { BottomNav, TabPage, MiniPlayerSlot } from './Tabs.jsx';
 
 function StoriesBar() {
@@ -24,7 +22,7 @@ function StoriesBar() {
           <Avatar src={me.avatar} name={me.displayName} id={me.id} size={58} ring={mine ? (mine.allViewed ? 'seen' : 'new') : null} />
           <span className="story-add" onClick={(e) => { e.stopPropagation(); openModal('storyCreate'); }}><Plus size={12} strokeWidth={3} /></span>
         </div>
-        <span>Моя история</span>
+        <span>Моя</span>
       </div>
       {others.map((f) => (
         <div className="story-chip" key={f.user.id} onClick={() => openModal('storyViewer', { startUserId: f.user.id })}>
@@ -36,55 +34,7 @@ function StoriesBar() {
   );
 }
 
-function Drawer({ onClose }) {
-  const me = useStore((s) => s.me);
-  const openModal = useStore((s) => s.openModal);
-  const logout = useStore((s) => s.logout);
-  const chats = useStore((s) => s.chats);
-  const openChat = useStore((s) => s.openChat);
-  const navigate = useNavigate();
-  const [theme, setTheme] = useState(loadTheme());
-  const go = (fn) => () => { onClose(); fn(); };
-  const toggleLight = () => {
-    const t = { ...theme, bg: theme.bg === 'light' ? 'oled' : 'light' };
-    setTheme(t);
-    saveTheme(t);
-  };
-  const saved = chats.find((c) => c.type === 'saved');
-  return (
-    <>
-      <div className="overlay" onClick={onClose} />
-      <div className="drawer">
-        <div className="drawer-head">
-          <div className="row" style={{ alignItems: 'flex-start' }}>
-            <Avatar src={me.avatar} name={me.displayName} id={me.id} size={64} onClick={go(() => openModal('settings'))} />
-            <div className="spacer" />
-            <button className="icon-btn" onClick={toggleLight}>{theme.bg === 'light' ? <Moon size={20} /> : <Sun size={20} />}</button>
-          </div>
-          <div style={{ marginTop: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>{me.displayName}{me.verified && <Verified />}</div>
-          <div className="muted small">{me.username ? `@${me.username}` : me.email}</div>
-        </div>
-        <div style={{ padding: 6, overflowY: 'auto', flex: 1 }}>
-          <button className="menu-item" onClick={go(() => openModal('userProfile', { userId: me.id }))}><User size={22} /> Мой профиль</button>
-          <button className="menu-item" onClick={go(() => openModal('wallet'))}><Wallet size={22} /> Кошелёк <span className="right"><Spark amount={me.balance} /></span></button>
-          <button className="menu-item" onClick={go(() => openModal('giftShop'))}><Gift size={22} /> Подарки</button>
-          <button className="menu-item" onClick={go(() => openModal('market'))}><Store size={22} /> Маркет</button>
-          <div className="divider" />
-          <button className="menu-item" onClick={go(() => openModal('newChat', { type: 'group' }))}><Users size={22} /> Создать группу</button>
-          <button className="menu-item" onClick={go(() => openModal('newChat', { type: 'channel' }))}><Megaphone size={22} /> Создать канал</button>
-          {saved && <button className="menu-item" onClick={go(() => openChat(saved.id))}><Bookmark size={22} /> Избранное</button>}
-          <button className="menu-item" onClick={go(() => openModal('settings'))}><Settings size={22} /> Настройки</button>
-          {me.isAdmin && <button className="menu-item" onClick={go(() => navigate('/admin'))}><Shield size={22} /> Админ-панель</button>}
-          <div className="divider" />
-          <button className="menu-item danger" onClick={go(() => confirm('Выйти из аккаунта? Для входа понадобится сид-фраза.') && logout())}><LogOut size={22} className="danger" /> Выйти</button>
-        </div>
-        <div className="tiny muted" style={{ padding: 16 }}>Recidivist Web · v0.1</div>
-      </div>
-    </>
-  );
-}
-
-export function ChatRow({ chat, active, onClick, onContext, index = 0 }) {
+export function ChatRow({ chat, active, onClick, onContext, index = 0, editing, onAction }) {
   const me = useStore((s) => s.me);
   const typing = useStore((s) => s.typing[chat.id]);
   const typers = typing ? Object.values(typing).filter((t) => t.until > Date.now()) : [];
@@ -99,8 +49,9 @@ export function ChatRow({ chat, active, onClick, onContext, index = 0 }) {
           <div className="name">
             {chat.type === 'group' && <Users size={15} className="muted" />}
             {chat.type === 'channel' && <Megaphone size={15} className="muted" />}
-            <span className="ellipsis">{chat.title}</span>
+            {chat.peer ? <StyledName user={{ ...chat.peer, displayName: chat.title }} /> : <span className="ellipsis">{chat.title}</span>}
             {chat.peer?.verified && <Verified size={15} />}
+            {chat.peer?.premium && <PremiumStar size={14} />}
             {chat.peer?.wornGift && <WornGift gift={chat.peer.wornGift} size={18} />}
             {chat.muted && <VolumeX size={14} className="muted" />}
           </div>
@@ -125,6 +76,13 @@ export function ChatRow({ chat, active, onClick, onContext, index = 0 }) {
           {chat.unread > 0 ? <span className={`badge ${chat.muted ? 'muted-badge' : ''}`}>{chat.unread}</span> : chat.pinned && <Pin size={15} className="muted" style={{ transform: 'rotate(45deg)' }} />}
         </div>
       </div>
+      {editing && (
+        <div className="chat-edit-actions" onClick={(e) => e.stopPropagation()}>
+          <button className="lg" title={chat.pinned ? 'Открепить' : 'Закрепить'} onClick={() => onAction('pin')}><Pin size={17} /></button>
+          <button className="lg" title={chat.muted ? 'Включить звук' : 'Без звука'} onClick={() => onAction('mute')}>{chat.muted ? <Volume2 size={17} /> : <VolumeX size={17} />}</button>
+          {chat.type !== 'saved' && chat.peer?.isBot !== true && <button className="lg danger-lg" title="Удалить" onClick={() => onAction('leave')}><Trash2 size={17} /></button>}
+        </div>
+      )}
     </div>
   );
 }
@@ -158,7 +116,7 @@ function ChatContextMenu({ chat, x, y, onClose }) {
   );
 }
 
-const TAB_ORDER = ['chats', 'gifts', 'profile', 'music', 'market', 'settings'];
+const TAB_ORDER = ['feed', 'chats', 'music', 'profile', 'settings'];
 
 export default function Sidebar() {
   const tab = useStore((s) => s.tab);
@@ -176,55 +134,91 @@ export default function Sidebar() {
 }
 
 function ChatsPage() {
+  const t = useT();
+  const me = useStore((s) => s.me);
   const chats = useStore((s) => s.chats);
   const activeChatId = useStore((s) => s.activeChatId);
   const openChat = useStore((s) => s.openChat);
   const openPrivate = useStore((s) => s.openPrivate);
   const openModal = useStore((s) => s.openModal);
   const upsertChat = useStore((s) => s.upsertChat);
-  const [drawer, setDrawer] = useState(false);
+  const removeChat = useStore((s) => s.removeChat);
   const [q, setQ] = useState('');
+  const [searching, setSearching] = useState(false);
   const [results, setResults] = useState(null);
-  const [fab, setFab] = useState(false);
+  const [compose, setCompose] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [ctx, setCtx] = useState(null);
 
   useEffect(() => {
     if (q.trim().length < 2) return setResults(null);
     const ctrl = new AbortController();
-    const t = setTimeout(() => api(`/users/search?q=${encodeURIComponent(q)}`, { signal: ctrl.signal }).then(setResults).catch(() => {}), 250);
-    return () => { clearTimeout(t); ctrl.abort(); };
+    const tm = setTimeout(() => api(`/users/search?q=${encodeURIComponent(q)}`, { signal: ctrl.signal }).then(setResults).catch(() => {}), 250);
+    return () => { clearTimeout(tm); ctrl.abort(); };
   }, [q]);
 
   const ql = q.trim().toLowerCase();
   const localMatches = ql ? chats.filter((c) => c.title?.toLowerCase().includes(ql) || c.username?.toLowerCase().includes(ql.replace('@', ''))) : [];
-  const resetSearch = () => { setQ(''); setResults(null); };
+  const resetSearch = () => { setQ(''); setResults(null); setSearching(false); };
+  const saved = chats.find((c) => c.type === 'saved');
+
+  const action = async (chat, kind) => {
+    if (kind === 'leave') {
+      const label = chat.type === 'private' ? 'Удалить чат для обоих?' : chat.type === 'channel' ? 'Покинуть канал?' : 'Покинуть группу?';
+      if (!confirm(label)) return;
+      await api(`/chats/${chat.id}/leave`, { body: {} });
+      removeChat(chat.id);
+      return;
+    }
+    const body = kind === 'pin' ? { pinned: !chat.pinned } : { muted: !chat.muted };
+    const { chat: c } = await api(`/chats/${chat.id}/settings`, { body });
+    upsertChat(c);
+  };
 
   return (
     <div className="tab-page chats-page">
-      <div className="side-header">
-        {q ? (
-          <button className="icon-btn" onClick={resetSearch}><X size={22} /></button>
-        ) : (
-          <button className="icon-btn" onClick={() => setDrawer(true)}><Menu size={22} /></button>
-        )}
-        <div className="search-box">
-          <Search size={18} />
-          <input placeholder="Поиск" value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="ios-head">
+        <button className={`lg ios-pill ${editing ? 'on' : ''}`} onClick={() => setEditing(!editing)}>{editing ? t('Готово') : t('Изм.')}</button>
+        <div className="ios-title"><Avatar src={me.avatar} name={me.displayName} id={me.id} size={30} /><span>{t('Чаты')}</span></div>
+        <div className="ios-right">
+          <div style={{ position: 'relative' }}>
+            <button className="lg ios-round" onClick={() => setCompose(!compose)} aria-label={t('Новое сообщение')}><SquarePen size={20} /></button>
+            {compose && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 9 }} onClick={() => setCompose(false)} />
+                <div className="ctx-menu" style={{ position: 'absolute', right: 0, top: 50, left: 'auto', zIndex: 10, '--origin': 'top right' }}>
+                  <button className="menu-item" onClick={() => { setCompose(false); openModal('newChat', { type: 'private' }); }}><User size={18} /> {t('Новое сообщение')}</button>
+                  <button className="menu-item" onClick={() => { setCompose(false); openModal('newChat', { type: 'group' }); }}><Users size={18} /> {t('Новая группа')}</button>
+                  <button className="menu-item" onClick={() => { setCompose(false); openModal('newChat', { type: 'channel' }); }}><Megaphone size={18} /> {t('Новый канал')}</button>
+                  {saved && <button className="menu-item" onClick={() => { setCompose(false); openChat(saved.id); }}><Bookmark size={18} /> {t('Избранное')}</button>}
+                </div>
+              </>
+            )}
+          </div>
+          <button className={`lg ios-round ${searching ? 'on' : ''}`} onClick={() => (searching ? resetSearch() : setSearching(true))} aria-label={t('Поиск')}>{searching ? <X size={20} /> : <Search size={20} />}</button>
         </div>
       </div>
+      {searching && (
+        <div className="ios-search">
+          <div className="search-box">
+            <Search size={18} />
+            <input autoFocus placeholder={t('Поиск')} value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+        </div>
+      )}
 
       <div className="chat-list">
         {!q && <StoriesBar />}
         {q ? (
           <>
-            {localMatches.length > 0 && <div className="section-title">Чаты</div>}
+            {localMatches.length > 0 && <div className="section-title">{t('Чаты')}</div>}
             {localMatches.map((c) => <ChatRow key={c.id} chat={c} active={c.id === activeChatId} onClick={() => { openChat(c.id); resetSearch(); }} />)}
-            {results?.users?.length > 0 && <div className="section-title">Глобальный поиск</div>}
+            {results?.users?.length > 0 && <div className="section-title">{t('Глобальный поиск')}</div>}
             {results?.users?.map((u) => (
               <div key={`u${u.id}`} className="chat-item" onClick={() => { openPrivate(u.id); resetSearch(); }}>
                 <Avatar src={u.avatar} name={u.displayName} id={u.id} size={48} online={u.online} />
                 <div className="grow">
-                  <div className="name row" style={{ gap: 4, fontWeight: 600 }}><span className="ellipsis">{u.displayName}</span>{u.verified && <Verified size={15} />}</div>
+                  <div className="name row" style={{ gap: 4, fontWeight: 600 }}><StyledName user={u} />{u.verified && <Verified size={15} />}{u.premium && <PremiumStar size={14} />}</div>
                   <div className="muted small">{u.username ? `@${u.username}` : ''}</div>
                 </div>
               </div>
@@ -238,7 +232,7 @@ function ChatsPage() {
                 </div>
               </div>
             ))}
-            {results && !results.users.length && !results.chats.length && !localMatches.length && <div className="muted center" style={{ padding: 30 }}>Ничего не найдено</div>}
+            {results && !results.users.length && !results.chats.length && !localMatches.length && <div className="muted center" style={{ padding: 30 }}>{t('Ничего не найдено')}</div>}
           </>
         ) : (
           chats.map((c, i) => (
@@ -246,27 +240,16 @@ function ChatsPage() {
               key={c.id}
               index={i}
               chat={c}
+              editing={editing}
+              onAction={(kind) => action(c, kind).catch((e) => useStore.getState().toast(e.message, 'error'))}
               active={c.id === activeChatId}
-              onClick={() => openChat(c.id)}
+              onClick={() => (editing ? null : openChat(c.id))}
               onContext={(e) => { e.preventDefault(); setCtx({ chat: c, x: e.clientX, y: e.clientY }); }}
             />
           ))
         )}
       </div>
 
-      {fab && (
-        <>
-          <div style={{ position: 'absolute', inset: 0, zIndex: 5 }} onClick={() => setFab(false)} />
-          <div className="fab-menu">
-            <button className="menu-item" onClick={() => { setFab(false); openModal('newChat', { type: 'private' }); }}><User size={20} /> Новое сообщение</button>
-            <button className="menu-item" onClick={() => { setFab(false); openModal('newChat', { type: 'group' }); }}><Users size={20} /> Новая группа</button>
-            <button className="menu-item" onClick={() => { setFab(false); openModal('newChat', { type: 'channel' }); }}><Megaphone size={20} /> Новый канал</button>
-          </div>
-        </>
-      )}
-      <button className="fab" onClick={() => setFab(!fab)}>{fab ? <X size={24} /> : <Pencil size={24} />}</button>
-
-      {drawer && <Drawer onClose={() => setDrawer(false)} />}
       {ctx && <ChatContextMenu {...ctx} onClose={() => setCtx(null)} />}
     </div>
   );

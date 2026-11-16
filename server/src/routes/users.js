@@ -4,6 +4,7 @@ import { fail } from '../auth.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from '../config.js';
+import { isPremium, isContact, isBlocked, privacyOf } from '../privacy.js';
 import { meUser, publicUser, getUser, assertUsernameFree, changeBalance, pushBalance, serializeChat, now, safeUploadUrl, normalizeLink, LINK_KINDS } from '../services.js';
 
 const r = Router();
@@ -16,7 +17,7 @@ r.patch('/me', (req, res) => {
   db.prepare('UPDATE users SET display_name = ?, bio = ?, avatar = ?, emoji_status = ? WHERE id = ?').run(
     name,
     bio !== undefined ? String(bio).slice(0, 200) : u.bio,
-    avatar !== undefined ? safeUploadUrl(avatar) : u.avatar,
+    avatar !== undefined ? (() => { const a = safeUploadUrl(avatar); if (a && /\.gif$/i.test(a) && !isPremium(u)) fail(403, 'Живая аватарка (GIF) — с Premium'); return a; })() : u.avatar,
     emojiStatus !== undefined ? (emojiStatus ? String(emojiStatus).slice(0, 16) : null) : u.emoji_status,
     u.id,
   );
@@ -132,8 +133,21 @@ r.get('/users/:id', (req, res) => {
   if (!u) fail(404, 'Пользователь не найден');
   if (u.id !== req.user.id) {
     db.prepare('UPDATE users SET profile_views = profile_views + 1 WHERE id = ?').run(u.id);
+    if (privacyOf(req.user).profileViews !== false) {
+      db.prepare('INSERT INTO profile_views (viewer_id, user_id, viewed_at) VALUES (?, ?, ?) ON CONFLICT(viewer_id, user_id) DO UPDATE SET viewed_at = excluded.viewed_at').run(req.user.id, u.id, now());
+    }
     u = getUser(u.id);
   }
+  const social = {
+    followers: db.prepare('SELECT COUNT(*) c FROM follows WHERE followee_id = ?').get(u.id).c,
+    following: db.prepare('SELECT COUNT(*) c FROM follows WHERE follower_id = ?').get(u.id).c,
+    postsCount: db.prepare('SELECT COUNT(*) c FROM posts WHERE user_id = ? AND deleted = 0').get(u.id).c,
+    isFollowing: !!db.prepare('SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?').get(req.user.id, u.id),
+    isContact: isContact(req.user.id, u.id),
+    isBlocked: isBlocked(req.user.id, u.id),
+    blockedMe: isBlocked(u.id, req.user.id),
+    premiumUntil: u.id === req.user.id ? u.premium_until || null : undefined,
+  };
   const giftsCount = db.prepare('SELECT COUNT(*) c FROM user_gifts WHERE owner_id = ? AND converted = 0 AND hidden = 0').get(u.id).c;
   const usernames = db.prepare('SELECT display FROM usernames WHERE user_id = ? AND display != ?').all(u.id, u.username || '').map((x) => x.display);
   const track = u.profile_track_id && db.prepare('SELECT * FROM tracks WHERE id = ? AND user_id = ?').get(u.profile_track_id, u.id);
@@ -150,6 +164,7 @@ r.get('/users/:id', (req, res) => {
       profileViews: u.profile_views,
       profileTrack: track ? { id: track.id, url: track.url, title: track.title, artist: track.artist, duration: track.duration, cover: track.cover } : null,
       personalChannel: channel ? serializeChat(channel, req.user.id) : null,
+      ...social,
     },
   });
 });

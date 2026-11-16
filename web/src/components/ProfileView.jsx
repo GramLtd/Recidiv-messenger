@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   X, Pencil, Shield, MessageCircle, Gift, Send, Pin, Eye, CalendarDays, Hash, Filter, Play, Pause, ChevronRight, Music2, Megaphone, Check, Phone,
+  MoreHorizontal, UserPlus, UserMinus, UserCheck, Star, Ban, Link2, MapPin, Coins,
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, mediaUrl } from '../api.js';
-import { Avatar, Verified, Modal, useAsync, Spinner, WornGift, Spark } from './common.jsx';
+import { Avatar, Verified, Modal, useAsync, Spinner, WornGift, Spark, PremiumStar, nameStyleCss, useAction } from './common.jsx';
+import { PostList } from './Feed.jsx';
+import { profileBgCss } from './SettingsPages.jsx';
+import { useT } from '../i18n.js';
 import { GiftArt, GiftModel, emoji3d } from './GiftArt.jsx';
 import { usePlayer, fmtTime } from '../player.js';
 import { Cover } from './Music.jsx';
@@ -247,7 +251,10 @@ export function ProfileView({ userId, onClose }) {
   const upsertChat = useStore((s) => s.upsertChat);
   const openChat = useStore((s) => s.openChat);
   const closeAll = useStore((s) => s.closeAllModals);
-  const { data } = useAsync(() => api(`/users/${userId}`), [userId]);
+  const { data, setData } = useAsync(() => api(`/users/${userId}`), [userId]);
+  const t = useT();
+  const [menu, setMenu] = useState(false);
+  const [run] = useAction();
   const giftsReq = useAsync(() => api(`/users/${userId}/gifts`), [userId]);
   const [tab, setTab] = useState('gifts');
   const [filter, setFilter] = useState('all');
@@ -266,11 +273,23 @@ export function ProfileView({ userId, onClose }) {
   const worn = u.wornGift;
   const glow = worn?.center || 'var(--accent)';
   const balance = isMe ? me.balance : null;
+  const patchU = (patch) => setData({ user: { ...u, ...patch } });
+  const follow = () => run(async () => { const r = await api(`/users/${u.id}/follow`, { body: {} }); patchU({ isFollowing: r.following, followers: r.followers }); });
+  const toggleContact = () => run(async () => { const r = await api(`/contacts/${u.id}`, { body: {} }); patchU({ isContact: r.contact }); }, u.isContact ? 'Удалено из контактов' : 'Добавлено в контакты');
+  const toggleBlock = () => {
+    if (!u.isBlocked && !confirm(`Заблокировать ${u.displayName}? Он(а) не сможет писать вам и комментировать посты.`)) return;
+    run(async () => { const r = await api(`/users/${u.id}/block`, { body: {} }); patchU({ isBlocked: r.blocked, isFollowing: r.blocked ? false : u.isFollowing }); }, u.isBlocked ? 'Разблокирован(а)' : 'Заблокирован(а)');
+  };
+  const act = (fn) => () => { setMenu(false); fn(); };
+  const tabs = [['gifts', `Подарки${u.giftsCount ? ` · ${u.giftsCount}` : ''}`], ['posts', `${t('Посты')}${u.postsCount ? ` · ${u.postsCount}` : ''}`], ['stories', `Истории${u.storiesCount ? ` · ${u.storiesCount}` : ''}`]];
+  const tabIdx = tabs.findIndex((x) => x[0] === tab);
+  const heroBg = !u.banner && u.profileBg ? profileBgCss(u.profileBg) : null;
 
   return (
     <div className="pv">
       <div className={`pv-hero ${u.banner ? 'has-banner' : ''}`} style={{ '--glow': glow }}>
         {u.banner && <div className="pv-banner"><BannerMedia banner={u.banner} /></div>}
+        {heroBg && <div className="pv-banner pv-prembg" style={{ background: heroBg }} />}
         <div className="pv-top">
           <span className="spacer" />
           {isMe && <button className="glass-icon" onClick={() => openModal('settings', { tab: 'privacy' })} title="Безопасность"><Shield size={17} /></button>}
@@ -292,18 +311,27 @@ export function ProfileView({ userId, onClose }) {
           )}
         </div>
         <h2 className="pv-name">
-          <span className="ellipsis">{u.displayName}</span>
+          <span className="ellipsis" style={nameStyleCss(u.nameStyle)}>{u.displayName}</span>
           {u.verified && <Verified size={20} />}
+          {u.premium && <PremiumStar size={20} />}
           {worn ? <WornGift gift={worn} size={24} /> : u.emojiStatus && <span>{u.emojiStatus}</span>}
         </h2>
         <div className="pv-pills">
           <span className={`pill ${u.online ? 'on' : ''}`}>{isMe ? 'в сети' : lastSeen(u)}</span>
+          {!isMe && u.publicBalance != null && <span className="pill">Баланс: <Spark /> <b>{fmtNum(u.publicBalance)}</b></span>}
           {isMe && (
             <button className="pill" onClick={() => openModal('wallet')}>
               Баланс: <Spark /> <b><CountUp value={balance} /></b> <ChevronRight size={14} />
             </button>
           )}
         </div>
+        {!u.isBot && (
+          <div className="pv-counts">
+            <button onClick={() => openModal('userList', { title: 'Подписчики', url: `/users/${u.id}/followers` })}><b>{fmtNum(u.followers || 0)}</b><span>{t('подписчиков')}</span></button>
+            <button onClick={() => openModal('userList', { title: 'Подписки', url: `/users/${u.id}/following` })}><b>{fmtNum(u.following || 0)}</b><span>{t('подписок')}</span></button>
+            <button onClick={() => setTab('posts')}><b>{fmtNum(u.postsCount || 0)}</b><span>{t('Посты').toLowerCase()}</span></button>
+          </div>
+        )}
         <ProfileLinks links={u.links} />
         {u.profileTrack ? (
           <ProfileTrack track={u.profileTrack} />
@@ -318,11 +346,32 @@ export function ProfileView({ userId, onClose }) {
       </div>
 
       {!isMe && !u.isBot && (
-        <div className="pv-actions">
-          <button onClick={() => openPrivate(u.id)}><MessageCircle size={20} />Написать</button>
-          <button onClick={() => openModal('giftShop', { toUser: u })}><Gift size={20} />Подарить</button>
-          <button onClick={() => openModal('transfer', { toUser: u })}><Send size={20} />Перевод</button>
-        </div>
+        <>
+          {(u.isBlocked || u.blockedMe) && (
+            <div className="pv-blocked">{u.isBlocked ? <>Вы заблокировали этого пользователя. <button onClick={toggleBlock}>Разблокировать</button></> : 'Пользователь ограничил вам доступ к профилю и сообщениям.'}</div>
+          )}
+          <div className="pv-actions four">
+            <button onClick={() => openPrivate(u.id)}><MessageCircle size={20} />{t('Написать')}</button>
+            <button className={u.isFollowing ? 'on' : ''} onClick={follow} disabled={u.isBlocked || u.blockedMe}>{u.isFollowing ? <UserCheck size={20} /> : <UserPlus size={20} />}{u.isFollowing ? t('Вы подписаны') : t('Подписаться')}</button>
+            <button onClick={() => openModal('giftShop', { toUser: u })}><Gift size={20} />{t('Подарить')}</button>
+            <div style={{ position: 'relative', display: 'flex' }}>
+              <button style={{ flex: 1 }} onClick={() => setMenu(!menu)}><MoreHorizontal size={20} />Ещё</button>
+              {menu && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 9 }} onClick={() => setMenu(false)} />
+                  <div className="ctx-menu" style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', left: 'auto', zIndex: 10, minWidth: 240, '--origin': 'top right' }}>
+                    <button className="menu-item" onClick={act(toggleContact)}>{u.isContact ? <UserMinus size={18} /> : <UserPlus size={18} />} {u.isContact ? t('Удалить из контактов') : t('Добавить в контакты')}</button>
+                    <button className="menu-item" onClick={act(() => openModal('transfer', { toUser: u }))}><Coins size={18} /> {t('Отправить искры')}</button>
+                    <button className="menu-item" onClick={act(() => openModal('giftShop', { toUser: u }))}><Gift size={18} /> {t('Отправить подарок')}</button>
+                    <button className="menu-item" onClick={act(() => openModal('giftPremium', { toUser: u }))}><Star size={18} /> {t('Подарить Premium')}</button>
+                    <button className="menu-item" onClick={act(() => { navigator.clipboard?.writeText(`${location.origin}/${u.username ? `@${u.username}` : ''}`); useStore.getState().toast('Ссылка скопирована'); })}><Link2 size={18} /> {t('Скопировать ссылку')}</button>
+                    <button className="menu-item danger" onClick={act(toggleBlock)}><Ban size={18} className="danger" /> {u.isBlocked ? t('Разблокировать') : t('Заблокировать')}</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </>
       )}
 
       <div className="pv-info">
@@ -349,6 +398,7 @@ export function ProfileView({ userId, onClose }) {
             <div className="pv-label">Описание</div>
           </div>
         )}
+        {u.location && <div className="pv-row inline"><MapPin size={16} /> {u.location}</div>}
         <div className="pv-row inline"><CalendarDays size={16} /> На Recidivist с {new Date(u.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
         <div className="pv-row">
           <div className="pv-value row" style={{ gap: 6 }}><Hash size={15} className="muted" /> ID: {u.code}</div>
@@ -358,9 +408,8 @@ export function ProfileView({ userId, onClose }) {
       </div>
 
       <div className="pv-tabs">
-        <button className={tab === 'gifts' ? 'on' : ''} onClick={() => setTab('gifts')}>Подарки{u.giftsCount ? ` · ${u.giftsCount}` : ''}</button>
-        <button className={tab === 'stories' ? 'on' : ''} onClick={() => setTab('stories')}>Истории{u.storiesCount ? ` · ${u.storiesCount}` : ''}</button>
-        <span className="pv-tab-line" style={{ transform: `translateX(${tab === 'gifts' ? 0 : 100}%)` }} />
+        {tabs.map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}
+        <span className="pv-tab-line three" style={{ transform: `translateX(${tabIdx * 100}%)` }} />
         {tab === 'gifts' && (
           <div style={{ position: 'relative' }}>
             <button className={`icon-btn ${filter !== 'all' ? 'active' : ''}`} onClick={() => setFilterMenu(!filterMenu)}><Filter size={18} /></button>
@@ -382,6 +431,8 @@ export function ProfileView({ userId, onClose }) {
       <div className="pv-content" key={tab}>
         {tab === 'gifts' ? (
           <GiftsGrid userId={u.id} filter={filter} gifts={gifts} onChange={(next) => giftsReq.setData({ gifts: next })} />
+        ) : tab === 'posts' ? (
+          <PostList source={`/users/${u.id}/posts`} emptyText={isMe ? 'Вы ещё ничего не публиковали — откройте «Ленту»' : 'Постов пока нет'} />
         ) : (
           <StoriesGrid userId={u.id} />
         )}
@@ -396,6 +447,46 @@ export function UserProfileModal({ userId }) {
     <Modal title={null} className="pv-modal">
       <div style={{ margin: '0 -18px' }}>
         <ProfileView userId={userId} onClose={close} />
+      </div>
+    </Modal>
+  );
+}
+
+export function UserListModal({ title, url }) {
+  const openModal = useStore((s) => s.openModal);
+  const { data } = useAsync(() => api(url), [url]);
+  return (
+    <Modal title={title}>
+      {!data ? <div className="center" style={{ padding: 30 }}><Spinner /></div> : !data.users.length ? <div className="muted center small" style={{ padding: 30 }}>Пока никого</div> : data.users.map((u) => (
+        <div key={u.id} className="list-item" onClick={() => openModal('userProfile', { userId: u.id })}>
+          <Avatar src={u.avatar} name={u.displayName} id={u.id} size={44} online={u.online} />
+          <div className="grow">
+            <div className="row bold" style={{ gap: 4 }}><span className="ellipsis" style={nameStyleCss(u.nameStyle)}>{u.displayName}</span>{u.verified && <Verified size={14} />}{u.premium && <PremiumStar size={14} />}</div>
+            <div className="small muted">{u.username ? `@${u.username}` : lastSeen(u)}</div>
+          </div>
+        </div>
+      ))}
+    </Modal>
+  );
+}
+
+export function GiftPremiumModal({ toUser }) {
+  const closeAll = useStore((s) => s.closeAllModals);
+  const setMe = useStore((s) => s.setMe);
+  const { data } = useAsync(() => api('/premium'), []);
+  const [months, setMonths] = useState(1);
+  const [run, busy] = useAction();
+  const price = (data?.price || 0) * months;
+  return (
+    <Modal title="Подарить Premium" footer={<button className="btn block prem-btn" disabled={busy || !data} onClick={() => run(async () => { setMe((await api('/premium/buy', { body: { months, toUserId: toUser.id } })).user); closeAll(); }, `Premium подарен ${toUser.displayName} ⭐`)}>Подарить за <Spark amount={price} /></button>}>
+      <div className="col" style={{ alignItems: 'center', gap: 12 }}>
+        <div className="prem-star" style={{ background: 'linear-gradient(135deg,#5b2bff,#ff4f7b)' }}><Star size={40} fill="#fff" color="#fff" /></div>
+        <div className="bold">{toUser.displayName}</div>
+        <div className="small muted center" style={{ textAlign: 'center' }}>Получатель получит звезду, своё оформление имени и профиля, особые шрифты и расширенные лимиты.</div>
+        <div className="seg" style={{ width: '100%' }}>
+          <span className="seg-ind" style={{ transform: `translateX(${[1, 3, 12].indexOf(months) * 100}%)` }} />
+          {[1, 3, 12].map((m) => <button key={m} className={months === m ? 'on' : ''} onClick={() => setMonths(m)}>{m} мес.</button>)}
+        </div>
       </div>
     </Modal>
   );

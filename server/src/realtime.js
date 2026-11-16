@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { db } from './db.js';
 import { verifyToken } from './auth.js';
+import { canSeeLastSeen } from './privacy.js';
 
 let io;
 const online = new Map(); // userId -> socket count
@@ -34,7 +35,12 @@ function peersOf(userId) {
 
 function broadcastPresence(userId, isOn) {
   const lastSeen = Date.now();
-  for (const peer of peersOf(userId)) emitToUser(peer, 'presence', { userId, online: isOn, lastSeen });
+  const me = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  for (const peer of peersOf(userId)) {
+    const viewer = db.prepare('SELECT * FROM users WHERE id = ?').get(peer);
+    if (!canSeeLastSeen(me, viewer)) continue;
+    emitToUser(peer, 'presence', { userId, online: isOn, lastSeen });
+  }
 }
 
 export function initRealtime(httpServer) {

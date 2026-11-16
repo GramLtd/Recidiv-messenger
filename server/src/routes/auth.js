@@ -112,7 +112,7 @@ r.post('/register', (req, res) => {
       (bonus ? `На ваш баланс начислено ${bonus} ${getSetting('currency_symbol')} ${getSetting('currency_name')}.\n` : '') +
       'Никому не сообщайте свою сид-фразу — это единственный ключ к аккаунту.',
   );
-  res.json({ token: signToken(user.id), user: meUser(user) });
+  res.json({ token: signToken(user.id, req), user: meUser(user) });
 });
 
 r.post('/login', (req, res) => {
@@ -121,7 +121,7 @@ r.post('/login', (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE auth_hash = ?').get(hashAuthKey(authKey));
   if (!user) fail(401, 'Аккаунт с такой сид-фразой не найден');
   if (user.is_banned) fail(403, 'Аккаунт заблокирован');
-  res.json({ token: signToken(user.id), user: meUser(user) });
+  res.json({ token: signToken(user.id, req), user: meUser(user) });
 });
 
 r.get('/me', requireAuth, (req, res) => {
