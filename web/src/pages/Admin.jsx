@@ -151,10 +151,10 @@ function GiftEditor({ gift, onSaved }) {
           <>
             <div className="divider" />
             <div className="bold">Модели коллекционной версии</div>
-            <div className="small muted">Модель — вариант внешнего вида (эмодзи + CSS-фильтр). Вес определяет редкость.</div>
+            <div className="small muted">Модель — вариант внешнего вида (своя картинка/анимация или эмодзи + CSS-фильтр). Вес определяет редкость (10 = 1%).</div>
             {models.map((m, i) => (
               <div key={m.id || `n${i}`} className="row" style={{ flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '1.8em', filter: m.filter, width: 40, textAlign: 'center' }}>{m.emoji}</span>
+                {m.image ? <img src={m.image} alt="" style={{ width: 40, height: 40, objectFit: 'contain', filter: m.filter || undefined }} /> : <span style={{ fontSize: '1.8em', filter: m.filter, width: 40, textAlign: 'center' }}>{m.emoji}</span>}
                 <input className="input" style={{ width: 130 }} value={m.name} onChange={(e) => setModels(models.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
                 <input className="input" style={{ width: 70 }} value={m.emoji} onChange={(e) => setModels(models.map((x, k) => (k === i ? { ...x, emoji: e.target.value } : x)))} />
                 <input className="input grow" style={{ minWidth: 140 }} placeholder="CSS filter" value={m.filter || ''} onChange={(e) => setModels(models.map((x, k) => (k === i ? { ...x, filter: e.target.value } : x)))} />
@@ -204,6 +204,8 @@ function AttributesPage() {
   const [run] = useAction();
   const [bd, setBd] = useState({ name: '', center: '#ff3b3b', edge: '#000000', pattern: '#ffffff', rarity: 10 });
   const [sym, setSym] = useState({ name: '', emoji: '', rarity: 10 });
+  const [previewSym, setPreviewSym] = useState('');
+  const [seed] = useState(() => Math.floor(Math.random() * 1e6));
   const setRarity = (table, id, rarity) => run(async () => { await api.patch(`/admin/attributes/${table}/${id}`, { rarity }); reload(); });
   if (!data) return <Spinner />;
   const bTotal = data.backdrops.reduce((s, x) => s + x.rarity, 0) || 1;
@@ -211,10 +213,20 @@ function AttributesPage() {
   return (
     <>
       <h2>Фоны и узоры коллекционных подарков</h2>
+      <div className="small muted" style={{ marginBottom: 10 }}>
+        Фон и узор выпадают независимо друг от друга: {data.backdrops.length} фонов × {data.symbols.length} узоров = {fmtNum(data.backdrops.length * data.symbols.length)} сочетаний.
+      </div>
+      <div className="row small" style={{ marginBottom: 12 }}>
+        <span className="muted">Узор в превью:</span>
+        <select className="input" style={{ width: 220, height: 34 }} value={previewSym} onChange={(e) => setPreviewSym(e.target.value)}>
+          <option value="">Случайный для каждого фона</option>
+          {data.symbols.map((s) => <option key={s.id} value={s.id}>{s.emoji} {s.name}</option>)}
+        </select>
+      </div>
       <div className="gift-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', marginBottom: 16 }}>
         {data.backdrops.map((b) => (
           <div key={b.id} className="card" style={{ padding: 8 }}>
-            <CollectibleArt col={{ backdrop: b, symbol: data.symbols[b.id % data.symbols.length], model: { emoji: '💀' } }} size="100%" height={100} rounded={10} />
+            <CollectibleArt col={{ backdrop: b, symbol: data.symbols.find((s) => String(s.id) === previewSym) || data.symbols[(b.id * 7919 + seed) % data.symbols.length], model: { emoji: '💀' } }} size="100%" height={100} rounded={10} />
             <div className="small bold" style={{ marginTop: 6 }}>{b.name}</div>
             <div className="row small"><input className="input" style={{ height: 32 }} defaultValue={b.rarity} onBlur={(e) => Number(e.target.value) !== b.rarity && setRarity('backdrops', b.id, Number(e.target.value))} /><span className="muted">{Math.round((b.rarity / bTotal) * 1000) / 10}%</span></div>
           </div>

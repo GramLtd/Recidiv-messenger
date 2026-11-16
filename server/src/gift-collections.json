@@ -1,0 +1,1795 @@
+{
+ "kot-stukach": [
+  {
+   "n": 1,
+   "name": "Вор в законе Шрам",
+   "rarity": 5,
+   "image": "/gifts/kot-stukach/001.webp",
+   "animation": "/gifts/kot-stukach/001.tgs"
+  },
+  {
+   "n": 2,
+   "name": "Вор в законе Седой",
+   "rarity": 5,
+   "image": "/gifts/kot-stukach/002.webp",
+   "animation": "/gifts/kot-stukach/002.tgs"
+  },
+  {
+   "n": 3,
+   "name": "Вор в законе Бритва",
+   "rarity": 5,
+   "image": "/gifts/kot-stukach/003.webp",
+   "animation": "/gifts/kot-stukach/003.tgs"
+  },
+  {
+   "n": 4,
+   "name": "Вор в законе Кабан",
+   "rarity": 5,
+   "image": "/gifts/kot-stukach/004.webp",
+   "animation": "/gifts/kot-stukach/004.tgs"
+  },
+  {
+   "n": 5,
+   "name": "Авторитет Хмурый",
+   "rarity": 5,
+   "image": "/gifts/kot-stukach/005.webp",
+   "animation": "/gifts/kot-stukach/005.tgs"
+  },
+  {
+   "n": 6,
+   "name": "Авторитет Гвоздь",
+   "rarity": 5,
+   "image": "/gifts/kot-stukach/006.webp",
+   "animation": "/gifts/kot-stukach/006.tgs"
+  },
+  {
+   "n": 7,
+   "name": "Авторитет Лютый",
+   "rarity": 10,
+   "image": "/gifts/kot-stukach/007.webp",
+   "animation": "/gifts/kot-stukach/007.tgs"
+  },
+  {
+   "n": 8,
+   "name": "Авторитет Косой",
+   "rarity": 10,
+   "image": "/gifts/kot-stukach/008.webp",
+   "animation": "/gifts/kot-stukach/008.tgs"
+  },
+  {
+   "n": 9,
+   "name": "Авторитет Фикса",
+   "rarity": 10,
+   "image": "/gifts/kot-stukach/009.webp",
+   "animation": "/gifts/kot-stukach/009.tgs"
+  },
+  {
+   "n": 10,
+   "name": "Авторитет Цыган",
+   "rarity": 10,
+   "image": "/gifts/kot-stukach/010.webp",
+   "animation": "/gifts/kot-stukach/010.tgs"
+  },
+  {
+   "n": 11,
+   "name": "Авторитет Барон",
+   "rarity": 10,
+   "image": "/gifts/kot-stukach/011.webp",
+   "animation": "/gifts/kot-stukach/011.tgs"
+  },
+  {
+   "n": 12,
+   "name": "Авторитет Туз",
+   "rarity": 10,
+   "image": "/gifts/kot-stukach/012.webp",
+   "animation": "/gifts/kot-stukach/012.tgs"
+  },
+  {
+   "n": 13,
+   "name": "Авторитет Валет",
+   "rarity": 10,
+   "image": "/gifts/kot-stukach/013.webp",
+   "animation": "/gifts/kot-stukach/013.tgs"
+  },
+  {
+   "n": 14,
+   "name": "Блатной Бура",
+   "rarity": 10,
+   "image": "/gifts/kot-stukach/014.webp",
+   "animation": "/gifts/kot-stukach/014.tgs"
+  },
+  {
+   "n": 15,
+   "name": "Блатной Шнырь",
+   "rarity": 10,
+   "image": "/gifts/kot-stukach/015.webp",
+   "animation": "/gifts/kot-stukach/015.tgs"
+  },
+  {
+   "n": 16,
+   "name": "Блатной Рыжий",
+   "rarity": 10,
+   "image": "/gifts/kot-stukach/016.webp",
+   "animation": "/gifts/kot-stukach/016.tgs"
+  },
+  {
+   "n": 17,
+   "name": "Блатной Малой",
+   "rarity": 10,
+   "image": "/gifts/kot-stukach/017.webp",
+   "animation": "/gifts/kot-stukach/017.tgs"
+  },
+  {
+   "n": 18,
+   "name": "Блатной Беспредел",
+   "rarity": 10,
+   "image": "/gifts/kot-stukach/018.webp",
+   "animation": "/gifts/kot-stukach/018.tgs"
+  },
+  {
+   "n": 19,
+   "name": "Блатной Кастет",
+   "rarity": 15,
+   "image": "/gifts/kot-stukach/019.webp",
+   "animation": "/gifts/kot-stukach/019.tgs"
+  },
+  {
+   "n": 20,
+   "name": "Блатной Финка",
+   "rarity": 15,
+   "image": "/gifts/kot-stukach/020.webp",
+   "animation": "/gifts/kot-stukach/020.tgs"
+  },
+  {
+   "n": 21,
+   "name": "Блатной Заточка",
+   "rarity": 15,
+   "image": "/gifts/kot-stukach/021.webp",
+   "animation": "/gifts/kot-stukach/021.tgs"
+  },
+  {
+   "n": 22,
+   "name": "Блатной Фраер",
+   "rarity": 15,
+   "image": "/gifts/kot-stukach/022.webp",
+   "animation": "/gifts/kot-stukach/022.tgs"
+  },
+  {
+   "n": 23,
+   "name": "Блатной Жиган",
+   "rarity": 15,
+   "image": "/gifts/kot-stukach/023.webp",
+   "animation": "/gifts/kot-stukach/023.tgs"
+  },
+  {
+   "n": 24,
+   "name": "Блатной Урка",
+   "rarity": 15,
+   "image": "/gifts/kot-stukach/024.webp",
+   "animation": "/gifts/kot-stukach/024.tgs"
+  },
+  {
+   "n": 25,
+   "name": "Блатной Кореш",
+   "rarity": 15,
+   "image": "/gifts/kot-stukach/025.webp",
+   "animation": "/gifts/kot-stukach/025.tgs"
+  },
+  {
+   "n": 26,
+   "name": "Бродяга Карась",
+   "rarity": 15,
+   "image": "/gifts/kot-stukach/026.webp",
+   "animation": "/gifts/kot-stukach/026.tgs"
+  },
+  {
+   "n": 27,
+   "name": "Бродяга Щука",
+   "rarity": 15,
+   "image": "/gifts/kot-stukach/027.webp",
+   "animation": "/gifts/kot-stukach/027.tgs"
+  },
+  {
+   "n": 28,
+   "name": "Бродяга Сом",
+   "rarity": 15,
+   "image": "/gifts/kot-stukach/028.webp",
+   "animation": "/gifts/kot-stukach/028.tgs"
+  },
+  {
+   "n": 29,
+   "name": "Бродяга Ворон",
+   "rarity": 20,
+   "image": "/gifts/kot-stukach/029.webp",
+   "animation": "/gifts/kot-stukach/029.tgs"
+  },
+  {
+   "n": 30,
+   "name": "Бродяга Гриф",
+   "rarity": 20,
+   "image": "/gifts/kot-stukach/030.webp",
+   "animation": "/gifts/kot-stukach/030.tgs"
+  },
+  {
+   "n": 31,
+   "name": "Бродяга Шакал",
+   "rarity": 25,
+   "image": "/gifts/kot-stukach/031.webp",
+   "animation": "/gifts/kot-stukach/031.tgs"
+  },
+  {
+   "n": 32,
+   "name": "Бродяга Волчара",
+   "rarity": 25,
+   "image": "/gifts/kot-stukach/032.webp",
+   "animation": "/gifts/kot-stukach/032.tgs"
+  },
+  {
+   "n": 33,
+   "name": "Бродяга Медведь",
+   "rarity": 25,
+   "image": "/gifts/kot-stukach/033.webp",
+   "animation": "/gifts/kot-stukach/033.tgs"
+  },
+  {
+   "n": 34,
+   "name": "Бродяга Батя",
+   "rarity": 25,
+   "image": "/gifts/kot-stukach/034.webp",
+   "animation": "/gifts/kot-stukach/034.tgs"
+  },
+  {
+   "n": 35,
+   "name": "Бродяга Профессор",
+   "rarity": 30,
+   "image": "/gifts/kot-stukach/035.webp",
+   "animation": "/gifts/kot-stukach/035.tgs"
+  },
+  {
+   "n": 36,
+   "name": "Бродяга Доктор",
+   "rarity": 30,
+   "image": "/gifts/kot-stukach/036.webp",
+   "animation": "/gifts/kot-stukach/036.tgs"
+  },
+  {
+   "n": 37,
+   "name": "Бродяга Маэстро",
+   "rarity": 30,
+   "image": "/gifts/kot-stukach/037.webp",
+   "animation": "/gifts/kot-stukach/037.tgs"
+  },
+  {
+   "n": 38,
+   "name": "Бродяга Студент",
+   "rarity": 30,
+   "image": "/gifts/kot-stukach/038.webp",
+   "animation": "/gifts/kot-stukach/038.tgs"
+  },
+  {
+   "n": 39,
+   "name": "Мужик Монах",
+   "rarity": 30,
+   "image": "/gifts/kot-stukach/039.webp",
+   "animation": "/gifts/kot-stukach/039.tgs"
+  },
+  {
+   "n": 40,
+   "name": "Мужик Поп",
+   "rarity": 35,
+   "image": "/gifts/kot-stukach/040.webp",
+   "animation": "/gifts/kot-stukach/040.tgs"
+  },
+  {
+   "n": 41,
+   "name": "Мужик Сапёр",
+   "rarity": 35,
+   "image": "/gifts/kot-stukach/041.webp",
+   "animation": "/gifts/kot-stukach/041.tgs"
+  },
+  {
+   "n": 42,
+   "name": "Мужик Механик",
+   "rarity": 35,
+   "image": "/gifts/kot-stukach/042.webp",
+   "animation": "/gifts/kot-stukach/042.tgs"
+  },
+  {
+   "n": 43,
+   "name": "Мужик Кочегар",
+   "rarity": 35,
+   "image": "/gifts/kot-stukach/043.webp",
+   "animation": "/gifts/kot-stukach/043.tgs"
+  },
+  {
+   "n": 44,
+   "name": "Мужик Банщик",
+   "rarity": 35,
+   "image": "/gifts/kot-stukach/044.webp",
+   "animation": "/gifts/kot-stukach/044.tgs"
+  },
+  {
+   "n": 45,
+   "name": "Мужик Повар",
+   "rarity": 35,
+   "image": "/gifts/kot-stukach/045.webp",
+   "animation": "/gifts/kot-stukach/045.tgs"
+  },
+  {
+   "n": 46,
+   "name": "Мужик Лесник",
+   "rarity": 40,
+   "image": "/gifts/kot-stukach/046.webp",
+   "animation": "/gifts/kot-stukach/046.tgs"
+  },
+  {
+   "n": 47,
+   "name": "Мужик Боцман",
+   "rarity": 40,
+   "image": "/gifts/kot-stukach/047.webp",
+   "animation": "/gifts/kot-stukach/047.tgs"
+  },
+  {
+   "n": 48,
+   "name": "Мужик Кузнец",
+   "rarity": 40,
+   "image": "/gifts/kot-stukach/048.webp",
+   "animation": "/gifts/kot-stukach/048.tgs"
+  },
+  {
+   "n": 49,
+   "name": "Мужик Ювелир",
+   "rarity": 40,
+   "image": "/gifts/kot-stukach/049.webp",
+   "animation": "/gifts/kot-stukach/049.tgs"
+  },
+  {
+   "n": 50,
+   "name": "Мужик Часовщик",
+   "rarity": 40,
+   "image": "/gifts/kot-stukach/050.webp",
+   "animation": "/gifts/kot-stukach/050.tgs"
+  }
+ ],
+ "pahan-pepe": [
+  {
+   "n": 1,
+   "name": "Вор в законе Шрам",
+   "rarity": 10,
+   "image": "/gifts/pahan-pepe/001.webp",
+   "animation": "/gifts/pahan-pepe/001.tgs"
+  },
+  {
+   "n": 2,
+   "name": "Вор в законе Седой",
+   "rarity": 10,
+   "image": "/gifts/pahan-pepe/002.webp",
+   "animation": "/gifts/pahan-pepe/002.tgs"
+  },
+  {
+   "n": 3,
+   "name": "Вор в законе Бритва",
+   "rarity": 10,
+   "image": "/gifts/pahan-pepe/003.webp",
+   "animation": "/gifts/pahan-pepe/003.tgs"
+  },
+  {
+   "n": 4,
+   "name": "Вор в законе Кабан",
+   "rarity": 10,
+   "image": "/gifts/pahan-pepe/004.webp",
+   "animation": "/gifts/pahan-pepe/004.tgs"
+  },
+  {
+   "n": 5,
+   "name": "Авторитет Хмурый",
+   "rarity": 10,
+   "image": "/gifts/pahan-pepe/005.webp",
+   "animation": "/gifts/pahan-pepe/005.tgs"
+  },
+  {
+   "n": 6,
+   "name": "Авторитет Гвоздь",
+   "rarity": 10,
+   "image": "/gifts/pahan-pepe/006.webp",
+   "animation": "/gifts/pahan-pepe/006.tgs"
+  },
+  {
+   "n": 7,
+   "name": "Авторитет Лютый",
+   "rarity": 10,
+   "image": "/gifts/pahan-pepe/007.webp",
+   "animation": "/gifts/pahan-pepe/007.tgs"
+  },
+  {
+   "n": 8,
+   "name": "Авторитет Косой",
+   "rarity": 10,
+   "image": "/gifts/pahan-pepe/008.webp",
+   "animation": "/gifts/pahan-pepe/008.tgs"
+  },
+  {
+   "n": 9,
+   "name": "Авторитет Фикса",
+   "rarity": 10,
+   "image": "/gifts/pahan-pepe/009.webp",
+   "animation": "/gifts/pahan-pepe/009.tgs"
+  },
+  {
+   "n": 10,
+   "name": "Авторитет Цыган",
+   "rarity": 10,
+   "image": "/gifts/pahan-pepe/010.webp",
+   "animation": "/gifts/pahan-pepe/010.tgs"
+  },
+  {
+   "n": 11,
+   "name": "Авторитет Барон",
+   "rarity": 10,
+   "image": "/gifts/pahan-pepe/011.webp",
+   "animation": "/gifts/pahan-pepe/011.tgs"
+  },
+  {
+   "n": 12,
+   "name": "Авторитет Туз",
+   "rarity": 10,
+   "image": "/gifts/pahan-pepe/012.webp",
+   "animation": "/gifts/pahan-pepe/012.tgs"
+  },
+  {
+   "n": 13,
+   "name": "Авторитет Валет",
+   "rarity": 10,
+   "image": "/gifts/pahan-pepe/013.webp",
+   "animation": "/gifts/pahan-pepe/013.tgs"
+  },
+  {
+   "n": 14,
+   "name": "Блатной Бура",
+   "rarity": 10,
+   "image": "/gifts/pahan-pepe/014.webp",
+   "animation": "/gifts/pahan-pepe/014.tgs"
+  },
+  {
+   "n": 15,
+   "name": "Блатной Шнырь",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/015.webp",
+   "animation": "/gifts/pahan-pepe/015.tgs"
+  },
+  {
+   "n": 16,
+   "name": "Блатной Рыжий",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/016.webp",
+   "animation": "/gifts/pahan-pepe/016.tgs"
+  },
+  {
+   "n": 17,
+   "name": "Блатной Малой",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/017.webp",
+   "animation": "/gifts/pahan-pepe/017.tgs"
+  },
+  {
+   "n": 18,
+   "name": "Блатной Беспредел",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/018.webp",
+   "animation": "/gifts/pahan-pepe/018.tgs"
+  },
+  {
+   "n": 19,
+   "name": "Блатной Кастет",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/019.webp",
+   "animation": "/gifts/pahan-pepe/019.tgs"
+  },
+  {
+   "n": 20,
+   "name": "Блатной Финка",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/020.webp",
+   "animation": "/gifts/pahan-pepe/020.tgs"
+  },
+  {
+   "n": 21,
+   "name": "Блатной Заточка",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/021.webp",
+   "animation": "/gifts/pahan-pepe/021.tgs"
+  },
+  {
+   "n": 22,
+   "name": "Блатной Фраер",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/022.webp",
+   "animation": "/gifts/pahan-pepe/022.tgs"
+  },
+  {
+   "n": 23,
+   "name": "Блатной Жиган",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/023.webp",
+   "animation": "/gifts/pahan-pepe/023.tgs"
+  },
+  {
+   "n": 24,
+   "name": "Блатной Урка",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/024.webp",
+   "animation": "/gifts/pahan-pepe/024.tgs"
+  },
+  {
+   "n": 25,
+   "name": "Блатной Кореш",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/025.webp",
+   "animation": "/gifts/pahan-pepe/025.tgs"
+  },
+  {
+   "n": 26,
+   "name": "Бродяга Карась",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/026.webp",
+   "animation": "/gifts/pahan-pepe/026.tgs"
+  },
+  {
+   "n": 27,
+   "name": "Бродяга Щука",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/027.webp",
+   "animation": "/gifts/pahan-pepe/027.tgs"
+  },
+  {
+   "n": 28,
+   "name": "Бродяга Сом",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/028.webp",
+   "animation": "/gifts/pahan-pepe/028.tgs"
+  },
+  {
+   "n": 29,
+   "name": "Бродяга Ворон",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/029.webp",
+   "animation": "/gifts/pahan-pepe/029.tgs"
+  },
+  {
+   "n": 30,
+   "name": "Бродяга Гриф",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/030.webp",
+   "animation": "/gifts/pahan-pepe/030.tgs"
+  },
+  {
+   "n": 31,
+   "name": "Бродяга Шакал",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/031.webp",
+   "animation": "/gifts/pahan-pepe/031.tgs"
+  },
+  {
+   "n": 32,
+   "name": "Бродяга Волчара",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/032.webp",
+   "animation": "/gifts/pahan-pepe/032.tgs"
+  },
+  {
+   "n": 33,
+   "name": "Бродяга Медведь",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/033.webp",
+   "animation": "/gifts/pahan-pepe/033.tgs"
+  },
+  {
+   "n": 34,
+   "name": "Бродяга Батя",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/034.webp",
+   "animation": "/gifts/pahan-pepe/034.tgs"
+  },
+  {
+   "n": 35,
+   "name": "Бродяга Профессор",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/035.webp",
+   "animation": "/gifts/pahan-pepe/035.tgs"
+  },
+  {
+   "n": 36,
+   "name": "Бродяга Доктор",
+   "rarity": 20,
+   "image": "/gifts/pahan-pepe/036.webp",
+   "animation": "/gifts/pahan-pepe/036.tgs"
+  },
+  {
+   "n": 37,
+   "name": "Бродяга Маэстро",
+   "rarity": 30,
+   "image": "/gifts/pahan-pepe/037.webp",
+   "animation": "/gifts/pahan-pepe/037.tgs"
+  },
+  {
+   "n": 38,
+   "name": "Бродяга Студент",
+   "rarity": 30,
+   "image": "/gifts/pahan-pepe/038.webp",
+   "animation": "/gifts/pahan-pepe/038.tgs"
+  },
+  {
+   "n": 39,
+   "name": "Мужик Монах",
+   "rarity": 30,
+   "image": "/gifts/pahan-pepe/039.webp",
+   "animation": "/gifts/pahan-pepe/039.tgs"
+  },
+  {
+   "n": 40,
+   "name": "Мужик Поп",
+   "rarity": 30,
+   "image": "/gifts/pahan-pepe/040.webp",
+   "animation": "/gifts/pahan-pepe/040.tgs"
+  },
+  {
+   "n": 41,
+   "name": "Мужик Сапёр",
+   "rarity": 30,
+   "image": "/gifts/pahan-pepe/041.webp",
+   "animation": "/gifts/pahan-pepe/041.tgs"
+  },
+  {
+   "n": 42,
+   "name": "Мужик Механик",
+   "rarity": 30,
+   "image": "/gifts/pahan-pepe/042.webp",
+   "animation": "/gifts/pahan-pepe/042.tgs"
+  },
+  {
+   "n": 43,
+   "name": "Мужик Кочегар",
+   "rarity": 30,
+   "image": "/gifts/pahan-pepe/043.webp",
+   "animation": "/gifts/pahan-pepe/043.tgs"
+  },
+  {
+   "n": 44,
+   "name": "Мужик Банщик",
+   "rarity": 30,
+   "image": "/gifts/pahan-pepe/044.webp",
+   "animation": "/gifts/pahan-pepe/044.tgs"
+  },
+  {
+   "n": 45,
+   "name": "Мужик Повар",
+   "rarity": 30,
+   "image": "/gifts/pahan-pepe/045.webp",
+   "animation": "/gifts/pahan-pepe/045.tgs"
+  },
+  {
+   "n": 46,
+   "name": "Мужик Лесник",
+   "rarity": 30,
+   "image": "/gifts/pahan-pepe/046.webp",
+   "animation": "/gifts/pahan-pepe/046.tgs"
+  },
+  {
+   "n": 47,
+   "name": "Мужик Боцман",
+   "rarity": 30,
+   "image": "/gifts/pahan-pepe/047.webp",
+   "animation": "/gifts/pahan-pepe/047.tgs"
+  },
+  {
+   "n": 48,
+   "name": "Мужик Кузнец",
+   "rarity": 30,
+   "image": "/gifts/pahan-pepe/048.webp",
+   "animation": "/gifts/pahan-pepe/048.tgs"
+  },
+  {
+   "n": 49,
+   "name": "Мужик Ювелир",
+   "rarity": 30,
+   "image": "/gifts/pahan-pepe/049.webp",
+   "animation": "/gifts/pahan-pepe/049.tgs"
+  },
+  {
+   "n": 50,
+   "name": "Мужик Часовщик",
+   "rarity": 30,
+   "image": "/gifts/pahan-pepe/050.webp",
+   "animation": "/gifts/pahan-pepe/050.tgs"
+  }
+ ],
+ "sigara-smotryashchego": [
+  {
+   "n": 1,
+   "name": "Вор в законе Шрам",
+   "rarity": 3,
+   "image": "/gifts/sigara-smotryashchego/001.webp",
+   "animation": "/gifts/sigara-smotryashchego/001.tgs"
+  },
+  {
+   "n": 2,
+   "name": "Вор в законе Седой",
+   "rarity": 3,
+   "image": "/gifts/sigara-smotryashchego/002.webp",
+   "animation": "/gifts/sigara-smotryashchego/002.tgs"
+  },
+  {
+   "n": 3,
+   "name": "Вор в законе Бритва",
+   "rarity": 3,
+   "image": "/gifts/sigara-smotryashchego/003.webp",
+   "animation": "/gifts/sigara-smotryashchego/003.tgs"
+  },
+  {
+   "n": 4,
+   "name": "Вор в законе Кабан",
+   "rarity": 3,
+   "image": "/gifts/sigara-smotryashchego/004.webp",
+   "animation": "/gifts/sigara-smotryashchego/004.tgs"
+  },
+  {
+   "n": 5,
+   "name": "Вор в законе Хмурый",
+   "rarity": 3,
+   "image": "/gifts/sigara-smotryashchego/005.webp",
+   "animation": "/gifts/sigara-smotryashchego/005.tgs"
+  },
+  {
+   "n": 6,
+   "name": "Авторитет Гвоздь",
+   "rarity": 3,
+   "image": "/gifts/sigara-smotryashchego/006.webp",
+   "animation": "/gifts/sigara-smotryashchego/006.tgs"
+  },
+  {
+   "n": 7,
+   "name": "Авторитет Лютый",
+   "rarity": 3,
+   "image": "/gifts/sigara-smotryashchego/007.webp",
+   "animation": "/gifts/sigara-smotryashchego/007.tgs"
+  },
+  {
+   "n": 8,
+   "name": "Авторитет Косой",
+   "rarity": 4,
+   "image": "/gifts/sigara-smotryashchego/008.webp",
+   "animation": "/gifts/sigara-smotryashchego/008.tgs"
+  },
+  {
+   "n": 9,
+   "name": "Авторитет Фикса",
+   "rarity": 5,
+   "image": "/gifts/sigara-smotryashchego/009.webp",
+   "animation": "/gifts/sigara-smotryashchego/009.tgs"
+  },
+  {
+   "n": 10,
+   "name": "Авторитет Цыган",
+   "rarity": 5,
+   "image": "/gifts/sigara-smotryashchego/010.webp",
+   "animation": "/gifts/sigara-smotryashchego/010.tgs"
+  },
+  {
+   "n": 11,
+   "name": "Авторитет Барон",
+   "rarity": 5,
+   "image": "/gifts/sigara-smotryashchego/011.webp",
+   "animation": "/gifts/sigara-smotryashchego/011.tgs"
+  },
+  {
+   "n": 12,
+   "name": "Авторитет Туз",
+   "rarity": 5,
+   "image": "/gifts/sigara-smotryashchego/012.webp",
+   "animation": "/gifts/sigara-smotryashchego/012.tgs"
+  },
+  {
+   "n": 13,
+   "name": "Авторитет Валет",
+   "rarity": 10,
+   "image": "/gifts/sigara-smotryashchego/013.webp",
+   "animation": "/gifts/sigara-smotryashchego/013.tgs"
+  },
+  {
+   "n": 14,
+   "name": "Авторитет Бура",
+   "rarity": 10,
+   "image": "/gifts/sigara-smotryashchego/014.webp",
+   "animation": "/gifts/sigara-smotryashchego/014.tgs"
+  },
+  {
+   "n": 15,
+   "name": "Блатной Шнырь",
+   "rarity": 10,
+   "image": "/gifts/sigara-smotryashchego/015.webp",
+   "animation": "/gifts/sigara-smotryashchego/015.tgs"
+  },
+  {
+   "n": 16,
+   "name": "Блатной Рыжий",
+   "rarity": 10,
+   "image": "/gifts/sigara-smotryashchego/016.webp",
+   "animation": "/gifts/sigara-smotryashchego/016.tgs"
+  },
+  {
+   "n": 17,
+   "name": "Блатной Малой",
+   "rarity": 10,
+   "image": "/gifts/sigara-smotryashchego/017.webp",
+   "animation": "/gifts/sigara-smotryashchego/017.tgs"
+  },
+  {
+   "n": 18,
+   "name": "Блатной Беспредел",
+   "rarity": 10,
+   "image": "/gifts/sigara-smotryashchego/018.webp",
+   "animation": "/gifts/sigara-smotryashchego/018.tgs"
+  },
+  {
+   "n": 19,
+   "name": "Блатной Кастет",
+   "rarity": 10,
+   "image": "/gifts/sigara-smotryashchego/019.webp",
+   "animation": "/gifts/sigara-smotryashchego/019.tgs"
+  },
+  {
+   "n": 20,
+   "name": "Блатной Финка",
+   "rarity": 10,
+   "image": "/gifts/sigara-smotryashchego/020.webp",
+   "animation": "/gifts/sigara-smotryashchego/020.tgs"
+  },
+  {
+   "n": 21,
+   "name": "Блатной Заточка",
+   "rarity": 15,
+   "image": "/gifts/sigara-smotryashchego/021.webp",
+   "animation": "/gifts/sigara-smotryashchego/021.tgs"
+  },
+  {
+   "n": 22,
+   "name": "Блатной Фраер",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/022.webp",
+   "animation": "/gifts/sigara-smotryashchego/022.tgs"
+  },
+  {
+   "n": 23,
+   "name": "Блатной Жиган",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/023.webp",
+   "animation": "/gifts/sigara-smotryashchego/023.tgs"
+  },
+  {
+   "n": 24,
+   "name": "Блатной Урка",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/024.webp",
+   "animation": "/gifts/sigara-smotryashchego/024.tgs"
+  },
+  {
+   "n": 25,
+   "name": "Блатной Кореш",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/025.webp",
+   "animation": "/gifts/sigara-smotryashchego/025.tgs"
+  },
+  {
+   "n": 26,
+   "name": "Блатной Карась",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/026.webp",
+   "animation": "/gifts/sigara-smotryashchego/026.tgs"
+  },
+  {
+   "n": 27,
+   "name": "Блатной Щука",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/027.webp",
+   "animation": "/gifts/sigara-smotryashchego/027.tgs"
+  },
+  {
+   "n": 28,
+   "name": "Блатной Сом",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/028.webp",
+   "animation": "/gifts/sigara-smotryashchego/028.tgs"
+  },
+  {
+   "n": 29,
+   "name": "Бродяга Ворон",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/029.webp",
+   "animation": "/gifts/sigara-smotryashchego/029.tgs"
+  },
+  {
+   "n": 30,
+   "name": "Бродяга Гриф",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/030.webp",
+   "animation": "/gifts/sigara-smotryashchego/030.tgs"
+  },
+  {
+   "n": 31,
+   "name": "Бродяга Шакал",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/031.webp",
+   "animation": "/gifts/sigara-smotryashchego/031.tgs"
+  },
+  {
+   "n": 32,
+   "name": "Бродяга Волчара",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/032.webp",
+   "animation": "/gifts/sigara-smotryashchego/032.tgs"
+  },
+  {
+   "n": 33,
+   "name": "Бродяга Медведь",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/033.webp",
+   "animation": "/gifts/sigara-smotryashchego/033.tgs"
+  },
+  {
+   "n": 34,
+   "name": "Бродяга Батя",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/034.webp",
+   "animation": "/gifts/sigara-smotryashchego/034.tgs"
+  },
+  {
+   "n": 35,
+   "name": "Бродяга Профессор",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/035.webp",
+   "animation": "/gifts/sigara-smotryashchego/035.tgs"
+  },
+  {
+   "n": 36,
+   "name": "Бродяга Доктор",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/036.webp",
+   "animation": "/gifts/sigara-smotryashchego/036.tgs"
+  },
+  {
+   "n": 37,
+   "name": "Бродяга Маэстро",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/037.webp",
+   "animation": "/gifts/sigara-smotryashchego/037.tgs"
+  },
+  {
+   "n": 38,
+   "name": "Бродяга Студент",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/038.webp",
+   "animation": "/gifts/sigara-smotryashchego/038.tgs"
+  },
+  {
+   "n": 39,
+   "name": "Бродяга Монах",
+   "rarity": 20,
+   "image": "/gifts/sigara-smotryashchego/039.webp",
+   "animation": "/gifts/sigara-smotryashchego/039.tgs"
+  },
+  {
+   "n": 40,
+   "name": "Бродяга Поп",
+   "rarity": 30,
+   "image": "/gifts/sigara-smotryashchego/040.webp",
+   "animation": "/gifts/sigara-smotryashchego/040.tgs"
+  },
+  {
+   "n": 41,
+   "name": "Бродяга Сапёр",
+   "rarity": 30,
+   "image": "/gifts/sigara-smotryashchego/041.webp",
+   "animation": "/gifts/sigara-smotryashchego/041.tgs"
+  },
+  {
+   "n": 42,
+   "name": "Бродяга Механик",
+   "rarity": 30,
+   "image": "/gifts/sigara-smotryashchego/042.webp",
+   "animation": "/gifts/sigara-smotryashchego/042.tgs"
+  },
+  {
+   "n": 43,
+   "name": "Мужик Кочегар",
+   "rarity": 30,
+   "image": "/gifts/sigara-smotryashchego/043.webp",
+   "animation": "/gifts/sigara-smotryashchego/043.tgs"
+  },
+  {
+   "n": 44,
+   "name": "Мужик Банщик",
+   "rarity": 30,
+   "image": "/gifts/sigara-smotryashchego/044.webp",
+   "animation": "/gifts/sigara-smotryashchego/044.tgs"
+  },
+  {
+   "n": 45,
+   "name": "Мужик Повар",
+   "rarity": 30,
+   "image": "/gifts/sigara-smotryashchego/045.webp",
+   "animation": "/gifts/sigara-smotryashchego/045.tgs"
+  },
+  {
+   "n": 46,
+   "name": "Мужик Лесник",
+   "rarity": 30,
+   "image": "/gifts/sigara-smotryashchego/046.webp",
+   "animation": "/gifts/sigara-smotryashchego/046.tgs"
+  },
+  {
+   "n": 47,
+   "name": "Мужик Боцман",
+   "rarity": 30,
+   "image": "/gifts/sigara-smotryashchego/047.webp",
+   "animation": "/gifts/sigara-smotryashchego/047.tgs"
+  },
+  {
+   "n": 48,
+   "name": "Мужик Кузнец",
+   "rarity": 30,
+   "image": "/gifts/sigara-smotryashchego/048.webp",
+   "animation": "/gifts/sigara-smotryashchego/048.tgs"
+  },
+  {
+   "n": 49,
+   "name": "Мужик Ювелир",
+   "rarity": 30,
+   "image": "/gifts/sigara-smotryashchego/049.webp",
+   "animation": "/gifts/sigara-smotryashchego/049.tgs"
+  },
+  {
+   "n": 50,
+   "name": "Мужик Часовщик",
+   "rarity": 30,
+   "image": "/gifts/sigara-smotryashchego/050.webp",
+   "animation": "/gifts/sigara-smotryashchego/050.tgs"
+  },
+  {
+   "n": 51,
+   "name": "Мужик Нотариус",
+   "rarity": 30,
+   "image": "/gifts/sigara-smotryashchego/051.webp",
+   "animation": "/gifts/sigara-smotryashchego/051.tgs"
+  },
+  {
+   "n": 52,
+   "name": "Мужик Счетовод",
+   "rarity": 30,
+   "image": "/gifts/sigara-smotryashchego/052.webp",
+   "animation": "/gifts/sigara-smotryashchego/052.tgs"
+  },
+  {
+   "n": 53,
+   "name": "Мужик Казначей",
+   "rarity": 30,
+   "image": "/gifts/sigara-smotryashchego/053.webp",
+   "animation": "/gifts/sigara-smotryashchego/053.tgs"
+  },
+  {
+   "n": 54,
+   "name": "Мужик Скрипач",
+   "rarity": 40,
+   "image": "/gifts/sigara-smotryashchego/054.webp",
+   "animation": "/gifts/sigara-smotryashchego/054.tgs"
+  },
+  {
+   "n": 55,
+   "name": "Мужик Гармонист",
+   "rarity": 40,
+   "image": "/gifts/sigara-smotryashchego/055.webp",
+   "animation": "/gifts/sigara-smotryashchego/055.tgs"
+  }
+ ],
+ "blatnoy-patefon": [
+  {
+   "n": 1,
+   "name": "Вор в законе Шрам",
+   "rarity": 2,
+   "image": "/gifts/blatnoy-patefon/001.webp",
+   "animation": "/gifts/blatnoy-patefon/001.tgs"
+  },
+  {
+   "n": 2,
+   "name": "Вор в законе Седой",
+   "rarity": 2,
+   "image": "/gifts/blatnoy-patefon/002.webp",
+   "animation": "/gifts/blatnoy-patefon/002.tgs"
+  },
+  {
+   "n": 3,
+   "name": "Вор в законе Бритва",
+   "rarity": 2,
+   "image": "/gifts/blatnoy-patefon/003.webp",
+   "animation": "/gifts/blatnoy-patefon/003.tgs"
+  },
+  {
+   "n": 4,
+   "name": "Вор в законе Кабан",
+   "rarity": 2,
+   "image": "/gifts/blatnoy-patefon/004.webp",
+   "animation": "/gifts/blatnoy-patefon/004.tgs"
+  },
+  {
+   "n": 5,
+   "name": "Вор в законе Хмурый",
+   "rarity": 2,
+   "image": "/gifts/blatnoy-patefon/005.webp",
+   "animation": "/gifts/blatnoy-patefon/005.tgs"
+  },
+  {
+   "n": 6,
+   "name": "Вор в законе Гвоздь",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/006.webp",
+   "animation": "/gifts/blatnoy-patefon/006.tgs"
+  },
+  {
+   "n": 7,
+   "name": "Вор в законе Лютый",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/007.webp",
+   "animation": "/gifts/blatnoy-patefon/007.tgs"
+  },
+  {
+   "n": 8,
+   "name": "Вор в законе Косой",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/008.webp",
+   "animation": "/gifts/blatnoy-patefon/008.tgs"
+  },
+  {
+   "n": 9,
+   "name": "Авторитет Фикса",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/009.webp",
+   "animation": "/gifts/blatnoy-patefon/009.tgs"
+  },
+  {
+   "n": 10,
+   "name": "Авторитет Цыган",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/010.webp",
+   "animation": "/gifts/blatnoy-patefon/010.tgs"
+  },
+  {
+   "n": 11,
+   "name": "Авторитет Барон",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/011.webp",
+   "animation": "/gifts/blatnoy-patefon/011.tgs"
+  },
+  {
+   "n": 12,
+   "name": "Авторитет Туз",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/012.webp",
+   "animation": "/gifts/blatnoy-patefon/012.tgs"
+  },
+  {
+   "n": 13,
+   "name": "Авторитет Валет",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/013.webp",
+   "animation": "/gifts/blatnoy-patefon/013.tgs"
+  },
+  {
+   "n": 14,
+   "name": "Авторитет Бура",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/014.webp",
+   "animation": "/gifts/blatnoy-patefon/014.tgs"
+  },
+  {
+   "n": 15,
+   "name": "Авторитет Шнырь",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/015.webp",
+   "animation": "/gifts/blatnoy-patefon/015.tgs"
+  },
+  {
+   "n": 16,
+   "name": "Авторитет Рыжий",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/016.webp",
+   "animation": "/gifts/blatnoy-patefon/016.tgs"
+  },
+  {
+   "n": 17,
+   "name": "Авторитет Малой",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/017.webp",
+   "animation": "/gifts/blatnoy-patefon/017.tgs"
+  },
+  {
+   "n": 18,
+   "name": "Авторитет Беспредел",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/018.webp",
+   "animation": "/gifts/blatnoy-patefon/018.tgs"
+  },
+  {
+   "n": 19,
+   "name": "Авторитет Кастет",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/019.webp",
+   "animation": "/gifts/blatnoy-patefon/019.tgs"
+  },
+  {
+   "n": 20,
+   "name": "Авторитет Финка",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/020.webp",
+   "animation": "/gifts/blatnoy-patefon/020.tgs"
+  },
+  {
+   "n": 21,
+   "name": "Авторитет Заточка",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/021.webp",
+   "animation": "/gifts/blatnoy-patefon/021.tgs"
+  },
+  {
+   "n": 22,
+   "name": "Авторитет Фраер",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/022.webp",
+   "animation": "/gifts/blatnoy-patefon/022.tgs"
+  },
+  {
+   "n": 23,
+   "name": "Авторитет Жиган",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/023.webp",
+   "animation": "/gifts/blatnoy-patefon/023.tgs"
+  },
+  {
+   "n": 24,
+   "name": "Авторитет Урка",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/024.webp",
+   "animation": "/gifts/blatnoy-patefon/024.tgs"
+  },
+  {
+   "n": 25,
+   "name": "Авторитет Кореш",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/025.webp",
+   "animation": "/gifts/blatnoy-patefon/025.tgs"
+  },
+  {
+   "n": 26,
+   "name": "Блатной Карась",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/026.webp",
+   "animation": "/gifts/blatnoy-patefon/026.tgs"
+  },
+  {
+   "n": 27,
+   "name": "Блатной Щука",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/027.webp",
+   "animation": "/gifts/blatnoy-patefon/027.tgs"
+  },
+  {
+   "n": 28,
+   "name": "Блатной Сом",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/028.webp",
+   "animation": "/gifts/blatnoy-patefon/028.tgs"
+  },
+  {
+   "n": 29,
+   "name": "Блатной Ворон",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/029.webp",
+   "animation": "/gifts/blatnoy-patefon/029.tgs"
+  },
+  {
+   "n": 30,
+   "name": "Блатной Гриф",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/030.webp",
+   "animation": "/gifts/blatnoy-patefon/030.tgs"
+  },
+  {
+   "n": 31,
+   "name": "Блатной Шакал",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/031.webp",
+   "animation": "/gifts/blatnoy-patefon/031.tgs"
+  },
+  {
+   "n": 32,
+   "name": "Блатной Волчара",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/032.webp",
+   "animation": "/gifts/blatnoy-patefon/032.tgs"
+  },
+  {
+   "n": 33,
+   "name": "Блатной Медведь",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/033.webp",
+   "animation": "/gifts/blatnoy-patefon/033.tgs"
+  },
+  {
+   "n": 34,
+   "name": "Блатной Батя",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/034.webp",
+   "animation": "/gifts/blatnoy-patefon/034.tgs"
+  },
+  {
+   "n": 35,
+   "name": "Блатной Профессор",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/035.webp",
+   "animation": "/gifts/blatnoy-patefon/035.tgs"
+  },
+  {
+   "n": 36,
+   "name": "Блатной Доктор",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/036.webp",
+   "animation": "/gifts/blatnoy-patefon/036.tgs"
+  },
+  {
+   "n": 37,
+   "name": "Блатной Маэстро",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/037.webp",
+   "animation": "/gifts/blatnoy-patefon/037.tgs"
+  },
+  {
+   "n": 38,
+   "name": "Блатной Студент",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/038.webp",
+   "animation": "/gifts/blatnoy-patefon/038.tgs"
+  },
+  {
+   "n": 39,
+   "name": "Блатной Монах",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/039.webp",
+   "animation": "/gifts/blatnoy-patefon/039.tgs"
+  },
+  {
+   "n": 40,
+   "name": "Блатной Поп",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/040.webp",
+   "animation": "/gifts/blatnoy-patefon/040.tgs"
+  },
+  {
+   "n": 41,
+   "name": "Блатной Сапёр",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/041.webp",
+   "animation": "/gifts/blatnoy-patefon/041.tgs"
+  },
+  {
+   "n": 42,
+   "name": "Блатной Механик",
+   "rarity": 5,
+   "image": "/gifts/blatnoy-patefon/042.webp",
+   "animation": "/gifts/blatnoy-patefon/042.tgs"
+  },
+  {
+   "n": 43,
+   "name": "Блатной Кочегар",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/043.webp",
+   "animation": "/gifts/blatnoy-patefon/043.tgs"
+  },
+  {
+   "n": 44,
+   "name": "Блатной Банщик",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/044.webp",
+   "animation": "/gifts/blatnoy-patefon/044.tgs"
+  },
+  {
+   "n": 45,
+   "name": "Блатной Повар",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/045.webp",
+   "animation": "/gifts/blatnoy-patefon/045.tgs"
+  },
+  {
+   "n": 46,
+   "name": "Блатной Лесник",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/046.webp",
+   "animation": "/gifts/blatnoy-patefon/046.tgs"
+  },
+  {
+   "n": 47,
+   "name": "Блатной Боцман",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/047.webp",
+   "animation": "/gifts/blatnoy-patefon/047.tgs"
+  },
+  {
+   "n": 48,
+   "name": "Блатной Кузнец",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/048.webp",
+   "animation": "/gifts/blatnoy-patefon/048.tgs"
+  },
+  {
+   "n": 49,
+   "name": "Блатной Ювелир",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/049.webp",
+   "animation": "/gifts/blatnoy-patefon/049.tgs"
+  },
+  {
+   "n": 50,
+   "name": "Блатной Часовщик",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/050.webp",
+   "animation": "/gifts/blatnoy-patefon/050.tgs"
+  },
+  {
+   "n": 51,
+   "name": "Бродяга Нотариус",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/051.webp",
+   "animation": "/gifts/blatnoy-patefon/051.tgs"
+  },
+  {
+   "n": 52,
+   "name": "Бродяга Счетовод",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/052.webp",
+   "animation": "/gifts/blatnoy-patefon/052.tgs"
+  },
+  {
+   "n": 53,
+   "name": "Бродяга Казначей",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/053.webp",
+   "animation": "/gifts/blatnoy-patefon/053.tgs"
+  },
+  {
+   "n": 54,
+   "name": "Бродяга Скрипач",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/054.webp",
+   "animation": "/gifts/blatnoy-patefon/054.tgs"
+  },
+  {
+   "n": 55,
+   "name": "Бродяга Гармонист",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/055.webp",
+   "animation": "/gifts/blatnoy-patefon/055.tgs"
+  },
+  {
+   "n": 56,
+   "name": "Бродяга Художник",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/056.webp",
+   "animation": "/gifts/blatnoy-patefon/056.tgs"
+  },
+  {
+   "n": 57,
+   "name": "Бродяга Кольщик",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/057.webp",
+   "animation": "/gifts/blatnoy-patefon/057.tgs"
+  },
+  {
+   "n": 58,
+   "name": "Бродяга Чифирь",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/058.webp",
+   "animation": "/gifts/blatnoy-patefon/058.tgs"
+  },
+  {
+   "n": 59,
+   "name": "Бродяга Махорка",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/059.webp",
+   "animation": "/gifts/blatnoy-patefon/059.tgs"
+  },
+  {
+   "n": 60,
+   "name": "Бродяга Баланда",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/060.webp",
+   "animation": "/gifts/blatnoy-patefon/060.tgs"
+  },
+  {
+   "n": 61,
+   "name": "Бродяга Шконка",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/061.webp",
+   "animation": "/gifts/blatnoy-patefon/061.tgs"
+  },
+  {
+   "n": 62,
+   "name": "Бродяга Нары",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/062.webp",
+   "animation": "/gifts/blatnoy-patefon/062.tgs"
+  },
+  {
+   "n": 63,
+   "name": "Бродяга Этап",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/063.webp",
+   "animation": "/gifts/blatnoy-patefon/063.tgs"
+  },
+  {
+   "n": 64,
+   "name": "Бродяга Конвой",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/064.webp",
+   "animation": "/gifts/blatnoy-patefon/064.tgs"
+  },
+  {
+   "n": 65,
+   "name": "Бродяга Зона",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/065.webp",
+   "animation": "/gifts/blatnoy-patefon/065.tgs"
+  },
+  {
+   "n": 66,
+   "name": "Бродяга Карцер",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/066.webp",
+   "animation": "/gifts/blatnoy-patefon/066.tgs"
+  },
+  {
+   "n": 67,
+   "name": "Бродяга Барак",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/067.webp",
+   "animation": "/gifts/blatnoy-patefon/067.tgs"
+  },
+  {
+   "n": 68,
+   "name": "Бродяга Решётка",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/068.webp",
+   "animation": "/gifts/blatnoy-patefon/068.tgs"
+  },
+  {
+   "n": 69,
+   "name": "Бродяга Кандалы",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/069.webp",
+   "animation": "/gifts/blatnoy-patefon/069.tgs"
+  },
+  {
+   "n": 70,
+   "name": "Бродяга Отмычка",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/070.webp",
+   "animation": "/gifts/blatnoy-patefon/070.tgs"
+  },
+  {
+   "n": 71,
+   "name": "Бродяга Фомка",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/071.webp",
+   "animation": "/gifts/blatnoy-patefon/071.tgs"
+  },
+  {
+   "n": 72,
+   "name": "Бродяга Сейф",
+   "rarity": 10,
+   "image": "/gifts/blatnoy-patefon/072.webp",
+   "animation": "/gifts/blatnoy-patefon/072.tgs"
+  },
+  {
+   "n": 73,
+   "name": "Бродяга Касса",
+   "rarity": 15,
+   "image": "/gifts/blatnoy-patefon/073.webp",
+   "animation": "/gifts/blatnoy-patefon/073.tgs"
+  },
+  {
+   "n": 74,
+   "name": "Бродяга Общак",
+   "rarity": 15,
+   "image": "/gifts/blatnoy-patefon/074.webp",
+   "animation": "/gifts/blatnoy-patefon/074.tgs"
+  },
+  {
+   "n": 75,
+   "name": "Бродяга Малява",
+   "rarity": 15,
+   "image": "/gifts/blatnoy-patefon/075.webp",
+   "animation": "/gifts/blatnoy-patefon/075.tgs"
+  },
+  {
+   "n": 76,
+   "name": "Мужик Ксива",
+   "rarity": 15,
+   "image": "/gifts/blatnoy-patefon/076.webp",
+   "animation": "/gifts/blatnoy-patefon/076.tgs"
+  },
+  {
+   "n": 77,
+   "name": "Мужик Пайка",
+   "rarity": 15,
+   "image": "/gifts/blatnoy-patefon/077.webp",
+   "animation": "/gifts/blatnoy-patefon/077.tgs"
+  },
+  {
+   "n": 78,
+   "name": "Мужик Лопата",
+   "rarity": 15,
+   "image": "/gifts/blatnoy-patefon/078.webp",
+   "animation": "/gifts/blatnoy-patefon/078.tgs"
+  },
+  {
+   "n": 79,
+   "name": "Мужик Кирка",
+   "rarity": 15,
+   "image": "/gifts/blatnoy-patefon/079.webp",
+   "animation": "/gifts/blatnoy-patefon/079.tgs"
+  },
+  {
+   "n": 80,
+   "name": "Мужик Тачка",
+   "rarity": 15,
+   "image": "/gifts/blatnoy-patefon/080.webp",
+   "animation": "/gifts/blatnoy-patefon/080.tgs"
+  },
+  {
+   "n": 81,
+   "name": "Мужик Вагонетка",
+   "rarity": 15,
+   "image": "/gifts/blatnoy-patefon/081.webp",
+   "animation": "/gifts/blatnoy-patefon/081.tgs"
+  },
+  {
+   "n": 82,
+   "name": "Мужик Колымага",
+   "rarity": 15,
+   "image": "/gifts/blatnoy-patefon/082.webp",
+   "animation": "/gifts/blatnoy-patefon/082.tgs"
+  },
+  {
+   "n": 83,
+   "name": "Мужик Буран",
+   "rarity": 15,
+   "image": "/gifts/blatnoy-patefon/083.webp",
+   "animation": "/gifts/blatnoy-patefon/083.tgs"
+  },
+  {
+   "n": 84,
+   "name": "Мужик Метель",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/084.webp",
+   "animation": "/gifts/blatnoy-patefon/084.tgs"
+  },
+  {
+   "n": 85,
+   "name": "Мужик Пурга",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/085.webp",
+   "animation": "/gifts/blatnoy-patefon/085.tgs"
+  },
+  {
+   "n": 86,
+   "name": "Мужик Мороз",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/086.webp",
+   "animation": "/gifts/blatnoy-patefon/086.tgs"
+  },
+  {
+   "n": 87,
+   "name": "Мужик Тайга",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/087.webp",
+   "animation": "/gifts/blatnoy-patefon/087.tgs"
+  },
+  {
+   "n": 88,
+   "name": "Мужик Колыма",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/088.webp",
+   "animation": "/gifts/blatnoy-patefon/088.tgs"
+  },
+  {
+   "n": 89,
+   "name": "Мужик Магадан",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/089.webp",
+   "animation": "/gifts/blatnoy-patefon/089.tgs"
+  },
+  {
+   "n": 90,
+   "name": "Мужик Воркута",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/090.webp",
+   "animation": "/gifts/blatnoy-patefon/090.tgs"
+  },
+  {
+   "n": 91,
+   "name": "Мужик Норильск",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/091.webp",
+   "animation": "/gifts/blatnoy-patefon/091.tgs"
+  },
+  {
+   "n": 92,
+   "name": "Мужик Владимир",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/092.webp",
+   "animation": "/gifts/blatnoy-patefon/092.tgs"
+  },
+  {
+   "n": 93,
+   "name": "Мужик Бутырка",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/093.webp",
+   "animation": "/gifts/blatnoy-patefon/093.tgs"
+  },
+  {
+   "n": 94,
+   "name": "Мужик Кресты",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/094.webp",
+   "animation": "/gifts/blatnoy-patefon/094.tgs"
+  },
+  {
+   "n": 95,
+   "name": "Мужик Матросская",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/095.webp",
+   "animation": "/gifts/blatnoy-patefon/095.tgs"
+  },
+  {
+   "n": 96,
+   "name": "Мужик Тишина",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/096.webp",
+   "animation": "/gifts/blatnoy-patefon/096.tgs"
+  },
+  {
+   "n": 97,
+   "name": "Мужик Полночь",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/097.webp",
+   "animation": "/gifts/blatnoy-patefon/097.tgs"
+  },
+  {
+   "n": 98,
+   "name": "Мужик Рассвет",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/098.webp",
+   "animation": "/gifts/blatnoy-patefon/098.tgs"
+  },
+  {
+   "n": 99,
+   "name": "Мужик Закат",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/099.webp",
+   "animation": "/gifts/blatnoy-patefon/099.tgs"
+  },
+  {
+   "n": 100,
+   "name": "Мужик Туман",
+   "rarity": 20,
+   "image": "/gifts/blatnoy-patefon/100.webp",
+   "animation": "/gifts/blatnoy-patefon/100.tgs"
+  }
+ ]
+}

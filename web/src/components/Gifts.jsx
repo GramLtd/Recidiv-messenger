@@ -127,16 +127,22 @@ function Chance({ v }) {
 
 function UpgradePreview({ attrs }) {
   // Cycle through possible looks so the user sees what the upgrade can give.
+  // Model, backdrop and pattern are rolled independently, like the real upgrade.
+  const roll = () => {
+    const pick = (list) => list[Math.floor(Math.random() * list.length)];
+    return { m: pick(attrs.models), backdrop: pick(attrs.backdrops), symbol: pick(attrs.symbols) };
+  };
   const [i, setI] = useState(0);
+  const [look, setLook] = useState(roll);
   useEffect(() => {
-    const t = setInterval(() => setI((x) => x + 1), 1400);
+    const t = setInterval(() => { setLook(roll()); setI((x) => x + 1); }, 1400);
     return () => clearInterval(t);
-  }, []);
-  const m = attrs.models[i % attrs.models.length];
+  }, [attrs]);
+  const m = look.m;
   const col = {
-    model: { ...m, image: attrs.gift.image, animation: attrs.gift.animation },
-    backdrop: attrs.backdrops[(i * 7) % attrs.backdrops.length],
-    symbol: attrs.symbols[(i * 5) % attrs.symbols.length],
+    model: { ...m, image: m.image || attrs.gift.image, animation: m.image ? null : attrs.gift.animation },
+    backdrop: look.backdrop,
+    symbol: look.symbol,
   };
   return (
     <div className="col" style={{ gap: 6 }}>

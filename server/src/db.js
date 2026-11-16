@@ -307,6 +307,101 @@ if (!db.prepare('SELECT COUNT(*) c FROM backdrops').get().c) {
   for (const s of symbols) insS.run(...s);
 }
 
+// Attribute pack v2: many more backdrops and patterns. Pattern and backdrop are rolled
+// independently on upgrade, so every pattern can land on every backdrop.
+const ATTR_VERSION = 2;
+if (Number(getSetting('attr_version') || 1) < ATTR_VERSION) {
+  const moreBackdrops = [
+    // name, center, edge, pattern, rarity
+    ['Малахит', '#2ecc71', '#0b3d1f', '#a8f0c6', 22],
+    ['Сапфир', '#2f6bff', '#0a1650', '#aac4ff', 20],
+    ['Рубин', '#e0115f', '#4a0020', '#ffa3c4', 16],
+    ['Аметист', '#9b59ff', '#2b0b55', '#d9c2ff', 20],
+    ['Янтарь', '#ffb000', '#5c3300', '#ffe2a0', 18],
+    ['Медь', '#d47a45', '#4a1f0a', '#f3c4a6', 24],
+    ['Бронза', '#b08d57', '#3b2a12', '#e4d2b0', 24],
+    ['Серебро', '#cfd6df', '#4a5260', '#f4f7fa', 16],
+    ['Платина', '#e6e8ec', '#7d8590', '#ffffff', 8],
+    ['Хаки', '#8f9b5a', '#2c3214', '#d5dcb4', 28],
+    ['Милитари', '#5e7046', '#1a2210', '#b7c79e', 28],
+    ['Тюремная роба', '#4d6b8a', '#121e2b', '#b3c6da', 30],
+    ['Бетон', '#9a9a94', '#3a3a36', '#d9d9d3', 30],
+    ['Ржавчина', '#b5541c', '#3a1404', '#eab08e', 22],
+    ['Кирпич', '#b0413e', '#3d1110', '#e8a9a7', 24],
+    ['Табак', '#8b5a2b', '#2e1a08', '#d9b48f', 24],
+    ['Кофе', '#7b4b2a', '#24130a', '#d1ad94', 26],
+    ['Шоколад', '#5c3317', '#1a0c04', '#c49a7a', 24],
+    ['Вишня', '#c2185b', '#3d0019', '#f5a6c7', 20],
+    ['Малина', '#e8336f', '#4d0420', '#ffb3cc', 20],
+    ['Персик', '#ffab7a', '#7a3a1a', '#ffe0cc', 24],
+    ['Лимон', '#f5e050', '#5c5000', '#fff7b8', 22],
+    ['Лайм', '#b6f23b', '#3a5200', '#e6ffb3', 22],
+    ['Мята', '#7dffcf', '#0a5a40', '#d4fff0', 22],
+    ['Небо', '#6ec6ff', '#0d3c66', '#d0ecff', 24],
+    ['Индиго', '#4b3bff', '#120a5a', '#c0b8ff', 18],
+    ['Лаванда', '#c3a6ff', '#3d2a6b', '#ece2ff', 22],
+    ['Сирень', '#d080ff', '#4a0f6b', '#f0d1ff', 20],
+    ['Фуксия', '#ff3bd0', '#5a0046', '#ffb8ef', 18],
+    ['Коралл', '#ff6f61', '#5a1410', '#ffc9c3', 22],
+    ['Песок', '#e8cf9a', '#6b5428', '#fff1d6', 26],
+    ['Пустыня', '#d9a066', '#5a3410', '#f5d6b8', 24],
+    ['Тайга', '#2f6b4a', '#0a1f14', '#9fd0b4', 24],
+    ['Колыма', '#a8c8e0', '#1e3a52', '#e6f2fa', 18],
+    ['Полярное сияние', '#3bffb0', '#1a0b5a', '#c8ffe8', 8],
+    ['Северное небо', '#6a8cff', '#0b1033', '#cdd8ff', 14],
+    ['Вулкан', '#ff5a1f', '#2a0500', '#ffc2a8', 10],
+    ['Магма', '#ffa21f', '#4a0a00', '#ffe0a8', 10],
+    ['Туман', '#b8c2cc', '#3c444d', '#eef2f5', 26],
+    ['Дым', '#6e6e6e', '#151515', '#bdbdbd', 28],
+    ['Пепел', '#a39e98', '#2e2b28', '#dedad6', 26],
+    ['Уголь', '#3d3d3d', '#0a0a0a', '#8f8f8f', 26],
+    ['Сталь', '#7b8794', '#1f262e', '#c4ccd4', 26],
+    ['Чернила', '#2b3a67', '#070b1a', '#95a3cc', 22],
+    ['Кровь', '#a0001b', '#1f0005', '#ff8a9c', 12],
+    ['Яд', '#7aff00', '#0f2a00', '#d9ffb3', 10],
+    ['Кислота', '#ddff00', '#2e3a00', '#f7ffb3', 10],
+    ['Киберпанк', '#00f0ff', '#3a005a', '#b3fbff', 8],
+    ['Синтвейв', '#ff4fd8', '#1b0a4a', '#ffc4f2', 8],
+    ['Радуга', '#ff8a3b', '#3b0a6b', '#fff1a8', 5],
+    ['Хамелеон', '#3bd9ff', '#3b6b00', '#e0ffd0', 6],
+    ['Космос', '#5b3bff', '#000010', '#c6b8ff', 6],
+    ['Королевский пурпур', '#7a1fa2', '#1e0030', '#e0b3f5', 7],
+    ['Императорское золото', '#ffcc33', '#3d2200', '#fff4c2', 4],
+    ['Белый лотос', '#ffffff', '#9aa3ad', '#ffffff', 5],
+  ];
+  const insB = db.prepare('INSERT INTO backdrops (name, center, edge, pattern, rarity) VALUES (?, ?, ?, ?, ?)');
+  for (const b of moreBackdrops) if (!db.prepare('SELECT 1 FROM backdrops WHERE name = ?').get(b[0])) insB.run(...b);
+
+  const moreSymbols = [
+    // name, emoji, rarity
+    ['Нож', '🔪', 22], ['Кинжал', '🗡️', 18], ['Ствол', '🔫', 14], ['Бомба', '💣', 14], ['Джокер', '🃏', 12],
+    ['Черви', '♥️', 24], ['Бубны', '♦️', 24], ['Трефы', '♣️', 24], ['Джекпот', '🎰', 8], ['Мешок денег', '💰', 12],
+    ['Купюры', '💵', 20], ['Монета', '🪙', 22], ['Замок', '🔒', 22], ['Отмычка', '🔑', 22], ['Якорь', '⚓', 22],
+    ['Паутина', '🕸️', 20], ['Скорпион', '🦂', 14], ['Змея', '🐍', 16], ['Волк', '🐺', 14], ['Орёл', '🦅', 14],
+    ['Летучая мышь', '🦇', 18], ['Крыса', '🐀', 20], ['Следы', '🐾', 24], ['Кактус', '🌵', 24], ['Клён', '🍁', 24],
+    ['Сакура', '🌸', 22], ['Подсолнух', '🌻', 22], ['Листва', '🌿', 26], ['Гриб', '🍄', 20], ['Искра', '✨', 22],
+    ['Сияние', '🌟', 18], ['Комета', '💫', 18], ['Планета', '🪐', 12], ['Солнце', '☀️', 20], ['Облако', '☁️', 26],
+    ['Волна', '🌊', 22], ['Капля', '💧', 26], ['Восьмёрка', '🎱', 16], ['Мишень', '🎯', 20], ['Кубок', '🏆', 10],
+    ['Медаль', '🥇', 12], ['Нота', '🎵', 24], ['Ноты', '🎶', 22], ['Гитара', '🎸', 16], ['Труба', '🎺', 18],
+    ['Стопка', '🥃', 20], ['Вино', '🍷', 20], ['Шампанское', '🍾', 14], ['Сигарета', '🚬', 20], ['Таблетка', '💊', 18],
+    ['Оберег', '🧿', 14], ['Весёлый Роджер', '☠️', 10], ['Мечи', '⚔️', 14], ['Щит', '🛡️', 18], ['Шестерня', '⚙️', 24],
+    ['Топор', '🪓', 18], ['Колокол', '🔔', 22], ['Свеча', '🕯️', 20], ['Чётки', '📿', 14], ['Магнит', '🧲', 22],
+    ['Хамса', '🪬', 10], ['Капля крови', '🩸', 14], ['Поцелуй', '💋', 18], ['Призрак', '👻', 16], ['Могила', '🪦', 12],
+    ['Урна', '⚱️', 12], ['Сирена', '🚨', 16], ['Чёрный флаг', '🏴', 14], ['Финиш', '🏁', 18], ['Крест', '✖️', 24],
+    ['Мишень-кольцо', '⭕', 24], ['Треугольник', '🔺', 24], ['Ромб', '🔷', 24], ['Вишня', '🍒', 22], ['Лимон', '🍋', 22],
+    ['Увядшая роза', '🥀', 16], ['Гибискус', '🌺', 22], ['Дракон', '🐉', 6], ['Бабочка', '🦋', 18], ['Ракушка', '🐚', 20],
+    ['Перо', '🪶', 20], ['Клык', '🦷', 16], ['Мишка', '🧸', 16], ['Бантик', '🎀', 20], ['Шарик', '🎈', 22],
+    ['Динамит', '🧨', 12], ['Коза', '🤘', 18], ['Победа', '✌️', 20], ['Кулак', '👊', 18], ['Деньги на ветер', '💸', 12],
+    ['Фонарик', '🏮', 18], ['Тории', '⛩️', 10], ['Шар судьбы', '🔮', 10], ['Лёд', '🧊', 20], ['Вихрь', '🌀', 22],
+    ['Радуга', '🌈', 8], ['Маски', '🎭', 14], ['Моаи', '🗿', 8], ['Сова', '🦉', 16], ['Чёрный кот', '🐈‍⬛', 12],
+    ['Лис', '🦊', 16], ['Медведь', '🐻', 16], ['Лев', '🦁', 10], ['Тигр', '🐯', 10], ['Акула', '🦈', 12],
+    ['Осьминог', '🐙', 14], ['Краб', '🦀', 18],
+  ];
+  const insS = db.prepare('INSERT INTO symbols (name, emoji, rarity) VALUES (?, ?, ?)');
+  for (const x of moreSymbols) if (!db.prepare('SELECT 1 FROM symbols WHERE name = ?').get(x[0])) insS.run(...x);
+  setSetting('attr_version', ATTR_VERSION);
+}
+
 // Model template: same emoji re-coloured by CSS filters, each with its own rarity.
 export const MODEL_TEMPLATES = [
   ['Оригинал', '', 200],
@@ -333,6 +428,9 @@ function addColumn(table, col, def) {
   if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
 }
 addColumn('gifts', 'animation', 'TEXT');
+addColumn('gifts', 'slug', 'TEXT');
+addColumn('gift_models', 'image', 'TEXT');
+addColumn('gift_models', 'animation', 'TEXT');
 addColumn('users', 'worn_gift_id', 'INTEGER');
 addColumn('users', 'profile_track_id', 'INTEGER');
 addColumn('users', 'personal_channel_id', 'INTEGER');
@@ -380,56 +478,64 @@ export function giftAssets(emoji) {
   return { image: find('emoji3d'), animation: find('emoji-anim') };
 }
 
-// Catalog v2. Gifts that are not in the catalog get hidden from the shop (owners keep them).
-const GIFT_CATALOG_VERSION = 2;
+// Catalog v3: the limited line-up is replaced by the Recidivist collections (own art,
+// one model per picture, rarity from the design sheet). Gifts that are not in the catalog
+// get hidden from the shop (owners keep them).
+const GIFT_CATALOG_VERSION = 3;
+const COLLECTION_MODELS = JSON.parse(fs.readFileSync(new URL('./gift-collections.json', import.meta.url), 'utf8'));
 const GIFT_CATALOG = [
-  // name, emoji, price, supply, upgrade_price, convert_value
-  ['Горящее сердце', '❤️‍🔥', 25, null, null, 21],
-  ['Плюшевая жаба', '🐸', 35, null, null, 30],
-  ['Мартини', '🍸', 50, null, null, 43],
-  ['Чёрный кот', '🐈‍⬛', 75, null, null, 64],
-  ['Тыква', '🎃', 90, null, null, 77],
-  ['Пластинка', '💿', 150, 15000, 100, 120],
-  ['Сигара', '🚬', 200, 12000, 120, 160],
-  ['Фотоаппарат', '📸', 250, 10000, 150, 200],
-  ['Бабочка', '🦋', 300, 9000, 150, 240],
-  ['Часы', '⌚', 400, 7000, 200, 320],
-  ['Чертёнок', '😈', 450, 6666, 222, 360],
-  ['Клоун', '🤡', 500, 5000, 250, 400],
-  ['Пиксель', '👾', 550, 5000, 250, 440],
-  ['Робот', '🤖', 700, 4000, 300, 560],
-  ['Перстень', '💍', 900, 3000, 350, 720],
-  ['Акула', '🦈', 1000, 2500, 400, 800],
-  ['Волк', '🐺', 1200, 2000, 450, 960],
-  ['Мозг', '🧠', 1400, 1500, 500, 1120],
-  ['НЛО', '🛸', 1700, 1200, 550, 1360],
-  ['Дракон', '🐉', 2200, 888, 666, 1760],
-  ['Всевидящее око', '👁️', 3000, 666, 777, 2400],
+  // slug, name, emoji (fallback), price, supply, upgrade_price, convert_value, base model #
+  ['heart', 'Горящее сердце', '❤️‍🔥', 25, null, null, 21],
+  ['frog', 'Плюшевая жаба', '🐸', 35, null, null, 30],
+  ['martini', 'Мартини', '🍸', 50, null, null, 43],
+  ['black-cat', 'Чёрный кот', '🐈‍⬛', 75, null, null, 64],
+  ['pumpkin', 'Тыква', '🎃', 90, null, null, 77],
+  ['kot-stukach', 'Кот-Стукач', '🐈', 350, 9000, 150, 280, 50],
+  ['pahan-pepe', 'Пахан Пепе', '🐸', 700, 5000, 300, 560, 50],
+  ['sigara-smotryashchego', 'Сигара Смотрящего', '🚬', 1200, 2500, 450, 960, 55],
+  ['blatnoy-patefon', 'Блатной Патефон', '📻', 2000, 1500, 666, 1600, 100],
 ];
-if (Number(getSetting('gift_catalog_version') || 1) < GIFT_CATALOG_VERSION) {
-  const keep = new Set(GIFT_CATALOG.map((g) => g[1]));
-  for (const g of db.prepare('SELECT id, emoji FROM gifts').all()) if (!keep.has(g.emoji)) db.prepare('UPDATE gifts SET enabled = 0 WHERE id = ?').run(g.id);
-  setSetting('gift_catalog_version', GIFT_CATALOG_VERSION);
+/** Find the DB row of a catalog entry: by slug, or (legacy regular gifts) by emoji. */
+function catalogRow(slug, emoji, legacy) {
+  return db.prepare('SELECT * FROM gifts WHERE slug = ?').get(slug)
+    || (legacy ? db.prepare("SELECT * FROM gifts WHERE slug IS NULL AND emoji = ? AND (image IS NULL OR image NOT LIKE '/gifts/%')").get(emoji) : null);
 }
 {
   const ins = db.prepare(
-    'INSERT INTO gifts (name, emoji, image, animation, price, supply, upgrade_price, convert_value, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO gifts (slug, name, emoji, image, animation, price, supply, upgrade_price, convert_value, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
   );
-  GIFT_CATALOG.forEach(([name, emoji, price, supply, upg, conv], i) => {
-    if (db.prepare('SELECT 1 FROM gifts WHERE emoji = ?').get(emoji)) return;
-    const a = giftAssets(emoji);
-    const r = ins.run(name, emoji, a.image, a.animation, price, supply, upg, conv, i, now());
-    if (upg != null) seedModelsForGift(r.lastInsertRowid, emoji);
+  const insModel = db.prepare('INSERT INTO gift_models (gift_id, name, emoji, filter, image, animation, rarity) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  const keep = new Set();
+  tx0(() => {
+    GIFT_CATALOG.forEach(([slug, name, emoji, price, supply, upg, conv, baseModel], i) => {
+      const models = COLLECTION_MODELS[slug];
+      let row = catalogRow(slug, emoji, !models);
+      if (!row) {
+        const base = models?.find((m) => m.n === baseModel);
+        const a = base ? { image: base.image, animation: base.animation } : giftAssets(emoji);
+        const r = ins.run(slug, name, emoji, a.image, a.animation, price, supply, upg, conv, i, now());
+        row = { id: Number(r.lastInsertRowid) };
+        if (models) for (const m of models) insModel.run(row.id, m.name, emoji, '', m.image, m.animation, m.rarity);
+        else if (upg != null) seedModelsForGift(row.id, emoji);
+      } else if (!row.slug) db.prepare('UPDATE gifts SET slug = ? WHERE id = ?').run(slug, row.id);
+      db.prepare('UPDATE gifts SET sort = ? WHERE id = ?').run(i, row.id);
+      keep.add(row.id);
+    });
+    if (Number(getSetting('gift_catalog_version') || 1) < GIFT_CATALOG_VERSION) {
+      for (const g of db.prepare('SELECT id FROM gifts').all()) if (!keep.has(g.id)) db.prepare('UPDATE gifts SET enabled = 0 WHERE id = ?').run(g.id);
+      setSetting('gift_catalog_version', GIFT_CATALOG_VERSION);
+    }
   });
-  // Older databases: attach 3D assets to gifts created before they existed.
+  // Older databases: attach 3D assets to emoji gifts created before they existed.
   for (const g of db.prepare('SELECT id, emoji, image, animation FROM gifts').all()) {
     const a = giftAssets(g.emoji);
     if ((!g.image && a.image) || (!g.animation && a.animation)) {
       db.prepare('UPDATE gifts SET image = COALESCE(image, ?), animation = COALESCE(animation, ?) WHERE id = ?').run(a.image, a.animation, g.id);
     }
   }
-  const order = new Map(GIFT_CATALOG.map((g, i) => [g[1], i]));
-  for (const g of db.prepare('SELECT id, emoji FROM gifts').all()) if (order.has(g.emoji)) db.prepare('UPDATE gifts SET sort = ? WHERE id = ?').run(order.get(g.emoji), g.id);
+}
+function tx0(fn) {
+  return db.transaction(fn)();
 }
 
 export function tx(fn) {

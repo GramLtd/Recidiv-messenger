@@ -155,7 +155,7 @@ r.put('/gifts/:id/models', (req, res) => {
     }
     for (const m of models) {
       if (m.id) db.prepare('UPDATE gift_models SET name = ?, emoji = ?, filter = ?, rarity = ? WHERE id = ? AND gift_id = ?').run(m.name, m.emoji, m.filter || '', Number(m.rarity), Number(m.id), g.id);
-      else db.prepare('INSERT INTO gift_models (gift_id, name, emoji, filter, rarity) VALUES (?, ?, ?, ?, ?)').run(g.id, m.name, m.emoji, m.filter || '', Number(m.rarity));
+      else db.prepare('INSERT INTO gift_models (gift_id, name, emoji, filter, image, animation, rarity) VALUES (?, ?, ?, ?, ?, ?, ?)').run(g.id, m.name, m.emoji, m.filter || '', m.image || null, m.animation || null, Number(m.rarity));
     }
   });
   res.json({ models: db.prepare('SELECT * FROM gift_models WHERE gift_id = ?').all(g.id) });

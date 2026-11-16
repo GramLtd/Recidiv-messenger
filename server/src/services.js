@@ -21,7 +21,7 @@ export function wornGift(u) {
   if (!u?.worn_gift_id) return null;
   const r = db
     .prepare(
-      `SELECT ug.id, ug.number, g.name, g.emoji, g.image, gm.filter, b.center, b.edge FROM user_gifts ug
+      `SELECT ug.id, ug.number, g.name, g.emoji, COALESCE(gm.image, g.image) image, gm.filter, b.center, b.edge FROM user_gifts ug
        JOIN gifts g ON g.id = ug.gift_id LEFT JOIN gift_models gm ON gm.id = ug.model_id LEFT JOIN backdrops b ON b.id = ug.backdrop_id
        WHERE ug.id = ? AND ug.owner_id = ? AND ug.upgraded_at IS NOT NULL`,
     )
@@ -280,7 +280,7 @@ export function serializeUserGift(idOrRow, viewerId = null) {
       slug: giftSlug(g.name, ug.number),
       issued: db.prepare('SELECT COUNT(*) c FROM user_gifts WHERE gift_id = ? AND upgraded_at IS NOT NULL').get(g.id).c,
       estimate: floor || lastSale || g.price + (g.upgrade_price || 0),
-      model: model && { name: model.name, emoji: model.emoji, image: g.image, animation: g.animation, filter: model.filter, rarity: model.rarity, chance: pct(model.rarity, totals.model) },
+      model: model && { name: model.name, emoji: model.emoji, image: model.image || g.image, animation: model.image ? model.animation : g.animation, filter: model.filter, rarity: model.rarity, chance: pct(model.rarity, totals.model) },
       backdrop: backdrop && { name: backdrop.name, center: backdrop.center, edge: backdrop.edge, pattern: backdrop.pattern, rarity: backdrop.rarity, chance: pct(backdrop.rarity, totals.backdrop) },
       symbol: symbol && { name: symbol.name, emoji: symbol.emoji, rarity: symbol.rarity, chance: pct(symbol.rarity, totals.symbol) },
       upgradedAt: ug.upgraded_at,

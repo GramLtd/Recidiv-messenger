@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { TgsPlayer, isTgs } from './Tgs.jsx';
 
 /** Fluent Emoji 3D asset for any emoji, shipped in /public/emoji3d (MIT, Microsoft). */
 export const emojiCode = (e) => [...String(e || '')].map((c) => c.codePointAt(0).toString(16)).join('-');
@@ -7,8 +8,11 @@ export const emoji3d = (e) => `/emoji3d/${emojiCode(e)}.webp`;
 /** 3D model image (animated when available) with graceful fallback to the plain emoji. */
 export function GiftModel({ emoji, image, animation, filter, size, animated = false, className = '', style }) {
   const [failed, setFailed] = useState(false);
-  const src = (animated && animation) || image || (emoji ? emoji3d(emoji) : null);
   const common = { width: size, height: size, filter: filter || undefined, ...style };
+  if (animated && isTgs(animation) && !failed) {
+    return <TgsPlayer src={animation} poster={image} size={size} className={`gift-model ${className}`} style={{ filter: filter || undefined, ...style }} />;
+  }
+  const src = (animated && !isTgs(animation) && animation) || image || (emoji ? emoji3d(emoji) : null);
   if (!src || failed) {
     return (
       <span className={`gift-emoji ${className}`} style={{ ...common, fontSize: typeof size === 'number' ? size * 0.8 : undefined, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
