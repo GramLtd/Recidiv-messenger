@@ -45,6 +45,19 @@ r.post('/me/banner', (req, res) => {
   res.json({ user: meUser(getUser(req.user.id)) });
 });
 
+/** Blurred profile background: from the avatar, the banner, a custom picture, or off. */
+r.post('/me/blur-bg', (req, res) => {
+  const mode = ['avatar', 'banner', 'custom', 'off'].includes(req.body?.mode) ? req.body.mode : 'avatar';
+  let url = null;
+  if (mode === 'custom') {
+    url = safeUploadUrl(req.body.url);
+    if (!url || !/\.(jpe?g|png|webp|gif|avif)$/i.test(url)) fail(400, 'Выберите картинку');
+    if (uploadedSize(url) > MAX_BANNER) fail(400, 'Картинка должна весить не больше 10 МБ');
+  }
+  db.prepare('UPDATE users SET blur_bg = ? WHERE id = ?').run(JSON.stringify(url ? { mode, url } : { mode }), req.user.id);
+  res.json({ user: meUser(getUser(req.user.id)) });
+});
+
 r.post('/me/links', (req, res) => {
   const links = {};
   for (const k of LINK_KINDS) {

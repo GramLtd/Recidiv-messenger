@@ -9,7 +9,7 @@ import { useT, useLang, LANGS } from '../i18n.js';
 import { useStore } from '../store.js';
 import { api, upload } from '../api.js';
 import { Avatar, Modal, Spark, Switch, useAsync, useAction, PremiumStar, nameStyleCss } from './common.jsx';
-import { AvatarCropper, BannerEditor, LinksEditor, WallpaperPicker } from './ProfileExtras.jsx';
+import { AvatarCropper, BannerEditor, LinksEditor, WallpaperPicker, BlurBgEditor } from './ProfileExtras.jsx';
 import { WalletsSection } from './Wallets.jsx';
 import { ACCENTS, BACKGROUNDS, FONTS, loadTheme, saveTheme } from '../theme.js';
 
@@ -59,6 +59,7 @@ function ProfileTab() {
         />
       )}
       <BannerEditor />
+      <BlurBgEditor />
       <LocationField />
       <div className="field"><label>Имя</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={64} /></div>
       <div className="field"><label>О себе</label><textarea className="input" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={200} /><span className="hint">{bio.length}/200</span></div>

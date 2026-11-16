@@ -12,7 +12,7 @@ import { useT } from '../i18n.js';
 import { GiftArt, GiftModel, emoji3d } from './GiftArt.jsx';
 import { usePlayer, fmtTime } from '../player.js';
 import { Cover } from './Music.jsx';
-import { lastSeen, fmtNum, plural } from '../util.js';
+import { lastSeen, fmtNum, plural, colorFor } from '../util.js';
 import { BannerMedia, ProfileLinks } from './ProfileExtras.jsx';
 
 // ---------------- gift tiles ----------------
@@ -285,8 +285,25 @@ export function ProfileView({ userId, onClose }) {
   const tabIdx = tabs.findIndex((x) => x[0] === tab);
   const heroBg = !u.banner && u.profileBg ? profileBgCss(u.profileBg) : null;
 
+  const blur = u.blurBg || { mode: 'avatar' };
+  let blurSrc = null;
+  if (blur.mode === 'custom' && blur.url) blurSrc = { type: 'image', url: blur.url };
+  else if (blur.mode === 'banner' && u.banner) blurSrc = u.banner;
+  else if (blur.mode !== 'off' && u.avatar) blurSrc = { type: 'image', url: u.avatar };
+  const blurOn = blur.mode !== 'off';
+
   return (
-    <div className="pv">
+    <div className={`pv ${blurOn ? 'blurred' : ''}`}>
+      {blurOn && (
+        <div className="pv-blurbg" aria-hidden>
+          <div className="pv-blur-inner" key={blurSrc?.url || u.id}>
+            {blurSrc?.type === 'video' ? <video src={mediaUrl(blurSrc.url)} autoPlay muted loop playsInline />
+              : blurSrc ? <img src={mediaUrl(blurSrc.url)} alt="" />
+                : <div style={{ width: '100%', height: '100%', background: `radial-gradient(circle at 50% 30%, ${colorFor(u.id)}, #000 75%)` }} />}
+          </div>
+          <i className="pv-blur-shade" />
+        </div>
+      )}
       <div className={`pv-hero ${u.banner ? 'has-banner' : ''}`} style={{ '--glow': glow }}>
         {u.banner && <div className="pv-banner"><BannerMedia banner={u.banner} /></div>}
         {heroBg && <div className="pv-banner pv-prembg" style={{ background: heroBg }} />}

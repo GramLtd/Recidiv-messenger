@@ -50,6 +50,7 @@ export function publicUser(u) {
     nameStyle: isPremium(u) ? pj(u.name_style, null) : null,
     profileBg: isPremium(u) ? u.profile_bg || null : null,
     location: u.location || null,
+    blurBg: pj(u.blur_bg, { mode: 'avatar' }),
     publicBalance: u.show_balance ? u.balance : null,
     banner: u.banner ? { url: u.banner, type: u.banner_type === 'video' ? 'video' : 'image' } : null,
     links: parseJson(u.links, {}),

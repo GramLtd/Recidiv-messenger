@@ -347,3 +347,49 @@ function WallpaperTuning({ wp, save }) {
     </>
   );
 }
+
+// ---------------- blurred profile background ----------------
+export function BlurBgEditor() {
+  const me = useStore((s) => s.me);
+  const setMe = useStore((s) => s.setMe);
+  const toast = useStore((s) => s.toast);
+  const [progress, setProgress] = useState(null);
+  const cur = me.blurBg?.mode || 'avatar';
+  const save = async (body) => {
+    try { setMe((await api('/me/blur-bg', { body })).user); } catch (e) { toast(e.message, 'error'); }
+  };
+  const pick = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return toast('Выберите картинку', 'error');
+    try {
+      setProgress(0);
+      const m = await upload(file, setProgress);
+      await save({ mode: 'custom', url: m.url });
+    } catch (e) { toast(e.message, 'error'); } finally { setProgress(null); }
+  };
+  const opts = [
+    ['avatar', 'Аватарка', me.avatar ? mediaUrl(me.avatar) : null],
+    ['banner', 'Баннер', me.banner?.type === 'image' ? mediaUrl(me.banner.url) : null],
+    ['custom', 'Своя картинка', me.blurBg?.url ? mediaUrl(me.blurBg.url) : null],
+    ['off', 'Выключен', null],
+  ];
+  return (
+    <div className="field">
+      <label>Размытый фон профиля</label>
+      <div className="blur-opts">
+        {opts.map(([k, l, img]) => {
+          const isCustom = k === 'custom';
+          const Tag = isCustom ? 'label' : 'button';
+          return (
+            <Tag key={k} className={`blur-opt ${cur === k ? 'on' : ''}`} onClick={isCustom && me.blurBg?.url ? () => save({ mode: 'custom', url: me.blurBg.url }) : isCustom ? undefined : () => save({ mode: k })}>
+              <span className="blur-thumb">{img ? <img src={img} alt="" /> : k === 'off' ? null : <i />}</span>
+              <span>{isCustom && progress != null ? `${Math.round(progress * 100)}%` : l}</span>
+              {isCustom && <input type="file" accept="image/*" hidden onChange={(e) => { pick(e.target.files[0]); e.target.value = ''; }} />}
+            </Tag>
+          );
+        })}
+      </div>
+      <span className="hint">Картинка сильно размывается и ложится под весь профиль{cur === 'banner' && !me.banner ? ' · сначала добавьте баннер' : ''}</span>
+    </div>
+  );
+}
