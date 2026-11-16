@@ -5,6 +5,7 @@ import { TonConnectUIProvider } from '@tonconnect/ui-react';
 import App from './App.jsx';
 import { applyTheme, loadTheme } from './theme.js';
 import './styles.css';
+import './styles-v5.css';
 
 applyTheme(loadTheme());
 
@@ -26,19 +27,32 @@ document.addEventListener('contextmenu', (e) => { if (e.target.tagName === 'IMG'
 const vv = window.visualViewport;
 if (vv) {
   const root = document.documentElement;
+  const touch = matchMedia('(pointer: coarse)').matches;
+  let tallest = vv.height;
+  const editing = () => {
+    const a = document.activeElement;
+    return !!a && (a.tagName === 'TEXTAREA' || a.isContentEditable || (a.tagName === 'INPUT' && !['checkbox', 'radio', 'range', 'file', 'button', 'submit', 'color'].includes(a.type)));
+  };
   const sync = () => {
+    tallest = Math.max(tallest, vv.height);
     root.style.setProperty('--vvh', `${vv.height}px`);
     root.style.setProperty('--vvt', `${vv.offsetTop}px`);
-    root.classList.toggle('kb-open', vv.height < window.innerHeight * 0.78);
+    // iOS Safari also shrinks window.innerHeight with the keyboard, so compare with the
+    // tallest viewport we have seen, and trust focus on touch devices.
+    const open = vv.height < tallest * 0.8 || (touch && editing());
+    root.classList.toggle('kb-open', open);
     if (window.scrollY) window.scrollTo(0, 0);
   };
   vv.addEventListener('resize', sync);
   vv.addEventListener('scroll', sync);
+  window.addEventListener('orientationchange', () => { tallest = 0; setTimeout(sync, 300); });
+  document.addEventListener('focusin', () => setTimeout(sync, 50));
+  document.addEventListener('focusout', () => setTimeout(sync, 120));
   sync();
 }
 
 // Material-like ripple on every tappable surface.
-const RIPPLE = '.btn, .icon-btn, .chip, .nav-btn, .glass-btn, .gift-actions button, .pv-actions button, .action-grid button, .menu-item, .list-item, .chat-item, .track-row, .pill, .glass-icon';
+const RIPPLE = '.btn, .icon-btn, .chip, .glass-btn, .gift-actions button, .pv-actions button, .action-grid button, .menu-item, .list-item, .chat-item, .track-row, .pill, .glass-icon';
 document.addEventListener('pointerdown', (e) => {
   const el = e.target.closest(RIPPLE);
   if (!el || el.disabled) return;
@@ -52,6 +66,22 @@ document.addEventListener('pointerdown', (e) => {
   el.appendChild(span);
   setTimeout(() => span.remove(), 600);
 }, { passive: true });
+
+// Liquid glass: the specular highlight follows the finger / cursor.
+const GLASS = '.btn, .chip, .glass-icon, .gift-actions button, .pv-actions button, .pill, .bot-buttons button, .glass-btn, .send-btn, .fab, .scroll-down, .shazam-btn, .story-nav, .pkg, .lg, .gs-actions button';
+const moveGlass = (e) => {
+  const el = e.target.closest?.(GLASS);
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  el.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+  el.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
+};
+document.addEventListener('pointermove', moveGlass, { passive: true });
+// Remember where the user tapped: menus and modals grow out of that point.
+document.addEventListener('pointerdown', (e) => {
+  moveGlass(e);
+  window.__tap = { x: e.clientX, y: e.clientY, t: Date.now() };
+}, { passive: true, capture: true });
 
 const manifestUrl = import.meta.env.VITE_TONCONNECT_MANIFEST || `${location.origin}/tonconnect-manifest.json`;
 

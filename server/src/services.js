@@ -46,7 +46,38 @@ export function publicUser(u) {
     wornGift: wornGift(u),
     online: isOnline(u.id),
     lastSeen: u.last_seen,
+    banner: u.banner ? { url: u.banner, type: u.banner_type === 'video' ? 'video' : 'image' } : null,
+    links: parseJson(u.links, {}),
   };
+}
+
+function parseJson(v, d) {
+  try { return v ? JSON.parse(v) : d; } catch { return d; }
+}
+
+// ---------- profile links ----------
+const LINK_RULES = {
+  tiktok: { hosts: ['tiktok.com', 'www.tiktok.com', 'vm.tiktok.com'], make: (n) => `https://www.tiktok.com/@${n}` },
+  spotify: { hosts: ['open.spotify.com', 'spotify.link'], make: (n) => `https://open.spotify.com/user/${n}` },
+  soundcloud: { hosts: ['soundcloud.com', 'www.soundcloud.com', 'on.soundcloud.com'], make: (n) => `https://soundcloud.com/${n}` },
+  telegram: { hosts: ['t.me', 'telegram.me'], make: (n) => `https://t.me/${n}` },
+  discord: { hosts: ['discord.gg', 'discord.com', 'www.discord.com'], make: null },
+};
+export const LINK_KINDS = Object.keys(LINK_RULES);
+/** Normalise a profile link: a full URL on the service's domain, or a bare @username. */
+export function normalizeLink(kind, raw) {
+  const rule = LINK_RULES[kind];
+  const v = String(raw || '').trim();
+  if (!rule || !v) return null;
+  if (/^https?:\/\//i.test(v)) {
+    let u;
+    try { u = new URL(v); } catch { fail(400, `Некорректная ссылка (${kind})`); }
+    if (u.protocol !== 'https:' || !rule.hosts.includes(u.hostname.toLowerCase())) fail(400, `Ссылка должна вести на ${rule.hosts[0]}`);
+    return u.href.slice(0, 200);
+  }
+  const name = v.replace(/^@/, '');
+  if (!/^[a-zA-Z0-9._-]{2,40}$/.test(name)) fail(400, `Некорректное имя пользователя (${kind})`);
+  return rule.make ? rule.make(name) : name; // discord usernames are not linkable
 }
 
 export function lightUser(u) {
@@ -55,7 +86,7 @@ export function lightUser(u) {
 }
 
 export function meUser(u) {
-  return { ...publicUser(u), email: u.email, balance: u.balance, isBanned: !!u.is_banned, createdAt: u.created_at, profileTrackId: u.profile_track_id, personalChannelId: u.personal_channel_id, isTester: !!u.is_tester };
+  return { ...publicUser(u), email: u.email, balance: u.balance, isBanned: !!u.is_banned, createdAt: u.created_at, profileTrackId: u.profile_track_id, personalChannelId: u.personal_channel_id, isTester: !!u.is_tester, wallpaper: parseJson(u.wallpaper, null) };
 }
 
 // ---------------- ledger ----------------

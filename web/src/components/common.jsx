@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { X, ArrowLeft, BadgeCheck } from 'lucide-react';
 import { mediaUrl } from '../api.js';
 import { colorFor, initials } from '../util.js';
@@ -80,6 +80,15 @@ export function Modal({ title, children, footer, onClose, wide, back, className 
 function SheetModal({ title, children, footer, back, className, headExtra, wide, doClose }) {
   const ref = useRef();
   const drag = useRef(null);
+  // grow out of the point the user tapped
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const tap = window.__tap;
+    if (!el || !tap || Date.now() - tap.t > 900) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--ox', `${Math.max(0, Math.min(r.width, tap.x - r.left))}px`);
+    el.style.setProperty('--oy', `${Math.max(0, Math.min(r.height, tap.y - r.top))}px`);
+  }, []);
   const onStart = (e) => {
     if (window.innerWidth > 560) return;
     const body = ref.current.querySelector('.modal-body');
@@ -133,8 +142,8 @@ export function Spark({ amount, size }) {
   const c = useCurrency();
   return (
     <span className="spark" style={size ? { fontSize: size } : undefined}>
-      {c.symbol}
-      {amount !== undefined && <> {Number(amount).toLocaleString('ru-RU')}</>}
+      <span className="spark-sym">{c.symbol}</span>
+      {amount !== undefined && <span className="spark-amt">{Number(amount).toLocaleString('ru-RU')}</span>}
     </span>
   );
 }

@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
-import { config } from './config.js';
+import { config, setConfigOverride } from './config.js';
 
 fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
 fs.mkdirSync(config.uploadDir, { recursive: true });
@@ -247,6 +247,7 @@ for (const [k, v] of Object.entries(defaultSettings)) insSetting.run(k, v);
 export function getSetting(key) {
   return db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value;
 }
+setConfigOverride((k) => getSetting(`cfg_${k}`));
 export function setSetting(key, value) {
   db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(
     key,
@@ -437,6 +438,10 @@ addColumn('users', 'personal_channel_id', 'INTEGER');
 addColumn('users', 'profile_views', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('users', 'anon_number', 'TEXT');
 addColumn('users', 'is_tester', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('users', 'banner', 'TEXT');
+addColumn('users', 'banner_type', 'TEXT');
+addColumn('users', 'links', 'TEXT');
+addColumn('users', 'wallpaper', 'TEXT');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_anon_number ON users(anon_number)');
 
 // ---------- in-app bot: anonymous numbers ----------

@@ -153,7 +153,12 @@ function updateMediaSession(t) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: t.title || 'Без названия',
       artist: t.artist || 'Recidivist',
-      artwork: [{ src: t.cover ? mediaUrl(t.cover) : '/icon.svg', sizes: '512x512' }],
+      artwork: t.cover
+        ? [{ src: new URL(mediaUrl(t.cover), location.href).href, sizes: '512x512' }]
+        : [
+            { src: `${location.origin}/icon-512.png`, sizes: '512x512', type: 'image/png' },
+            { src: `${location.origin}/icon-192.png`, sizes: '192x192', type: 'image/png' },
+          ],
     });
     const p = usePlayer.getState();
     navigator.mediaSession.setActionHandler('play', () => audio.play());

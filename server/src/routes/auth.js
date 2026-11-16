@@ -9,9 +9,25 @@ import { meUser, changeBalance, notify, assertUsernameFree, now, getOrCreatePriv
 
 const r = Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const mailer = config.smtp ? nodemailer.createTransport(config.smtp) : null;
+// SMTP can be changed from the admin panel, so the transport is rebuilt when settings change.
+let mailerKey = null;
+let mailerCache = null;
+function getMailer() {
+  const cfg = config.smtp;
+  const key = JSON.stringify(cfg);
+  if (key !== mailerKey) {
+    mailerKey = key;
+    mailerCache = cfg ? nodemailer.createTransport(cfg) : null;
+  }
+  return mailerCache;
+}
+
+r.get('/config', (_req, res) => {
+  res.json({ auth: { registration: config.auth.registration, emailVerification: config.auth.emailVerification } });
+});
 
 async function sendMail(to, subject, text) {
+  const mailer = getMailer();
   if (!mailer) {
     console.log(`\n📧 [dev mail] to=${to}\n   ${subject}\n   ${text}\n`);
     return;
@@ -22,7 +38,11 @@ async function sendMail(to, subject, text) {
 r.post('/send-code', async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   if (!EMAIL_RE.test(email)) fail(400, 'Некорректный email');
+  if (!config.auth.registration) fail(403, 'Регистрация временно закрыта');
   if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email)) fail(409, 'Этот email уже зарегистрирован. Войдите по сид-фразе.');
+  if (!config.auth.emailVerification) {
+    return res.json({ emailToken: jwt.sign({ email, purpose: 'register' }, config.jwtSecret, { expiresIn: '30m' }) });
+  }
   const existing = db.prepare('SELECT * FROM email_codes WHERE email = ?').get(email);
   if (existing && existing.expires_at - 9 * 60_000 > now()) fail(429, 'Подождите минуту перед повторной отправкой');
   const code = String(crypto.randomInt(100000, 1000000));
@@ -30,7 +50,7 @@ r.post('/send-code', async (req, res) => {
     'INSERT INTO email_codes (email, code, expires_at, attempts) VALUES (?, ?, ?, 0) ON CONFLICT(email) DO UPDATE SET code = excluded.code, expires_at = excluded.expires_at, attempts = 0',
   ).run(email, code, now() + 10 * 60_000);
   await sendMail(email, 'Код подтверждения Recidivist', `Ваш код: ${code}\nОн действует 10 минут.`);
-  res.json({ ok: true, devMode: !mailer });
+  res.json({ ok: true, devMode: !getMailer() });
 });
 
 r.post('/verify-code', (req, res) => {
@@ -49,6 +69,7 @@ r.post('/verify-code', (req, res) => {
 });
 
 r.post('/register', (req, res) => {
+  if (!config.auth.registration) fail(403, 'Регистрация временно закрыта');
   const { emailToken, authKey, displayName, username } = req.body;
   let email;
   try {

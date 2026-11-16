@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { config } from '../config.js';
 import { db, tx, getSetting, setSetting, seedModelsForGift, SYSTEM_USER_ID, giftAssets } from '../db.js';
 import { fail } from '../auth.js';
 import { meUser, getUser, changeBalance, pushBalance, notify, serializeGift, emitToUser, now } from '../services.js';
@@ -239,6 +240,46 @@ r.put('/settings', (req, res) => {
     } else setSetting(k, req.body[k]);
   }
   res.json({ settings: Object.fromEntries(EDITABLE.map((k) => [k, getSetting(k)])) });
+});
+
+// ----- payment methods & sign-in (override .env) -----
+const CFG = {
+  pay_ton: 'bool', ton_wallet: 'str', toncenter_key: 'secret',
+  pay_xrocket: 'bool', xrocket_key: 'secret', test_payments: 'tri',
+  registration: 'bool', email_verification: 'bool', admin_emails: 'str',
+  smtp_host: 'str', smtp_port: 'str', smtp_secure: 'tri', smtp_user: 'str', smtp_pass: 'secret', smtp_from: 'str',
+};
+const mask = (v) => (v ? `••••${String(v).slice(-4)}` : '');
+function cfgState() {
+  const values = {};
+  for (const [k, t] of Object.entries(CFG)) {
+    const v = getSetting(`cfg_${k}`) || '';
+    values[k] = t === 'secret' ? mask(v) : v;
+  }
+  return {
+    values,
+    effective: {
+      tonWallet: config.ton.wallet, tonEnabled: config.pay.ton && !!config.ton.wallet,
+      xrocketConfigured: !!config.xrocket.apiKey, xrocketEnabled: config.pay.xrocket && !!config.xrocket.apiKey,
+      testPayments: config.allowTestPayments, smtp: !!config.smtp, smtpHost: config.smtp?.host || null,
+      registration: config.auth.registration, emailVerification: config.auth.emailVerification, adminEmails: config.adminEmails,
+    },
+  };
+}
+r.get('/config', (_req, res) => res.json(cfgState()));
+r.put('/config', (req, res) => {
+  const b = req.body || {};
+  for (const [k, t] of Object.entries(CFG)) {
+    if (b[k] === undefined) continue;
+    let v = b[k] === null ? '' : String(b[k]).trim();
+    if (t === 'secret' && v.startsWith('••••')) continue; // unchanged
+    if (t === 'bool') v = v === '' ? '' : v === 'true' || v === '1' ? 'true' : 'false';
+    if (t === 'tri') v = v === '' ? '' : v === 'true' ? 'true' : 'false';
+    if (k === 'smtp_port' && v && !/^\d{2,5}$/.test(v)) fail(400, 'Некорректный порт SMTP');
+    if (k === 'ton_wallet' && v && !/^[A-Za-z0-9_\-:]{40,70}$/.test(v)) fail(400, 'Некорректный TON-адрес');
+    setSetting(`cfg_${k}`, v.slice(0, 500));
+  }
+  res.json(cfgState());
 });
 
 /** Broadcast an announcement from the official account to every user. */

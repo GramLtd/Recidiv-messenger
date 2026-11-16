@@ -16,6 +16,7 @@ import marketRoutes from './routes/market.js';
 import walletRoutes, { webhooks } from './routes/wallet.js';
 import adminRoutes from './routes/admin.js';
 import musicRoutes from './routes/music.js';
+import walletLinkRoutes from './routes/wallets.js';
 
 const app = express();
 app.set('trust proxy', true);
@@ -26,7 +27,12 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/webhooks', webhooks);
 app.use('/api/admin', requireAuth, requireAdmin, adminRoutes);
-app.use('/api', requireAuth, userRoutes, chatRoutes, storyRoutes, giftRoutes, marketRoutes, walletRoutes, musicRoutes);
+app.use('/api', requireAuth, userRoutes, chatRoutes, storyRoutes, giftRoutes, marketRoutes, walletRoutes, musicRoutes, walletLinkRoutes);
+// TonConnect manifest for whatever domain the app is opened on (wallets check it for ton_proof).
+app.get('/tonconnect-manifest.json', (req, res) => {
+  const origin = `${req.protocol}://${req.get('host')}`;
+  res.json({ url: origin, name: 'Recidivist', iconUrl: `${origin}/icon-192.png` });
+});
 // Uploaded files: never let the browser render user-supplied HTML/SVG on our origin.
 const INLINE_EXT = /\.(jpe?g|png|gif|webp|avif|mp4|webm|mov|m4a|mp3|ogg|wav|opus)$/i;
 app.use('/uploads', express.static(config.uploadDir, {

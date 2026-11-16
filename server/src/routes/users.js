@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { db, getSetting, tx } from '../db.js';
 import { fail } from '../auth.js';
-import { meUser, publicUser, getUser, assertUsernameFree, changeBalance, pushBalance, serializeChat, now, safeUploadUrl } from '../services.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { config } from '../config.js';
+import { meUser, publicUser, getUser, assertUsernameFree, changeBalance, pushBalance, serializeChat, now, safeUploadUrl, normalizeLink, LINK_KINDS } from '../services.js';
 
 const r = Router();
 
@@ -18,6 +21,56 @@ r.patch('/me', (req, res) => {
     u.id,
   );
   res.json({ user: meUser(getUser(u.id)) });
+});
+
+const MAX_BANNER = 10 * 1024 * 1024;
+const uploadedSize = (url) => {
+  try { return fs.statSync(path.join(config.uploadDir, path.basename(url))).size; } catch { return -1; }
+};
+
+/** Profile banner: an image or a short video (≤5 s — checked by the client, ≤10 MB — checked here). */
+r.post('/me/banner', (req, res) => {
+  const url = req.body.url ? safeUploadUrl(req.body.url) : null;
+  let type = null;
+  if (url) {
+    const size = uploadedSize(url);
+    if (size < 0) fail(400, 'Файл не найден');
+    if (size > MAX_BANNER) fail(400, 'Баннер должен весить не больше 10 МБ');
+    type = /\.(mp4|webm|mov|m4v)$/i.test(url) ? 'video' : /\.(jpe?g|png|webp|gif|avif)$/i.test(url) ? 'image' : null;
+    if (!type) fail(400, 'Баннер — это картинка, GIF или видео');
+    if (req.body.duration && Number(req.body.duration) > 5.5) fail(400, 'Видео-баннер — не длиннее 5 секунд');
+  }
+  db.prepare('UPDATE users SET banner = ?, banner_type = ? WHERE id = ?').run(url, type, req.user.id);
+  res.json({ user: meUser(getUser(req.user.id)) });
+});
+
+r.post('/me/links', (req, res) => {
+  const links = {};
+  for (const k of LINK_KINDS) {
+    const v = normalizeLink(k, req.body?.[k]);
+    if (v) links[k] = v;
+  }
+  db.prepare('UPDATE users SET links = ? WHERE id = ?').run(Object.keys(links).length ? JSON.stringify(links) : null, req.user.id);
+  res.json({ user: meUser(getUser(req.user.id)) });
+});
+
+/** Chat wallpaper (synced between devices): a preset id or an uploaded image / video. */
+r.post('/me/wallpaper', (req, res) => {
+  const b = req.body || {};
+  let wp = null;
+  if (b.url) {
+    const url = safeUploadUrl(b.url);
+    if (uploadedSize(url) > 20 * 1024 * 1024) fail(400, 'Обои должны весить не больше 20 МБ');
+    wp = { url, type: /\.(mp4|webm|mov|m4v)$/i.test(url) ? 'video' : 'image' };
+  } else if (b.preset) {
+    wp = { preset: String(b.preset).replace(/[^a-z0-9-]/gi, '').slice(0, 32) };
+  }
+  if (wp) {
+    wp.dim = Math.max(0, Math.min(0.8, Number(b.dim ?? 0.25)));
+    wp.blur = Math.max(0, Math.min(20, Number(b.blur ?? 0)));
+  }
+  db.prepare('UPDATE users SET wallpaper = ? WHERE id = ?').run(wp ? JSON.stringify(wp) : null, req.user.id);
+  res.json({ user: meUser(getUser(req.user.id)) });
 });
 
 // ----- usernames (collectible) -----

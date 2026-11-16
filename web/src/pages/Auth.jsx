@@ -1,14 +1,74 @@
-import { useMemo, useRef, useState } from 'react';
-import { ShieldAlert, Copy, Eye, ArrowLeft, Mail, KeyRound, Check } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ShieldAlert, Copy, Eye, ArrowLeft, Mail, KeyRound, Check, Gift, Lock, Store, Phone } from 'lucide-react';
 import { api } from '../api.js';
 import { useStore } from '../store.js';
 import { newMnemonic, isValidMnemonic, deriveAuthKey, normalizeMnemonic } from '../seed.js';
 
-function Logo() {
+function Logo({ small }) {
   return (
-    <div className="auth-logo">
-      <svg width="64" height="64" viewBox="0 0 512 512"><path d="M170 110h110c70 0 115 38 115 99 0 45-24 77-64 92l78 101h-80l-67-92h-25v92h-67zm67 56v86h42c31 0 48-15 48-43s-17-43-48-43z" fill="#fff" /></svg>
+    <div className={`auth-logo2 ${small ? 'small' : ''}`}>
+      <span className="auth-logo-halo" />
+      <img src="/icon.svg" alt="Recidivist" draggable={false} />
     </div>
+  );
+}
+
+// Gifts drifting in the background of the welcome screen.
+const FLOAT = [
+  '/gifts/pahan-pepe/050.webp', '/gifts/blatnoy-patefon/100.webp', '/gifts/kot-stukach/050.webp', '/gifts/sigara-smotryashchego/055.webp',
+  '/gifts/regular/1f48e.webp', '/gifts/regular/2764_fe0f_200d_1f525.webp', '/gifts/pahan-pepe/001.webp', '/gifts/blatnoy-patefon/001.webp',
+  '/gifts/regular/1f480.webp', '/gifts/kot-stukach/001.webp', '/gifts/regular/1f3b2.webp', '/gifts/sigara-smotryashchego/001.webp',
+];
+function Backdrop() {
+  const items = useMemo(() => FLOAT.map((src, i) => ({
+    src,
+    x: (i * 37 + 7) % 100,
+    s: 46 + ((i * 23) % 40),
+    d: 14 + ((i * 7) % 10),
+    delay: -((i * 2.3) % 14),
+    r: ((i * 53) % 60) - 30,
+  })), []);
+  return (
+    <div className="auth-bg" aria-hidden>
+      <i className="blob b1" /><i className="blob b2" /><i className="blob b3" />
+      <div className="auth-grid" />
+      {items.map((it, i) => (
+        <img key={i} src={it.src} alt="" className="auth-float" style={{ left: `${it.x}%`, width: it.s, height: it.s, animationDuration: `${it.d}s`, animationDelay: `${it.delay}s`, '--r': `${it.r}deg` }} />
+      ))}
+    </div>
+  );
+}
+
+const FEATURES = [
+  { icon: Gift, title: 'Коллекционные подарки', text: 'Улучшайте подарки до уникальных NFT-моделей с редкими фонами и узорами.' },
+  { icon: Lock, title: 'Вход по сид-фразе', text: '12 слов вместо пароля. Фраза не покидает ваше устройство.' },
+  { icon: Store, title: 'Маркет', text: 'Покупайте и продавайте подарки и юзернеймы за искры.' },
+  { icon: Phone, title: 'Анонимные номера', text: 'Номер +888 для профиля — без SIM-карты и без привязки к вам.' },
+];
+function Features() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((x) => (x + 1) % FEATURES.length), 3200);
+    return () => clearInterval(t);
+  }, []);
+  const f = FEATURES[i];
+  const Icon = f.icon;
+  return (
+    <div className="auth-features">
+      <div className="auth-feature" key={i}>
+        <span className="auth-feature-icon"><Icon size={22} /></span>
+        <div><b>{f.title}</b><span>{f.text}</span></div>
+      </div>
+      <div className="auth-dots">{FEATURES.map((_, k) => <button key={k} className={k === i ? 'on' : ''} onClick={() => setI(k)} aria-label={`Слайд ${k + 1}`} />)}</div>
+    </div>
+  );
+}
+
+function Title({ text }) {
+  return (
+    <h1 className="auth-title" aria-label={text}>
+      {[...text].map((c, i) => <span key={i} style={{ animationDelay: `${0.25 + i * 0.05}s` }}>{c}</span>)}
+    </h1>
   );
 }
 
@@ -57,6 +117,8 @@ export default function Auth() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [devHint, setDevHint] = useState(false);
+  const [authCfg, setAuthCfg] = useState({});
+  useEffect(() => { api('/auth/config').then((r) => setAuthCfg(r.auth || {})).catch(() => {}); }, []);
 
   const words = mnemonic.split(' ');
   const checkIdx = useMemo(() => {
@@ -80,6 +142,13 @@ export default function Auth() {
   const sendCode = () =>
     run(async () => {
       const r = await api('/auth/send-code', { body: { email } });
+      if (r.emailToken) {
+        // email confirmation is turned off in the admin panel
+        setEmailToken(r.emailToken);
+        setMnemonic(newMnemonic());
+        setStep('seed');
+        return;
+      }
       setDevHint(r.devMode);
       setStep('code');
     });
@@ -121,16 +190,19 @@ export default function Auth() {
 
   if (mode === 'welcome') {
     return (
-      <div className="auth-page">
+      <div className="auth-page welcome">
+        <Backdrop />
         <div className="auth-card">
           <Logo />
-          <h1>Recidivist</h1>
-          <p className="lead">Быстрый и безопасный мессенджер. Ваш аккаунт защищён сид-фразой — как криптокошелёк.</p>
-          <div style={{ height: 12 }} />
-          <button className="btn block" onClick={() => { setMode('register'); setStep('email'); }}>Создать аккаунт</button>
-          <button className="btn secondary block" onClick={() => setMode('login')}>
-            <KeyRound size={18} /> Войти по сид-фразе
-          </button>
+          <Title text="Recidivist" />
+          <p className="lead auth-lead">Мессенджер со своей валютой, коллекционными подарками и входом по сид-фразе.</p>
+          <Features />
+          <div className="auth-cta">
+            {authCfg.registration !== false && <button className="btn block" onClick={() => { setMode('register'); setStep('email'); }}>Создать аккаунт</button>}
+            <button className="btn secondary block" onClick={() => setMode('login')}>
+              <KeyRound size={18} /> Войти по сид-фразе
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -139,8 +211,10 @@ export default function Auth() {
   if (mode === 'login') {
     return (
       <div className="auth-page">
-        <div className="auth-card">
+        <Backdrop />
+        <div className="auth-card step" key="login">
           {back(() => setMode('welcome'))}
+          <Logo small />
           <h1>Вход</h1>
           <p className="lead">Введите 12 слов вашей сид-фразы. Можно вставить фразу целиком в первое поле.</p>
           <SeedInputs words={loginWords} setWords={setLoginWords} />
@@ -160,10 +234,12 @@ export default function Auth() {
   // ----- registration -----
   return (
     <div className="auth-page">
-      <div className="auth-card">
+      <Backdrop />
+      <div className="auth-card step" key={step}>
         {step === 'email' && (
           <>
             {back(() => setMode('welcome'))}
+            <Logo small />
             <h1>Ваша почта</h1>
             <p className="lead">Мы отправим код подтверждения.</p>
             <div className="field">
@@ -195,7 +271,7 @@ export default function Auth() {
             <p className="lead">Запишите эти 12 слов по порядку и храните в надёжном месте. Это <b style={{ color: 'var(--text)' }}>единственный</b> способ войти в аккаунт.</p>
             <div className={`seed-grid ${revealed ? '' : 'seed-blur'}`} onClick={() => setRevealed(true)}>
               {words.map((w, i) => (
-                <div className="seed-word" key={i}><i>{i + 1}</i>{w}</div>
+                <div className="seed-word" key={i} style={{ animationDelay: `${i * 0.04}s` }}><i>{i + 1}</i>{w}</div>
               ))}
             </div>
             {!revealed ? (

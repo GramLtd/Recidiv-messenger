@@ -12,6 +12,18 @@ if (env.NODE_ENV === 'production' && (!env.JWT_SECRET || env.JWT_SECRET === 'dev
   process.exit(1);
 }
 
+// Settings saved from the admin panel override the .env values (empty = use .env).
+let override = () => undefined;
+export function setConfigOverride(fn) { override = fn; }
+const ov = (k) => {
+  const v = override(k);
+  return v === undefined || v === null || v === '' ? undefined : String(v);
+};
+const flag = (k, dflt) => {
+  const v = ov(k);
+  return v === undefined ? dflt : v === 'true' || v === '1';
+};
+
 export const config = {
   port: Number(env.PORT || 4000),
   publicUrl: env.PUBLIC_URL || `http://localhost:${env.PORT || 4000}`,
@@ -19,30 +31,50 @@ export const config = {
   dbPath: env.DB_PATH || path.join(ROOT, 'data', 'recidivist.db'),
   uploadDir: env.UPLOAD_DIR || path.join(ROOT, 'data', 'uploads'),
   maxUploadMb: Number(env.MAX_UPLOAD_MB || 50),
-  adminEmails: (env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
+  get adminEmails() {
+    return (ov('admin_emails') ?? env.ADMIN_EMAILS ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  },
   // When SMTP is not configured, email codes are printed to the server console (dev mode).
-  smtp: env.SMTP_HOST
-    ? {
-        host: env.SMTP_HOST,
-        port: Number(env.SMTP_PORT || 587),
-        secure: env.SMTP_SECURE === 'true',
-        auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
-        from: env.SMTP_FROM || 'Recidivist <no-reply@recidivist.app>',
-      }
-    : null,
+  get smtp() {
+    const host = ov('smtp_host') ?? env.SMTP_HOST;
+    if (!host) return null;
+    const fromAdmin = ov('smtp_host') !== undefined;
+    const pick = (k, e) => (fromAdmin ? ov(k) : env[e]);
+    const user = pick('smtp_user', 'SMTP_USER');
+    return {
+      host,
+      port: Number(pick('smtp_port', 'SMTP_PORT') || 587),
+      secure: (pick('smtp_secure', 'SMTP_SECURE') || '') === 'true',
+      auth: user ? { user, pass: pick('smtp_pass', 'SMTP_PASS') } : undefined,
+      from: pick('smtp_from', 'SMTP_FROM') || 'Recidivist <no-reply@recidivist.app>',
+    };
+  },
   xrocket: {
-    apiKey: env.XROCKET_API_KEY || '',
+    get apiKey() { return ov('xrocket_key') ?? env.XROCKET_API_KEY ?? ''; },
     baseUrl: env.XROCKET_BASE_URL || 'https://pay.xrocket.tg',
   },
   ton: {
-    wallet: env.TON_WALLET_ADDRESS || '',
+    get wallet() { return ov('ton_wallet') ?? env.TON_WALLET_ADDRESS ?? ''; },
     toncenter: env.TONCENTER_URL || 'https://toncenter.com/api/v2',
-    toncenterKey: env.TONCENTER_API_KEY || '',
+    get toncenterKey() { return ov('toncenter_key') ?? env.TONCENTER_API_KEY ?? ''; },
+  },
+  // Payment methods can be switched off from the admin panel without removing keys.
+  pay: {
+    get ton() { return flag('pay_ton', true); },
+    get xrocket() { return flag('pay_xrocket', true); },
+  },
+  auth: {
+    get registration() { return flag('registration', true); },
+    get emailVerification() { return flag('email_verification', true); },
   },
   music: {
     jamendoClientId: env.JAMENDO_CLIENT_ID || '',
     auddToken: env.AUDD_API_TOKEN || '',
   },
   // Allows the "test payment" button in the wallet. Disable in production.
-  allowTestPayments: env.ALLOW_TEST_PAYMENTS ? env.ALLOW_TEST_PAYMENTS === 'true' : env.NODE_ENV !== 'production',
+  get allowTestPayments() {
+    const v = ov('test_payments');
+    if (v !== undefined) return v === 'true';
+    return env.ALLOW_TEST_PAYMENTS ? env.ALLOW_TEST_PAYMENTS === 'true' : env.NODE_ENV !== 'production';
+  },
 };

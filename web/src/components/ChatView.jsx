@@ -10,6 +10,8 @@ import { AudioMessage } from './Music.jsx';
 import { audioDuration, titleFromFile } from '../player.js';
 import { GiftArt } from './GiftArt.jsx';
 import { colorFor, dayLabel, lastSeen, membersLabel, timeHM, fileSize } from '../util.js';
+import { ChatWallpaper } from './ProfileExtras.jsx';
+import { playSend, playIncoming } from '../sound.js';
 
 const QUICK_REACTIONS = ['❤️', '🔥', '👍', '😂', '😮', '😢', '💀', '🤡'];
 const EMOJIS = '😀😃😄😁😆😅🤣😂🙂😉😊😇🥰😍🤩😘😋😛😜🤪😝🤑🤗🤭🤫🤔🤐🤨😐😑😶😏😒🙄😬😮‍💨🤥😌😔😪🤤😴😷🤒🤕🤢🤮🥵🥶🥴😵🤯🤠🥳😎🤓🧐😕😟🙁😮😯😲😳🥺😦😧😨😰😥😢😭😱😖😣😞😓😩😫🥱😤😡😠🤬😈👿💀☠️💩🤡👹👺👻👽👾🤖😺😸😹😻😼😽🙀😿😾🙈🙉🙊💋💌💘💝💖💗💓💞💕💟❣️💔❤️‍🔥❤️🧡💛💚💙💜🤎🖤🤍💯💢💥💫💦💨🕳️💬💭💤👋🤚🖐️✋🖖👌🤌🤏✌️🤞🤟🤘🤙👈👉👆🖕👇☝️👍👎✊👊🤛🤜👏🙌👐🤲🤝🙏💪🦾🔥⭐🌟✨⚡🎉🎊🎁🏆👑💎🔪🗝️⛓️🚬🍾🥂🍻🎲🎯🎮'.match(/\p{Extended_Pictographic}(?:️)?(?:‍\p{Extended_Pictographic}(?:️)?)*/gu);
@@ -37,7 +39,7 @@ function MessageContent({ m, chat, onOpenMedia }) {
         <div style={{ cursor: 'pointer', textAlign: 'center', minWidth: 200 }} onClick={() => openModal('giftDetails', { userGiftId: m.gift.id })}>
           <GiftArt userGift={m.gift} size={160} rounded={14} animated style={{ margin: '4px auto' }} />
           <div className="bold">{m.gift.collectible ? `${m.gift.gift.name} #${m.gift.collectible.number}` : m.gift.gift.name}</div>
-          <div className="small muted">{m.gift.collectible ? 'Коллекционный подарок' : `Подарок за ${m.gift.gift.price} ✦`}</div>
+          <div className="small muted">{m.gift.collectible ? 'Коллекционный подарок' : <>Подарок за <Spark amount={m.gift.gift.price} /></>}</div>
           <button className="btn sm outline" style={{ marginTop: 8 }}><Gift size={15} /> Посмотреть</button>
         </div>
       )}
@@ -83,8 +85,10 @@ async function resolveUsername(name) {
 
 function Message({ m, chat, me, grouped, groupedNext, onContext, onOpenMedia, highlight, onJump }) {
   const openModal = useStore((s) => s.openModal);
-  if (m.type === 'system') return <div className="sys-msg">{m.text}</div>;
   const out = m.sender?.id === me.id && chat.type !== 'channel';
+  // a message I just sent flies out of the composer (decided once, on mount)
+  const [fresh] = useState(() => out && Date.now() - (window.__sentAt || 0) < 4000);
+  if (m.type === 'system') return <div className="sys-msg">{m.text}</div>;
   const isChannel = chat.type === 'channel';
   const showSender = !out && !grouped && (chat.type === 'group');
   const showAvatar = chat.type === 'group' && !out && !groupedNext;
@@ -93,7 +97,7 @@ function Message({ m, chat, me, grouped, groupedNext, onContext, onOpenMedia, hi
   const react = (emoji) => api(`/messages/${m.id}/react`, { body: { emoji } }).then((r) => useStore.getState().patchMessage(r.message));
   return (
     <div
-      className={`msg-row ${out ? 'out' : 'in'} ${grouped ? 'grouped' : ''} ${groupedNext ? 'grouped-next' : ''} ${isChannel ? 'channel-post' : ''} ${highlight ? 'highlight' : ''}`}
+      className={`msg-row ${out ? 'out' : 'in'} ${grouped ? 'grouped' : ''} ${groupedNext ? 'grouped-next' : ''} ${isChannel ? 'channel-post' : ''} ${highlight ? 'highlight' : ''} ${fresh ? 'fresh' : ''}`}
       data-mid={m.id}
       onContextMenu={(e) => { e.preventDefault(); onContext(e, m); }}
       onDoubleClick={() => !m.deleted && react('❤️')}
@@ -179,6 +183,7 @@ function Composer({ chat }) {
   const [emoji, setEmoji] = useState(false);
   const [progress, setProgress] = useState(null);
   const [rec, setRec] = useState(null);
+  const [fire, setFire] = useState(0);
   const taRef = useRef();
   const fileRef = useRef();
   const lastTyping = useRef(0);
@@ -223,6 +228,9 @@ function Composer({ chat }) {
         patchMessage(r.message);
         setEdit(null);
       } else {
+        window.__sentAt = Date.now();
+        setFire((x) => x + 1);
+        playSend();
         await sendMessage(chat.id, { text: t, replyTo: reply?.id });
         setReply(null);
       }
@@ -241,6 +249,8 @@ function Composer({ chat }) {
         const duration = isMusic ? await audioDuration(f) : 0;
         const media = await upload(f, setProgress);
         if (isMusic) Object.assign(media, { kind: 'audio', duration, ...titleFromFile(f.name) });
+        window.__sentAt = Date.now();
+        playSend();
         await sendMessage(chat.id, { media, text: files.length === 1 ? text.trim() : '', replyTo: reply?.id });
         if (files.length === 1) { setText(''); drafts.current[chat.id] = ''; }
       } catch (e) {
@@ -334,7 +344,7 @@ function Composer({ chat }) {
           </div>
         </div>
         {text.trim() || edit ? (
-          <button className="send-btn" onClick={submit}>{edit ? <Check size={24} /> : <Send size={22} style={{ marginLeft: 2 }} />}</button>
+          <button key={`s${fire}`} className={`send-btn ${fire ? 'fire' : ''}`} onPointerDown={(e) => e.preventDefault()} onClick={submit}>{edit ? <Check size={24} /> : <Send size={22} style={{ marginLeft: 2 }} />}</button>
         ) : rec ? (
           <button className="send-btn recording" onClick={() => stopRec(false)}><Send size={22} /></button>
         ) : (
@@ -365,7 +375,18 @@ export default function ChatView() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQ, setSearchQ] = useState('');
   const [searchRes, setSearchRes] = useState([]);
+  const wallpaper = useStore((s) => s.me?.wallpaper);
   const scrollRef = useRef();
+  // soft sound for messages arriving in the open chat
+  const lastSeenId = useRef(null);
+  useEffect(() => {
+    const last = messages?.[messages.length - 1];
+    if (!last) return;
+    const meId = useStore.getState().me?.id;
+    if (lastSeenId.current && last.id > lastSeenId.current && last.sender?.id !== meId && !document.hidden && !chat?.muted) playIncoming();
+    lastSeenId.current = last.id;
+  }, [messages]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { lastSeenId.current = null; }, [chatId]);
   const loadingOlder = useRef(false);
   const prevHeight = useRef(0);
   const stick = useRef(true);
@@ -439,7 +460,8 @@ export default function ChatView() {
   };
 
   return (
-    <div className="chat-main">
+    <div className={`chat-main ${wallpaper ? 'has-wp' : ''}`}>
+      <ChatWallpaper wp={wallpaper} />
       <div className="chat-header">
         <button className="icon-btn back-btn" onClick={() => openChat(null)}><ArrowLeft size={22} /></button>
         {searchOpen ? (

@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, upload } from '../api.js';
-import { Avatar, Modal, Spark, useAsync, useAction } from './common.jsx';
+import { Avatar, Modal, Spark, Switch, useAsync, useAction } from './common.jsx';
+import { AvatarCropper, BannerEditor, LinksEditor, WallpaperPicker } from './ProfileExtras.jsx';
+import { WalletsSection } from './Wallets.jsx';
 import { ACCENTS, BACKGROUNDS, loadTheme, saveTheme } from '../theme.js';
 
 const STATUS_EMOJI = ['', '🔴', '💀', '🔥', '⛓️', '👑', '💎', '🗝️', '⚡', '🎲', '🕷️', '🌙'];
@@ -14,6 +16,7 @@ function ProfileTab() {
   const [bio, setBio] = useState(me.bio || '');
   const [avatar, setAvatar] = useState(me.avatar);
   const [emojiStatus, setEmojiStatus] = useState(me.emojiStatus || '');
+  const [cropFile, setCropFile] = useState(null);
   const [run, busy] = useAction();
   const save = () => run(async () => setMe((await api.patch('/me', { displayName: name, bio, avatar, emojiStatus: emojiStatus || null })).user), 'Профиль сохранён');
   return (
@@ -21,8 +24,26 @@ function ProfileTab() {
       <label style={{ cursor: 'pointer', position: 'relative', alignSelf: 'center' }}>
         <Avatar src={avatar} name={name} id={me.id} size={100} />
         <span className="story-add" style={{ width: 32, height: 32 }}><Camera size={16} /></span>
-        <input type="file" accept="image/*" hidden onChange={async (e) => e.target.files[0] && setAvatar((await upload(e.target.files[0])).url)} />
+        <input type="file" accept="image/*" hidden onChange={(e) => { if (e.target.files[0]) setCropFile(e.target.files[0]); e.target.value = ''; }} />
       </label>
+      {cropFile && (
+        <AvatarCropper
+          file={cropFile}
+          onCancel={() => setCropFile(null)}
+          onDone={async (f) => {
+            try {
+              const url = (await upload(f)).url;
+              setAvatar(url);
+              setMe((await api.patch('/me', { avatar: url })).user);
+              setCropFile(null);
+              useStore.getState().toast('Аватарка обновлена');
+            } catch (e) {
+              useStore.getState().toast(e.message, 'error');
+            }
+          }}
+        />
+      )}
+      <BannerEditor />
       <div className="field"><label>Имя</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={64} /></div>
       <div className="field"><label>О себе</label><textarea className="input" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={200} /><span className="hint">{bio.length}/200</span></div>
       <div className="field">
@@ -33,6 +54,7 @@ function ProfileTab() {
           ))}
         </div>
       </div>
+      <LinksEditor />
       <ProfileExtras />
       <button className="list-item" style={{ background: 'var(--bg-2)' }} onClick={() => import('./ProfileView.jsx').then((m) => m.openNumbersBot())}>
         <Phone size={20} className="accent" />
@@ -140,6 +162,15 @@ function AppearanceTab() {
           </label>
         </div>
       </div>
+      <WallpaperPicker />
+      <div className="list-item" style={{ background: 'var(--bg-2)' }}>
+        <div className="grow"><div className="bold">Звук отправки</div><div className="tiny muted">Короткий «свуш», когда вы отправляете сообщение</div></div>
+        <Switch on={theme.sendSound !== false} onChange={(v) => update({ sendSound: v })} />
+      </div>
+      <div className="list-item" style={{ background: 'var(--bg-2)' }}>
+        <div className="grow"><div className="bold">Звук входящих</div><div className="tiny muted">Когда сообщение приходит в открытый чат</div></div>
+        <Switch on={theme.inSound !== false} onChange={(v) => update({ inSound: v })} />
+      </div>
       <div className="field">
         <label>Размер текста: {theme.fontSize}px</label>
         <input type="range" min={13} max={19} value={theme.fontSize} onChange={(e) => update({ fontSize: Number(e.target.value) })} style={{ accentColor: 'var(--accent)' }} />
@@ -185,11 +216,13 @@ export function SettingsModal({ tab: initialTab = 'profile' }) {
         <button className={tab === 'profile' ? 'on' : ''} onClick={() => setTab('profile')}>Профиль</button>
         <button className={tab === 'usernames' ? 'on' : ''} onClick={() => setTab('usernames')}>Юзернеймы</button>
         <button className={tab === 'theme' ? 'on' : ''} onClick={() => setTab('theme')}>Тема</button>
+        <button className={tab === 'wallets' ? 'on' : ''} onClick={() => setTab('wallets')}>Кошельки</button>
         <button className={tab === 'privacy' ? 'on' : ''} onClick={() => setTab('privacy')}>Прочее</button>
       </div>
       {tab === 'profile' && <ProfileTab />}
       {tab === 'usernames' && <UsernamesTab />}
       {tab === 'theme' && <AppearanceTab />}
+      {tab === 'wallets' && <WalletsSection />}
       {tab === 'privacy' && <PrivacyTab />}
     </Modal>
   );

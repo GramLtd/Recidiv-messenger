@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, Gift, Palette, Receipt, CreditCard, Store, Settings, Megaphone, ArrowLeft, Search, Plus, Ban, BadgeCheck, Shield, Coins, FlaskConical,
+  LayoutDashboard, Users, Gift, Palette, Receipt, CreditCard, Store, Settings, Megaphone, ArrowLeft, Search, Plus, Ban, BadgeCheck, Shield, Coins, FlaskConical, KeyRound,
 } from 'lucide-react';
 import { api } from '../api.js';
 import { useStore } from '../store.js';
@@ -372,6 +372,72 @@ function BroadcastPage() {
   );
 }
 
+function Tri({ value, onChange, labels = ['как в .env', 'вкл', 'выкл'] }) {
+  return (
+    <div className="tabs" style={{ marginBottom: 0, maxWidth: 360 }}>
+      {[['', labels[0]], ['true', labels[1]], ['false', labels[2]]].map(([v, l]) => (
+        <button key={v || 'env'} className={value === v ? 'on' : ''} onClick={() => onChange(v)}>{l}</button>
+      ))}
+    </div>
+  );
+}
+
+function ConfigPage() {
+  const { data, setData } = useAsync(() => api('/admin/config'), []);
+  const [v, setV] = useState(null);
+  const [run, busy] = useAction();
+  if (!data) return <Spinner />;
+  const val = v || data.values;
+  const set = (k) => (e) => setV({ ...val, [k]: typeof e === 'string' ? e : e.target.value });
+  const save = () => run(async () => { const r = await api.put('/admin/config', val); setData(r); setV(null); }, 'Настройки сохранены');
+  const ef = data.effective;
+  const status = (on, text) => <span className={`tag ${on ? 'green' : 'red'}`}>{text}</span>;
+  return (
+    <>
+      <h2>Оплата и вход</h2>
+      <div className="small muted" style={{ marginBottom: 14, maxWidth: 680 }}>Эти настройки заменяют значения из <code>server/.env</code>. Пустое поле / «как в .env» — используется значение из файла. Секретные ключи показываются замаскированными: чтобы заменить, впишите новый.</div>
+      <div className="col" style={{ maxWidth: 680, gap: 16 }}>
+        <div className="card col">
+          <div className="row"><b className="grow">TON (TonConnect)</b>{status(ef.tonEnabled, ef.tonEnabled ? 'работает' : 'выключено')}</div>
+          <div className="row"><span className="grow small">Принимать оплату в TON</span><Switch on={val.pay_ton !== 'false'} onChange={(on) => set('pay_ton')(on ? 'true' : 'false')} /></div>
+          <div className="field"><label>Кошелёк проекта (куда приходят платежи)</label><input className="input" value={val.ton_wallet} onChange={set('ton_wallet')} placeholder={ef.tonWallet || 'UQ…'} /></div>
+          <div className="field"><label>Toncenter API key (необязательно)</label><input className="input" value={val.toncenter_key} onChange={set('toncenter_key')} placeholder="ключ toncenter.com" /></div>
+        </div>
+        <div className="card col">
+          <div className="row"><b className="grow">xRocket Pay</b>{status(ef.xrocketEnabled, ef.xrocketEnabled ? 'работает' : ef.xrocketConfigured ? 'выключено' : 'нет ключа')}</div>
+          <div className="row"><span className="grow small">Принимать оплату через xRocket</span><Switch on={val.pay_xrocket !== 'false'} onChange={(on) => set('pay_xrocket')(on ? 'true' : 'false')} /></div>
+          <div className="field"><label>API key</label><input className="input" value={val.xrocket_key} onChange={set('xrocket_key')} placeholder="Rocket-Pay-Key" /></div>
+        </div>
+        <div className="card col">
+          <div className="row"><b className="grow">Тестовые платежи</b>{status(ef.testPayments, ef.testPayments ? 'включены' : 'выключены')}</div>
+          <div className="small muted">Кнопка «тестовая оплата» в кошельке начисляет искры без денег. В продакшене выключите.</div>
+          <Tri value={val.test_payments} onChange={set('test_payments')} />
+        </div>
+        <div className="card col">
+          <div className="row"><KeyRound size={18} className="accent" /><b className="grow">Вход и регистрация</b></div>
+          <div className="row"><span className="grow small">Регистрация новых пользователей открыта</span><Switch on={val.registration !== 'false'} onChange={(on) => set('registration')(on ? 'true' : 'false')} /></div>
+          <div className="row"><span className="grow small">Подтверждать почту кодом</span><Switch on={val.email_verification !== 'false'} onChange={(on) => set('email_verification')(on ? 'true' : 'false')} /></div>
+          <div className="field"><label>Email администраторов (через запятую)</label><input className="input" value={val.admin_emails} onChange={set('admin_emails')} placeholder={ef.adminEmails.join(', ') || 'admin@example.com'} /><span className="hint">Пользователь с таким email при регистрации сразу получает права админа.</span></div>
+        </div>
+        <div className="card col">
+          <div className="row"><b className="grow">Почта (SMTP)</b>{status(ef.smtp, ef.smtp ? ef.smtpHost : 'не настроена — коды в консоли')}</div>
+          <div className="row" style={{ flexWrap: 'wrap' }}>
+            <div className="field grow"><label>Хост</label><input className="input" value={val.smtp_host} onChange={set('smtp_host')} placeholder="smtp.yandex.ru" /></div>
+            <div className="field" style={{ width: 110 }}><label>Порт</label><input className="input" value={val.smtp_port} onChange={set('smtp_port')} placeholder="587" /></div>
+          </div>
+          <div className="row" style={{ flexWrap: 'wrap' }}>
+            <div className="field grow"><label>Логин</label><input className="input" value={val.smtp_user} onChange={set('smtp_user')} autoComplete="off" /></div>
+            <div className="field grow"><label>Пароль</label><input className="input" type="password" value={val.smtp_pass} onChange={set('smtp_pass')} autoComplete="new-password" /></div>
+          </div>
+          <div className="field"><label>Отправитель</label><input className="input" value={val.smtp_from} onChange={set('smtp_from')} placeholder="Recidivist <no-reply@домен>" /></div>
+          <div className="field"><label>SSL (порт 465)</label><Tri value={val.smtp_secure} onChange={set('smtp_secure')} labels={['авто', 'да', 'нет']} /></div>
+        </div>
+        <button className="btn" disabled={busy} onClick={save}>Сохранить</button>
+      </div>
+    </>
+  );
+}
+
 const PAGES = [
   ['dashboard', 'Дашборд', LayoutDashboard, Dashboard],
   ['users', 'Пользователи', Users, UsersPage],
@@ -381,6 +447,7 @@ const PAGES = [
   ['payments', 'Платежи', CreditCard, PaymentsPage],
   ['listings', 'Маркет', Store, ListingsPage],
   ['settings', 'Настройки', Settings, SettingsPage],
+  ['config', 'Оплата и вход', KeyRound, ConfigPage],
   ['broadcast', 'Рассылка', Megaphone, BroadcastPage],
 ];
 

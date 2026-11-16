@@ -9,12 +9,34 @@ import { GiftArt, GiftModel, emoji3d } from './GiftArt.jsx';
 import { usePlayer, fmtTime } from '../player.js';
 import { Cover } from './Music.jsx';
 import { lastSeen, fmtNum, plural } from '../util.js';
+import { BannerMedia, ProfileLinks } from './ProfileExtras.jsx';
 
 // ---------------- gift tiles ----------------
 export function GiftTile({ ug, onClick, index = 0, canPin, onPin }) {
   const col = ug.collectible;
+  const ref = useRef();
+  // 3D tilt + glare that follow the finger / cursor
+  const move = (e) => {
+    const el = ref.current;
+    if (!el || e.pointerType === 'mouse' && e.buttons === 0 && !matchMedia('(hover: hover)').matches) return;
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width;
+    const y = (e.clientY - r.top) / r.height;
+    el.classList.add('tilting');
+    el.style.transform = `perspective(600px) rotateY(${(x - 0.5) * 16}deg) rotateX(${(0.5 - y) * 14}deg) scale(1.03)`;
+    el.style.setProperty('--gx', `${x * 100}%`);
+    el.style.setProperty('--gy', `${y * 100}%`);
+  };
+  const leave = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.classList.remove('tilting');
+    el.style.transform = '';
+  };
   return (
-    <div className={`gift-card ${col ? 'is-col' : ''}`} onClick={onClick} style={{ animationDelay: `${Math.min(index, 20) * 35}ms`, opacity: ug.hidden ? 0.45 : undefined }}>
+    <div ref={ref} className={`gift-card ${col ? 'is-col' : ''}`} onClick={onClick} onPointerMove={move} onPointerLeave={leave} onPointerUp={leave} onPointerCancel={leave}
+      style={{ animationDelay: `${Math.min(index, 20) * 45}ms`, opacity: ug.hidden ? 0.45 : undefined }}>
+      <span className="glare" />
       {col ? (
         <GiftArt userGift={ug} size="100%" height="100%" rounded={0} style={{ position: 'absolute', inset: 0 }} />
       ) : (
@@ -65,9 +87,9 @@ export function GiftsGrid({ userId, onlyCollectible, filter = onlyCollectible ? 
     );
   }
   return (
-    <div className="gift-cards">
+    <div className="gift-cards pv-grid">
       {gifts.map((ug, i) => (
-        <GiftTile key={ug.id} ug={ug} index={i} canPin={userId === me.id} onPin={pin} onClick={() => openModal('giftDetails', { userGiftId: ug.id })} />
+        <GiftTile key={ug.id} ug={ug} index={i} canPin={userId === me.id} onPin={pin} onClick={() => openModal('giftDetails', { userGiftId: ug.id, list: gifts.map((g) => g.id) })} />
       ))}
     </div>
   );
@@ -92,23 +114,30 @@ function Sparkles() {
   );
 }
 
-/** Gifts slowly orbiting around the avatar (pinned first, then collectibles). */
+/** Gifts scattered around the avatar (like the reference): they fly out of the avatar and gently bob. */
+const SPOTS = [
+  [16, 22, -12], [84, 20, 10], [6, 52, 8], [94, 50, -8], [18, 82, 14], [82, 84, -14],
+  [36, 6, 6], [64, 7, -6], [30, 96, -10], [70, 96, 10], [2, 30, 0], [98, 72, 0],
+];
 function Orbit({ gifts, onOpen }) {
-  const items = gifts.slice(0, 8);
+  const items = gifts.slice(0, SPOTS.length);
   if (!items.length) return null;
   return (
-    <div className="pv-orbit">
+    <div className="pv-scatter">
       {items.map((ug, i) => {
-        const a = (i / items.length) * 360 - 90;
+        const [x, y, rot] = SPOTS[i];
         const m = ug.collectible?.model;
         return (
-          <div key={ug.id} className="pv-orbit-arm" style={{ transform: `rotate(${a}deg)` }}>
-            <button className="pv-orbit-item" style={{ transform: `rotate(${-a}deg)`, animationDelay: `${i * 0.4}s` }} onClick={() => onOpen(ug)}>
-              <span className="pv-orbit-counter">
-                <GiftModel emoji={m?.emoji || ug.gift.emoji} image={m?.image || ug.gift.image} filter={m?.filter} size={40} />
-              </span>
-            </button>
-          </div>
+          <button
+            key={ug.id}
+            className="pv-scatter-item"
+            style={{ left: `${x}%`, top: `${y}%`, '--fx': `${(50 - x) * 2.9}px`, '--fy': `${(50 - y) * 2.4}px`, '--rot': `${rot}deg`, animationDelay: `${0.25 + i * 0.07}s` }}
+            onClick={() => onOpen(ug, items)}
+          >
+            <span style={{ animationDelay: `${i * 0.37}s`, animationDuration: `${3.4 + (i % 4) * 0.5}s` }}>
+              <GiftModel emoji={m?.emoji || ug.gift.emoji} image={m?.image || ug.gift.image} filter={m?.filter} size={i < 6 ? 42 : 32} />
+            </span>
+          </button>
         );
       })}
     </div>
@@ -240,7 +269,8 @@ export function ProfileView({ userId, onClose }) {
 
   return (
     <div className="pv">
-      <div className="pv-hero" style={{ '--glow': glow }}>
+      <div className={`pv-hero ${u.banner ? 'has-banner' : ''}`} style={{ '--glow': glow }}>
+        {u.banner && <div className="pv-banner"><BannerMedia banner={u.banner} /></div>}
         <div className="pv-top">
           <span className="spacer" />
           {isMe && <button className="glass-icon" onClick={() => openModal('settings', { tab: 'privacy' })} title="Безопасность"><Shield size={17} /></button>}
@@ -249,7 +279,7 @@ export function ProfileView({ userId, onClose }) {
         </div>
         <div className="pv-stage">
           <Sparkles />
-          <Orbit gifts={orbit} onOpen={(ug) => openModal('giftDetails', { userGiftId: ug.id })} />
+          <Orbit gifts={orbit} onOpen={(ug, items) => openModal('giftDetails', { userGiftId: ug.id, list: items.map((g) => g.id) })} />
           <div className="pv-avatar">
             <span className="pv-ring" />
             <Avatar src={u.avatar} name={u.displayName} id={u.id} size={118} />
@@ -274,6 +304,7 @@ export function ProfileView({ userId, onClose }) {
             </button>
           )}
         </div>
+        <ProfileLinks links={u.links} />
         {u.profileTrack ? (
           <ProfileTrack track={u.profileTrack} />
         ) : isMe ? (

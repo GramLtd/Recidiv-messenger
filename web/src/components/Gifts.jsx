@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { Sparkles, Send, Tag, EyeOff, Eye, Repeat, Pin, ArrowUpCircle, Info, Search, X, Link2, Gem, Crown } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Sparkles, Send, Tag, Tag as TagIcon, EyeOff, Eye, Repeat, Pin, ArrowUpCircle, Info, Search, X, Link2, Gem, Crown, MoreHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api } from '../api.js';
 import { Avatar, Modal, Spark, Switch, Spinner, useAsync, useAction, Verified } from './common.jsx';
-import { GiftArt, CollectibleArt } from './GiftArt.jsx';
+import { GiftArt, CollectibleArt, GiftModel } from './GiftArt.jsx';
 import { UserPicker } from './NewChat.jsx';
 import { fmtNum } from '../util.js';
 
@@ -152,22 +152,40 @@ function UpgradePreview({ attrs }) {
   );
 }
 
-export function GiftDetailsModal({ userGiftId }) {
+export function GiftDetailsModal({ userGiftId, list }) {
+  const [id, setId] = useState(userGiftId);
+  const [dir, setDir] = useState('');
+  const idx = list ? list.indexOf(id) : -1;
+  const go = (d) => {
+    if (!list || idx < 0) return;
+    const next = list[(idx + d + list.length) % list.length];
+    if (next === id) return;
+    setDir(d > 0 ? 'swipe-next' : 'swipe-prev');
+    setId(next);
+  };
+  return <GiftSheet key={id} userGiftId={id} dir={dir} nav={list && list.length > 1 ? go : null} />;
+}
+
+function GiftSheet({ userGiftId, dir, nav }) {
   const me = useStore((s) => s.me);
   const setMe = useStore((s) => s.setMe);
   const openModal = useStore((s) => s.openModal);
   const close = useStore((s) => s.closeModal);
   const toast = useStore((s) => s.toast);
-  const { data, loading, setData } = useAsync(() => api(`/user-gifts/${userGiftId}`), [userGiftId]);
+  const { data, setData } = useAsync(() => api(`/user-gifts/${userGiftId}`), [userGiftId]);
   const ug = data?.userGift;
   const attrs = useAsync(() => (ug?.gift.upgradable && !ug.collectible ? api(`/gifts/${ug.gift.id}/attributes`) : Promise.resolve(null)), [ug?.gift.id, !!ug?.collectible]);
   const [run, busy] = useAction();
   const [revealing, setRevealing] = useState(false);
   const [justUpgraded, setJustUpgraded] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const modelRef = useRef();
+  const touch = useRef(null);
 
-  if (loading || !ug) return <Modal title="Подарок"><div className="center" style={{ padding: 40 }}><Spinner /></div></Modal>;
+  if (!ug) return <Modal title={null} className={`gift-sheet ${dir}`}><div className="center" style={{ padding: 80 }}><Spinner /></div></Modal>;
   const mine = ug.owner?.id === me.id;
   const col = ug.collectible;
+  const m = col?.model;
 
   const upgrade = () =>
     run(async () => {
@@ -175,10 +193,10 @@ export function GiftDetailsModal({ userGiftId }) {
       const [r] = await Promise.all([api(`/user-gifts/${ug.id}/upgrade`, { body: {} }), new Promise((res) => setTimeout(res, 1600))]);
       setData({ userGift: r.userGift });
       setJustUpgraded(true);
-      document.querySelector('.gift-modal .modal-body')?.scrollTo({ top: 0, behavior: 'smooth' });
+      document.querySelector('.gift-sheet .modal-body')?.scrollTo({ top: 0, behavior: 'smooth' });
     }).finally(() => setRevealing(false));
   const convert = () => {
-    if (!confirm(`Конвертировать подарок в ${ug.gift.convertValue} ✦? Подарок исчезнет из профиля.`)) return;
+    if (!confirm(`Конвертировать подарок в ${ug.gift.convertValue} ${useStore.getState().currency.symbol}? Подарок исчезнет из профиля.`)) return;
     run(async () => { await api(`/user-gifts/${ug.id}/convert`, { body: {} }); close(); }, 'Подарок конвертирован');
   };
   const visibility = (body) => run(async () => setData({ userGift: (await api(`/user-gifts/${ug.id}/visibility`, { body })).userGift }));
@@ -190,92 +208,133 @@ export function GiftDetailsModal({ userGiftId }) {
       setMe(user);
     }, ug.worn ? 'Подарок снят' : 'Подарок надет — он виден рядом с вашим именем');
   const unlist = () => run(async () => { await api.del(`/market/listings/${ug.listing.id}`); setData({ userGift: { ...ug, listing: null } }); }, 'Снято с продажи');
-  const copyLink = () => { navigator.clipboard?.writeText(`${location.origin}/gift/${col?.slug || ug.id}`); toast('Ссылка скопирована'); };
+  const copyLink = () => { navigator.clipboard?.writeText(`${location.origin}/gift/${col?.slug || ug.id}`); toast('Ссылка скопирована'); setMenu(false); };
 
-  const top = (
-    <div className="hero-top">
-      <button className="glass-icon" onClick={close}><X size={20} /></button>
-      <span className="spacer" />
-      {col && <button className="glass-icon" onClick={copyLink}><Link2 size={18} /></button>}
-      {mine && <button className="glass-icon" onClick={() => visibility({ pinned: !ug.pinned })} title={ug.pinned ? 'Открепить' : 'Закрепить'}><Pin size={18} className={ug.pinned ? 'accent' : ''} /></button>}
-      {mine && <button className="glass-icon" onClick={() => visibility({ hidden: !ug.hidden })} title={ug.hidden ? 'Показать в профиле' : 'Скрыть из профиля'}>{ug.hidden ? <EyeOff size={18} /> : <Eye size={18} />}</button>}
-    </div>
-  );
+  // tilt the model with the finger / cursor
+  const tilt = (e) => {
+    const el = modelRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width - 0.5) * 2;
+    const y = ((e.clientY - r.top) / r.height - 0.5) * 2;
+    el.style.transform = `rotateY(${x * 14}deg) rotateX(${-y * 10}deg) scale(1.04)`;
+  };
+  const untilt = () => { if (modelRef.current) modelRef.current.style.transform = ''; };
+  const onTouchStart = (e) => { touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
+  const onTouchEnd = (e) => {
+    const t = touch.current;
+    touch.current = null;
+    if (!t || !nav) return;
+    const dx = e.changedTouches[0].clientX - t.x;
+    const dy = e.changedTouches[0].clientY - t.y;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) nav(dx < 0 ? 1 : -1);
+  };
+
+  const sub = ug.listing
+    ? <>В продаже за <Spark amount={ug.listing.price} /></>
+    : col ? 'Коллекционный подарок' : ug.gift.limited ? `Лимитированный · тираж ${fmtNum(ug.gift.supply)}` : 'Подарок';
+  const sender = ug.sender ? ug.sender.displayName : ug.anonymous ? 'анонима' : null;
 
   return (
-    <Modal title={null} className="gift-modal">
-      <div style={{ margin: '-4px -18px 0', position: 'relative' }}>
-        {col ? (
-          <CollectibleArt col={col} size="100%" height={340} rounded={0} animated tilt style={justUpgraded ? { animation: 'reveal .9s cubic-bezier(.2,.8,.2,1)' } : undefined}>
-            <div className="hero-caption">
-              <div className="hero-name">{ug.gift.name}</div>
-              <div className="hero-sub">Коллекционный · #{fmtNum(col.number)}</div>
+    <Modal title={null} className={`gift-sheet ${dir}`}>
+      <div className={`gs-hero ${col ? '' : 'gs-plain'}`} onPointerMove={tilt} onPointerLeave={untilt} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
+        style={justUpgraded ? { animation: 'reveal .9s cubic-bezier(.2,.8,.2,1)' } : undefined}>
+        {col && <CollectibleArt col={col} size="100%" height="100%" rounded={0} />}
+        <div className="gs-top">
+          <button className="glass-icon" onClick={close} aria-label="Закрыть"><X size={20} /></button>
+          <span className="spacer" />
+          {(col || mine) && (
+            <div style={{ position: 'relative' }}>
+              <button className="glass-icon" onClick={() => setMenu(!menu)} aria-label="Ещё"><MoreHorizontal size={20} /></button>
+              {menu && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 9 }} onClick={() => setMenu(false)} />
+                  <div className="ctx-menu" style={{ position: 'absolute', right: 0, top: 48, left: 'auto', zIndex: 10, '--origin': 'top right', color: 'var(--text)' }}>
+                    {col && <button className="menu-item" onClick={copyLink}><Link2 size={18} /> Скопировать ссылку</button>}
+                    {mine && <button className="menu-item" onClick={() => { setMenu(false); visibility({ pinned: !ug.pinned }); }}><Pin size={18} /> {ug.pinned ? 'Открепить' : 'Закрепить в профиле'}</button>}
+                    {mine && <button className="menu-item" onClick={() => { setMenu(false); visibility({ hidden: !ug.hidden }); }}>{ug.hidden ? <Eye size={18} /> : <EyeOff size={18} />} {ug.hidden ? 'Показать в профиле' : 'Скрыть из профиля'}</button>}
+                  </div>
+                </>
+              )}
             </div>
-          </CollectibleArt>
-        ) : (
-          <div className="plain-hero">
-            <div className={revealing ? 'revealing' : ''}><GiftArt userGift={ug} size={190} animated /></div>
-            <div className="hero-name" style={{ color: 'var(--text)', textShadow: 'none' }}>{ug.gift.name}</div>
-            <div className="hero-sub muted" style={{ textShadow: 'none' }}>{ug.gift.limited ? `Лимитированный · тираж ${fmtNum(ug.gift.supply)}` : 'Подарок'}</div>
+          )}
+        </div>
+        {nav && <button className="glass-icon gs-arrow prev" onClick={() => nav(-1)} aria-label="Предыдущий"><ChevronLeft size={22} /></button>}
+        {nav && <button className="glass-icon gs-arrow next" onClick={() => nav(1)} aria-label="Следующий"><ChevronRight size={22} /></button>}
+        <div className="gs-model">
+          <div ref={modelRef} className={revealing ? 'revealing' : ''} style={{ transition: 'transform .3s ease-out', width: 170, height: 170 }}>
+            <GiftModel emoji={m?.emoji || ug.gift.emoji} image={m?.image || ug.gift.image} animation={m ? m.animation : ug.gift.animation} filter={m?.filter} size={170} animated className="floaty" />
           </div>
-        )}
-        {top}
-      </div>
-
-      <div className="col" style={{ marginTop: 14, gap: 12 }}>
+        </div>
+        <div className="gs-title">{ug.gift.name}{col && <small>#{fmtNum(col.number)}</small>}</div>
+        <div className="gs-sub">{sub}</div>
         {mine && col && (
-          <div className="gift-actions">
-            <button disabled={!!ug.listing} onClick={() => openModal('transferGift', { userGift: ug })}><Gem size={22} />Передать</button>
-            <button className={ug.worn ? 'on' : ''} onClick={wear} disabled={busy}><Crown size={22} />{ug.worn ? 'Снять' : 'Надеть'}</button>
+          <div className="gs-actions">
+            <button disabled={!!ug.listing} onClick={() => openModal('transferGift', { userGift: ug })}><Gem size={22} />передать</button>
+            <button className={ug.worn ? 'on' : ''} onClick={wear} disabled={busy}><Crown size={22} />{ug.worn ? 'снять' : 'носить'}</button>
             {ug.listing ? (
-              <button onClick={unlist} disabled={busy}><Tag size={22} />Снять с продажи</button>
+              <button onClick={unlist} disabled={busy}><TagIcon size={22} />не продавать</button>
             ) : (
-              <button onClick={() => openModal('sell', { userGift: ug, onDone: (l) => setData({ userGift: { ...ug, listing: l } }) })}><Tag size={22} />Продать</button>
+              <button onClick={() => openModal('sell', { userGift: ug, onDone: (l) => setData({ userGift: { ...ug, listing: l } }) })}><TagIcon size={22} />продать</button>
             )}
           </div>
         )}
+        {mine && !col && (
+          <div className="gs-actions">
+            <button disabled={busy || !ug.gift.upgradable} onClick={upgrade}><ArrowUpCircle size={22} />{revealing ? 'улучшаем…' : 'улучшить'}</button>
+            <button disabled={busy} onClick={convert}><Repeat size={22} />в {useStore.getState().currency.symbol}</button>
+            <button disabled={busy} onClick={() => visibility({ hidden: !ug.hidden })}>{ug.hidden ? <Eye size={22} /> : <EyeOff size={22} />}{ug.hidden ? 'показать' : 'скрыть'}</button>
+          </div>
+        )}
+      </div>
 
-        <div className="info-table">
+      <div className="gs-body">
+        <div className="gs-table">
           {col ? (
             <>
-              <div><span>Владелец</span><b className="row" style={{ gap: 6 }}>{ug.owner && <><Avatar src={ug.owner.avatar} name={ug.owner.displayName} id={ug.owner.id} size={22} /><span className="accent ellipsis">{ug.owner.displayName}</span></>}</b></div>
-              <div><span>Выпущено</span><b>{fmtNum(col.issued)} из {ug.gift.supply ? fmtNum(ug.gift.supply) : '∞'}</b></div>
-              <div><span>Модель</span><b>{col.model?.name}<Chance v={col.model?.chance} /></b></div>
-              <div><span>Узор</span><b>{col.symbol?.name}<Chance v={col.symbol?.chance} /></b></div>
-              <div><span>Фон</span><b><i className="dot" style={{ background: col.backdrop?.center }} />{col.backdrop?.name}<Chance v={col.backdrop?.chance} /></b></div>
-              <div><span>Оценка</span><b><Spark amount={col.estimate} /></b></div>
-              {ug.listing && <div><span>На маркете</span><b><Spark amount={ug.listing.price} /></b></div>}
+              <div><span>Владелец</span><b className="row" style={{ gap: 6 }}>{ug.owner && <><Avatar src={ug.owner.avatar} name={ug.owner.displayName} id={ug.owner.id} size={22} /><span className="accent-link ellipsis">{ug.owner.displayName}</span></>}</b></div>
+              <div><span>Модель</span><b><span className="ellipsis">{col.model?.name}</span><Chance v={col.model?.chance} /></b></div>
+              <div><span>Узор</span><b><span className="ellipsis">{col.symbol?.name}</span><Chance v={col.symbol?.chance} /></b></div>
+              <div><span>Фон</span><b><i className="dot" style={{ background: col.backdrop?.center }} /><span className="ellipsis">{col.backdrop?.name}</span><Chance v={col.backdrop?.chance} /></b></div>
+              <div><span>Наличие</span><b>{fmtNum(col.issued)}/{ug.gift.supply ? fmtNum(ug.gift.supply) : '∞'} выпущено</b></div>
+              <div><span>Ценность</span><b>~<Spark amount={col.estimate} /></b></div>
             </>
           ) : (
             <>
-              <div><span>От</span><b className="row" style={{ gap: 6 }}>{ug.sender ? <><Avatar src={ug.sender.avatar} name={ug.sender.displayName} id={ug.sender.id} size={22} />{ug.sender.displayName}</> : 'Аноним'}</b></div>
-              <div><span>Дата</span><b>{new Date(ug.createdAt).toLocaleString('ru-RU')}</b></div>
+              <div><span>От</span><b className="row" style={{ gap: 6 }}>{ug.sender ? <><Avatar src={ug.sender.avatar} name={ug.sender.displayName} id={ug.sender.id} size={22} /><span className="accent-link ellipsis">{ug.sender.displayName}</span></> : 'Аноним'}</b></div>
+              <div><span>Дата</span><b>{new Date(ug.createdAt).toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</b></div>
               <div><span>Стоимость</span><b><Spark amount={ug.gift.price} /></b></div>
-              {ug.gift.limited && <div><span>Доступно</span><b>{fmtNum(ug.gift.remaining)} из {fmtNum(ug.gift.supply)}</b></div>}
+              {ug.gift.limited && <div><span>Наличие</span><b>{fmtNum(ug.gift.supply - ug.gift.remaining)}/{fmtNum(ug.gift.supply)} выпущено</b></div>}
             </>
           )}
+          {(ug.message || (col && sender)) && (
+            <div style={{ display: 'block' }}>
+              <span className="gs-note">
+                {col && sender && <>Подарок от <span className="accent-link">{sender}</span>{ug.owner && <> для <span className="accent-link">{ug.owner.displayName}</span></>}, отправлен {new Date(ug.createdAt).toLocaleDateString('ru-RU')}.</>}
+                {ug.message && <>{col && sender ? ' ' : ''}«{ug.message}»</>}
+              </span>
+            </div>
+          )}
         </div>
-        {ug.message && <div className="card small" style={{ fontStyle: 'italic' }}>«{ug.message}»</div>}
 
         {mine && !col && ug.gift.upgradable && attrs.data && (
           <div className="card col" style={{ gap: 10 }}>
-            <div className="row bold"><Sparkles size={18} className="accent" /> Улучшить до коллекционного</div>
-            <div className="small muted">Подарок получит уникальный номер и случайные модель, фон и узор. Его можно будет надеть, продать на маркете или передать.</div>
+            <div className="row bold"><Sparkles size={18} className="accent" /> Улучшить до коллекционного за <Spark amount={ug.gift.upgradePrice} /></div>
+            <div className="small muted">Подарок получит уникальный номер и случайные модель, фон и узор. Его можно будет носить, продать на маркете или передать.</div>
             <UpgradePreview attrs={attrs.data} />
           </div>
         )}
 
-        {mine && !col && (
-          <div className="col" style={{ gap: 8 }}>
-            {ug.gift.upgradable && (
-              <button className="btn block shimmer" disabled={busy} onClick={upgrade}><ArrowUpCircle size={18} /> {revealing ? 'Улучшаем…' : <>Улучшить за <Spark amount={ug.gift.upgradePrice} /></>}</button>
-            )}
-            <button className="btn ghost sm" disabled={busy} onClick={convert}><Repeat size={16} /> Конвертировать в <Spark amount={ug.gift.convertValue} /></button>
+        {mine && (
+          <div className="gs-vis">
+            {ug.hidden ? 'Подарок скрыт из профиля. ' : 'Подарок виден в профиле. '}
+            <button onClick={() => visibility({ hidden: !ug.hidden })}>{ug.hidden ? 'Показать' : 'Скрыть'} ›</button>
           </div>
         )}
         {!mine && ug.listing && (
           <button className="btn block" onClick={() => openModal('market', { kind: 'gift', q: String(col?.number || '') })}>Купить на маркете за <Spark amount={ug.listing.price} /></button>
         )}
+        <button className="btn block gs-ok" onClick={close}>OK</button>
       </div>
     </Modal>
   );

@@ -86,7 +86,7 @@ NODE_ENV=production npm start   # http://localhost:4000
 
 | Способ | Переменные | Примечание |
 |---|---|---|
-| TON Connect | `TON_WALLET_ADDRESS`, опц. `TONCENTER_API_KEY` | Клиент отправляет TON с комментарием `RCD-…`, сервер находит транзакцию через toncenter. В `web/public/tonconnect-manifest.json` укажите свой домен: манифест должен быть доступен публично по HTTPS. |
+| TON Connect | `TON_WALLET_ADDRESS`, опц. `TONCENTER_API_KEY` | Клиент отправляет TON с комментарием `RCD-…`, сервер находит транзакцию через toncenter. Манифест `/tonconnect-manifest.json` сервер отдаёт сам под домен, на котором открыт сайт (нужен публичный HTTPS). |
 | xRocket Pay | `XROCKET_API_KEY` | Счёт создаётся через `POST /tg-invoices`. В настройках приложения xRocket укажите вебхук `${PUBLIC_URL}/api/webhooks/xrocket`. Даже без вебхука оплата подтвердится опросом счёта. |
 | Тест | `ALLOW_TEST_PAYMENTS` | Включено по умолчанию, если не `NODE_ENV=production`. |
 

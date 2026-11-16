@@ -11,6 +11,7 @@ export default defineConfig({
     proxy: {
       '/api': target,
       '/uploads': target,
+      '/tonconnect-manifest.json': target,
       '/socket.io': { target, ws: true },
     },
   },

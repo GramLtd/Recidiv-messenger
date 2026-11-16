@@ -39,8 +39,8 @@ r.get('/wallet', (req, res) => {
     packages: packages(),
     currency: { name: getSetting('currency_name'), nameEn: getSetting('currency_name_en'), symbol: getSetting('currency_symbol') },
     providers: {
-      xrocket: !!config.xrocket.apiKey,
-      ton: !!config.ton.wallet,
+      xrocket: config.pay.xrocket && !!config.xrocket.apiKey,
+      ton: config.pay.ton && !!config.ton.wallet,
       test: config.allowTestPayments,
     },
   });
@@ -71,7 +71,7 @@ async function xrocket(method, path, body) {
 }
 
 r.post('/wallet/topup/xrocket', async (req, res) => {
-  if (!config.xrocket.apiKey) fail(400, 'xRocket не настроен на сервере');
+  if (!config.xrocket.apiKey || !config.pay.xrocket) fail(400, 'Оплата через xRocket отключена');
   const pkg = findPackage(req.body.packageId);
   const currency = req.body.currency === 'USDT' ? 'USDT' : 'TONCOIN';
   const amount = currency === 'USDT' ? pkg.usdt : pkg.ton;
@@ -110,7 +110,7 @@ webhooks.post('/xrocket', (req, res) => {
 
 // ----- TON Connect -----
 r.post('/wallet/topup/ton', (req, res) => {
-  if (!config.ton.wallet) fail(400, 'TON-кошелёк проекта не настроен на сервере');
+  if (!config.ton.wallet || !config.pay.ton) fail(400, 'Оплата в TON отключена');
   const pkg = findPackage(req.body.packageId);
   const comment = `RCD-${crypto.randomBytes(6).toString('hex')}`;
   const ins = db
