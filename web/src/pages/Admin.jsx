@@ -186,7 +186,7 @@ function GiftsPage() {
           <tbody>
             {data?.gifts.map((g) => (
               <tr key={g.id} style={{ cursor: 'pointer' }} onClick={() => openModal('adminGift', { gift: g, onSaved: reload })}>
-                <td style={{ fontSize: '1.5em' }}>{g.emoji}</td><td>{g.name}</td><td>{fmtNum(g.price)}</td>
+                <td>{g.image ? <img src={g.image} alt="" width={34} height={34} style={{ objectFit: 'contain', display: 'block' }} /> : <span style={{ fontSize: '1.5em' }}>{g.emoji}</span>}</td><td>{g.name}</td><td>{fmtNum(g.price)}</td>
                 <td>{fmtNum(g.sold)} / {g.supply ? fmtNum(g.supply) : '∞'}</td>
                 <td>{g.upgradePrice ?? '—'}</td><td>{g.upgraded}</td><td>{g.convertValue}</td>
                 <td>{g.enabled ? <span className="tag green">в продаже</span> : <span className="tag">скрыт</span>}</td>

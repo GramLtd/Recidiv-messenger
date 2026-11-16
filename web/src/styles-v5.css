@@ -549,3 +549,22 @@ body { font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe
 .blur-thumb i { flex: 1; background: radial-gradient(circle, rgba(var(--accent-rgb), .7), #000 75%); filter: blur(4px); }
 .pv.blurred .pv-banner { -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent 100%); mask-image: linear-gradient(180deg, #000 45%, transparent 100%); }
 .pv.blurred .pv-banner::after { background: linear-gradient(180deg, rgba(0, 0, 0, .15), rgba(0, 0, 0, .25)); }
+
+/* ---------- QA polish ---------- */
+.desk-empty { gap: 10px; text-align: center; padding: 20px; }
+.desk-empty img { border-radius: 28%; box-shadow: 0 20px 60px rgba(var(--accent-rgb), .35); animation: logoIn .9s var(--spring) both, logoFloat 5s ease-in-out 1s infinite; }
+.desk-empty b { font-size: 1.4em; color: var(--text); animation: riseIn .5s .2s var(--ease) both; }
+.desk-empty span { max-width: 300px; font-size: .9em; animation: riseIn .5s .3s var(--ease) both; }
+/* softer selected chat (desktop) */
+.chat-item.active { background: rgba(var(--accent-rgb), .16); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), .35); }
+.chat-item.active * { color: inherit !important; }
+.chat-item.active .preview, .chat-item.active .time { color: var(--text-2) !important; }
+.chat-item.active .badge { background: var(--accent); color: #fff !important; }
+/* admin on phones: no squashed section title in the horizontal nav */
+@media (max-width: 768px) { .admin-nav .section-title { display: none; } }
+/* welcome: drifting gifts fade out behind the text */
+.auth-floats { position: absolute; inset: 0; -webkit-mask-image: radial-gradient(ellipse 55% 40% at 50% 50%, transparent 30%, #000 80%); mask-image: radial-gradient(ellipse 55% 40% at 50% 50%, transparent 30%, #000 80%); }
+/* light theme: readable profile on the blurred background */
+[data-bg='light'] .pv-blur-shade { background: linear-gradient(180deg, rgba(255, 255, 255, .45), rgba(255, 255, 255, .75) 50%, rgba(255, 255, 255, .85)); }
+[data-bg='light'] .pv.blurred .pill { background: rgba(255, 255, 255, .6); }
+[data-bg='light'] .pv-counts span, [data-bg='light'] .pv-label { color: #555; }

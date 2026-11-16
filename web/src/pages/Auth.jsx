@@ -32,9 +32,11 @@ function Backdrop() {
     <div className="auth-bg" aria-hidden>
       <i className="blob b1" /><i className="blob b2" /><i className="blob b3" />
       <div className="auth-grid" />
-      {items.map((it, i) => (
-        <img key={i} src={it.src} alt="" className="auth-float" style={{ left: `${it.x}%`, width: it.s, height: it.s, animationDuration: `${it.d}s`, animationDelay: `${it.delay}s`, '--r': `${it.r}deg` }} />
-      ))}
+      <div className="auth-floats">
+        {items.map((it, i) => (
+          <img key={i} src={it.src} alt="" className="auth-float" style={{ left: `${it.x}%`, width: it.s, height: it.s, animationDuration: `${it.d}s`, animationDelay: `${it.delay}s`, '--r': `${it.r}deg` }} />
+        ))}
+      </div>
     </div>
   );
 }

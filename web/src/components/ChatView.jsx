@@ -439,7 +439,11 @@ export default function ChatView() {
     return (
       <div className="chat-main">
         <div className="chat-bg-pattern" />
-        <div className="empty-chat"><span className="pill">Выберите чат, чтобы начать общение</span></div>
+        <div className="empty-chat desk-empty">
+          <img src="/icon.svg" alt="" width={96} height={96} />
+          <b>Recidivist</b>
+          <span>Выберите чат слева или начните новый — кнопка ✎ вверху списка чатов</span>
+        </div>
       </div>
     );
   }
