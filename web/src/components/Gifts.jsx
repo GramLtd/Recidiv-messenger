@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, Send, Tag, Tag as TagIcon, EyeOff, Eye, Repeat, Pin, ArrowUpCircle, Info, Search, X, Link2, Gem, Crown, MoreHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, Send, Tag, Tag as TagIcon, EyeOff, Eye, Repeat, Pin, ArrowUpCircle, Info, Search, X, Link2, Gem, Crown, MoreHorizontal, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api } from '../api.js';
 import { Avatar, Modal, Spark, Switch, Spinner, useAsync, useAction, Verified } from './common.jsx';
@@ -205,6 +205,10 @@ function GiftSheet({ userGiftId, dir, nav }) {
       const { user } = await api('/auth/me');
       setMe(user);
     }, ug.worn ? 'Подарок снят' : 'Подарок надет — он виден рядом с вашим именем');
+  const removeGift = () => {
+    if (!confirm(`Удалить «${ug.gift.name}${col ? ` #${col.number}` : ''}» из профиля? Это нельзя отменить.`)) return;
+    run(async () => { await api.del(`/user-gifts/${ug.id}`); close(); window.dispatchEvent(new CustomEvent('gift:removed', { detail: ug.id })); }, 'Подарок удалён');
+  };
   const unlist = () => run(async () => { await api.del(`/market/listings/${ug.listing.id}`); setData({ userGift: { ...ug, listing: null } }); }, 'Снято с продажи');
   const copyLink = () => { navigator.clipboard?.writeText(`${location.origin}/gift/${col?.slug || ug.id}`); toast('Ссылка скопирована'); setMenu(false); };
 
@@ -251,6 +255,7 @@ function GiftSheet({ userGiftId, dir, nav }) {
                     {col && <button className="menu-item" onClick={copyLink}><Link2 size={18} /> Скопировать ссылку</button>}
                     {mine && <button className="menu-item" onClick={() => { setMenu(false); visibility({ pinned: !ug.pinned }); }}><Pin size={18} /> {ug.pinned ? 'Открепить' : 'Закрепить в профиле'}</button>}
                     {mine && <button className="menu-item" onClick={() => { setMenu(false); visibility({ hidden: !ug.hidden }); }}>{ug.hidden ? <Eye size={18} /> : <EyeOff size={18} />} {ug.hidden ? 'Показать в профиле' : 'Скрыть из профиля'}</button>}
+                    {mine && me.isAdmin && <button className="menu-item danger" onClick={() => { setMenu(false); removeGift(); }}><Trash2 size={18} className="danger" /> Удалить подарок</button>}
                   </div>
                 </>
               )}

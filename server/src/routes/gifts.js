@@ -161,5 +161,17 @@ r.post('/user-gifts/:id/visibility', (req, res) => {
   res.json({ userGift: serializeUserGift(ug.id, req.user.id) });
 });
 
+/** Admins can remove a gift from their own profile (it disappears; history messages stay). */
+r.delete('/user-gifts/:id', (req, res) => {
+  if (!req.user.is_admin) fail(403, 'Только для администраторов');
+  const ug = loadOwned(req.params.id, req.user.id);
+  tx(() => {
+    db.prepare("UPDATE listings SET status = 'cancelled', closed_at = ? WHERE kind = 'gift' AND user_gift_id = ? AND status = 'active'").run(now(), ug.id);
+    db.prepare('UPDATE users SET worn_gift_id = NULL WHERE worn_gift_id = ?').run(ug.id);
+    db.prepare('UPDATE user_gifts SET converted = 1, pinned = 0, hidden = 1 WHERE id = ?').run(ug.id);
+  });
+  res.json({ ok: true });
+});
+
 export { assertNotListed };
 export default r;

@@ -282,6 +282,11 @@ export function ProfileView({ userId, onClose }) {
   const [filterMenu, setFilterMenu] = useState(false);
   const gifts = giftsReq.data?.gifts;
   const orbit = useMemo(() => (gifts ? gifts.filter((g) => g.pinned) : []), [gifts]);
+  useEffect(() => {
+    const h = (e) => giftsReq.setData({ gifts: (giftsReq.data?.gifts || []).filter((g) => g.id !== e.detail) });
+    window.addEventListener('gift:removed', h);
+    return () => window.removeEventListener('gift:removed', h);
+  });
   const [pop, setPop] = useState(null);
   const openPop = (type, e, extra = {}) => setPop({ type, from: e.currentTarget.getBoundingClientRect(), ...extra });
 
