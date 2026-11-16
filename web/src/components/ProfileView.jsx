@@ -350,12 +350,12 @@ export function ProfileView({ userId, onClose }) {
           {(u.isBlocked || u.blockedMe) && (
             <div className="pv-blocked">{u.isBlocked ? <>Вы заблокировали этого пользователя. <button onClick={toggleBlock}>Разблокировать</button></> : 'Пользователь ограничил вам доступ к профилю и сообщениям.'}</div>
           )}
-          <div className="pv-actions four">
-            <button onClick={() => openPrivate(u.id)}><MessageCircle size={20} />{t('Написать')}</button>
-            <button className={u.isFollowing ? 'on' : ''} onClick={follow} disabled={u.isBlocked || u.blockedMe}>{u.isFollowing ? <UserCheck size={20} /> : <UserPlus size={20} />}{u.isFollowing ? t('Вы подписаны') : t('Подписаться')}</button>
-            <button onClick={() => openModal('giftShop', { toUser: u })}><Gift size={20} />{t('Подарить')}</button>
+          <div className="pv-bar">
+            <button className="btn pv-bar-main" onClick={() => openPrivate(u.id)}><MessageCircle size={18} />{t('Написать')}</button>
+            <button className={`btn secondary pv-bar-follow ${u.isFollowing ? 'on' : ''}`} onClick={follow} disabled={u.isBlocked || u.blockedMe}>{u.isFollowing ? <UserCheck size={18} /> : <UserPlus size={18} />}{u.isFollowing ? t('Вы подписаны') : t('Подписаться')}</button>
+            <button className="glass-icon pv-bar-ico" onClick={() => openModal('giftShop', { toUser: u })} title={t('Подарить')} aria-label={t('Подарить')}><Gift size={19} /></button>
             <div style={{ position: 'relative', display: 'flex' }}>
-              <button style={{ flex: 1 }} onClick={() => setMenu(!menu)}><MoreHorizontal size={20} />Ещё</button>
+              <button className="glass-icon pv-bar-ico" onClick={() => setMenu(!menu)} title="Ещё" aria-label="Ещё"><MoreHorizontal size={19} /></button>
               {menu && (
                 <>
                   <div style={{ position: 'fixed', inset: 0, zIndex: 9 }} onClick={() => setMenu(false)} />

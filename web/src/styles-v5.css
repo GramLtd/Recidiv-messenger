@@ -505,3 +505,12 @@ body { font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe
 .pv-actions .ctx-menu button { flex-direction: row; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 10px; background: none; border: 0; box-shadow: none; color: var(--text); font-size: .93em; font-weight: 500; backdrop-filter: none; -webkit-backdrop-filter: none; justify-content: flex-start; width: 100%; }
 .pv-actions .ctx-menu button::before { display: none; }
 .pv-actions .ctx-menu button.danger { color: #ff4d4f; }
+/* compact profile action bar */
+.pv-bar { display: flex; align-items: center; gap: 8px; padding: 4px 14px 6px; animation: riseIn .45s .2s var(--ease) both; }
+.pv-bar .btn { height: 44px; padding: 0 14px; border-radius: 22px; font-size: .9em; gap: 7px; white-space: nowrap; min-width: 0; }
+.pv-bar-main { flex: 1.15; }
+.pv-bar-follow { flex: 1; }
+.pv-bar-follow.on { color: var(--accent); background-color: rgba(var(--accent-rgb), .14); border-color: rgba(var(--accent-rgb), .35); }
+.pv-bar-ico { width: 44px !important; height: 44px !important; flex-shrink: 0; color: var(--text) !important; background-color: var(--glass-tint) !important; border-color: var(--glass-edge) !important; }
+.pv-bar .ctx-menu { min-width: 240px; }
+@media (max-width: 360px) { .pv-bar .btn { padding: 0 10px; font-size: .84em; } }
