@@ -1,34 +1,36 @@
 import { useState } from 'react';
-import { X, AtSign, Info, Link2, MessageCircle, Gift, Send, Bell, BellOff, LogOut, UserPlus, Pencil, Shield, Trash2, Copy, Camera, Users } from 'lucide-react';
+import { X, AtSign, Info, Link2, MessageCircle, Gift, Send, Pin, Bell, BellOff, LogOut, UserPlus, Pencil, Shield, Trash2, Copy, Camera, Users } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, upload } from '../api.js';
-import { Avatar, Verified, Modal, useAsync, Spinner, useAction } from './common.jsx';
+import { Avatar, Verified, Modal, useAsync, Spinner, useAction, WornGift } from './common.jsx';
 import { GiftArt } from './GiftArt.jsx';
 import { lastSeen, membersLabel } from '../util.js';
 
-export function GiftsGrid({ userId }) {
+export function GiftTile({ ug, onClick, index = 0 }) {
+  const col = ug.collectible;
+  return (
+    <div className={`gift-card ${col ? 'is-col' : ''}`} onClick={onClick} style={{ animationDelay: `${Math.min(index, 20) * 30}ms`, opacity: ug.hidden ? 0.45 : undefined }}>
+      {col ? (
+        <GiftArt userGift={ug} size="100%" height="100%" rounded={0} style={{ position: 'absolute', inset: 0 }} />
+      ) : (
+        <div className="gift-card-art"><GiftArt userGift={ug} size="78%" height="78%" /></div>
+      )}
+      {ug.pinned && <span className="gift-pin"><Pin size={12} /></span>}
+      {ug.listing && <span className="gift-sale">продаётся</span>}
+      <div className="gift-card-name ellipsis">{col ? `${ug.gift.name} #${col.number}` : ug.gift.name}</div>
+    </div>
+  );
+}
+
+export function GiftsGrid({ userId, onlyCollectible }) {
   const openModal = useStore((s) => s.openModal);
   const { data, loading } = useAsync(() => api(`/users/${userId}/gifts`), [userId]);
   if (loading) return <div className="center" style={{ padding: 20 }}><Spinner /></div>;
-  if (!data?.gifts.length) return <div className="muted center small" style={{ padding: 20 }}>Подарков пока нет</div>;
+  const gifts = (data?.gifts || []).filter((g) => !onlyCollectible || g.collectible);
+  if (!gifts.length) return <div className="muted center small" style={{ padding: 30, flexDirection: 'column', gap: 6 }}><Gift size={34} className="accent" />{onlyCollectible ? 'Нет коллекционных подарков' : 'Подарков пока нет'}</div>;
   return (
-    <div className="gift-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}>
-      {data.gifts.map((ug) => (
-        <div key={ug.id} className="gift-tile" style={{ padding: ug.collectible ? 0 : undefined, opacity: ug.hidden ? 0.5 : 1 }} onClick={() => openModal('giftDetails', { userGiftId: ug.id })}>
-          {ug.collectible ? (
-            <>
-              <GiftArt userGift={ug} size="100%" height={100} rounded={0} />
-              <div className="tiny bold" style={{ padding: '4px 0 6px' }}>#{ug.collectible.number}</div>
-            </>
-          ) : (
-            <>
-              <GiftArt userGift={ug} size={56} />
-              <span className="tiny muted ellipsis" style={{ maxWidth: '100%' }}>{ug.anonymous && !ug.sender ? 'Аноним' : ug.sender?.displayName || ''}</span>
-            </>
-          )}
-          {ug.listing && <span className="ribbon">продаётся</span>}
-        </div>
-      ))}
+    <div className="gift-cards">
+      {gifts.map((ug, i) => <GiftTile key={ug.id} ug={ug} index={i} onClick={() => openModal('giftDetails', { userGiftId: ug.id })} />)}
     </div>
   );
 }
@@ -46,7 +48,7 @@ export function UserProfileBody({ userId, compact }) {
     <>
       <div className="profile-hero">
         <Avatar src={u.avatar} name={u.displayName} id={u.id} size={compact ? 100 : 110} />
-        <h2>{u.displayName}{u.verified && <Verified size={20} />}{u.emojiStatus && <span>{u.emojiStatus}</span>}</h2>
+        <h2>{u.displayName}{u.verified && <Verified size={20} />}{u.wornGift ? <WornGift gift={u.wornGift} size={26} /> : u.emojiStatus && <span>{u.emojiStatus}</span>}</h2>
         <div className={u.online ? 'accent small' : 'muted small'}>{isMe ? 'это вы' : lastSeen(u)}</div>
       </div>
       {!isMe && !u.isBot && (
@@ -78,7 +80,7 @@ export function UserProfileBody({ userId, compact }) {
           {u.isAdmin && <div className="info-row"><Shield size={22} /><div className="grow"><div>Администратор Recidivist</div></div></div>}
         </>
       ) : (
-        <div style={{ padding: '4px 16px 16px' }}><GiftsGrid userId={u.id} /></div>
+        <div style={{ padding: '4px 12px 16px' }}><GiftsGrid userId={u.id} /></div>
       )}
     </>
   );

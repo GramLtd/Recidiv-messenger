@@ -16,6 +16,19 @@ export function getUser(id) {
   return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
 }
 
+/** Collectible gift a user is "wearing" next to their name. */
+export function wornGift(u) {
+  if (!u?.worn_gift_id) return null;
+  const r = db
+    .prepare(
+      `SELECT ug.id, ug.number, g.name, g.emoji, g.image, gm.filter, b.center, b.edge FROM user_gifts ug
+       JOIN gifts g ON g.id = ug.gift_id LEFT JOIN gift_models gm ON gm.id = ug.model_id LEFT JOIN backdrops b ON b.id = ug.backdrop_id
+       WHERE ug.id = ? AND ug.owner_id = ? AND ug.upgraded_at IS NOT NULL`,
+    )
+    .get(u.worn_gift_id, u.id);
+  return r ? { id: r.id, number: r.number, name: r.name, emoji: r.emoji, image: r.image, filter: r.filter, center: r.center, edge: r.edge } : null;
+}
+
 export function publicUser(u) {
   if (!u) return null;
   return {
@@ -28,6 +41,7 @@ export function publicUser(u) {
     isBot: !!u.is_bot,
     isAdmin: !!u.is_admin,
     emojiStatus: u.emoji_status,
+    wornGift: wornGift(u),
     online: isOnline(u.id),
     lastSeen: u.last_seen,
   };
@@ -35,7 +49,7 @@ export function publicUser(u) {
 
 export function lightUser(u) {
   if (!u) return null;
-  return { id: u.id, displayName: u.display_name, username: u.username, avatar: u.avatar, verified: !!u.verified, isBot: !!u.is_bot };
+  return { id: u.id, displayName: u.display_name, username: u.username, avatar: u.avatar, verified: !!u.verified, isBot: !!u.is_bot, wornGift: wornGift(u) };
 }
 
 export function meUser(u) {
@@ -113,7 +127,7 @@ export function createMessage({ chatId, senderId, type = 'text', text = '', medi
 export function messagePreview(m) {
   if (!m) return null;
   if (m.deleted) return 'Сообщение удалено';
-  const labels = { transfer: '💸 Перевод', image: '🖼 Фото', video: '🎬 Видео', file: '📎 Файл', voice: '🎤 Голосовое', gift: '🎁 Подарок', sticker: 'Стикер' };
+  const labels = { audio: '🎵 Музыка', transfer: '💸 Перевод', image: '🖼 Фото', video: '🎬 Видео', file: '📎 Файл', voice: '🎤 Голосовое', gift: '🎁 Подарок', sticker: 'Стикер' };
   if (m.type === 'text' || m.type === 'system') return m.text;
   if (m.type === 'gift') return m.text ? (/^\p{Extended_Pictographic}/u.test(m.text) ? m.text : `🎁 ${m.text}`) : labels.gift;
   return m.text ? `${labels[m.type] || ''} ${m.text}` : labels[m.type] || m.type;
@@ -221,6 +235,7 @@ export function serializeGift(g) {
     name: g.name,
     emoji: g.emoji,
     image: g.image,
+    animation: g.animation,
     price: g.price,
     supply: g.supply,
     sold: g.sold,
@@ -246,12 +261,26 @@ export function serializeUserGift(idOrRow, viewerId = null) {
     const model = db.prepare('SELECT * FROM gift_models WHERE id = ?').get(ug.model_id);
     const backdrop = db.prepare('SELECT * FROM backdrops WHERE id = ?').get(ug.backdrop_id);
     const symbol = db.prepare('SELECT * FROM symbols WHERE id = ?').get(ug.symbol_id);
+    const totals = {
+      model: db.prepare('SELECT SUM(rarity) s FROM gift_models WHERE gift_id = ?').get(g.id).s || 1,
+      backdrop: db.prepare('SELECT SUM(rarity) s FROM backdrops').get().s || 1,
+      symbol: db.prepare('SELECT SUM(rarity) s FROM symbols').get().s || 1,
+    };
+    const pct = (r, t) => Math.round((r / t) * 1000) / 10;
+    const floor = db
+      .prepare("SELECT MIN(l.price) p FROM listings l JOIN user_gifts u2 ON u2.id = l.user_gift_id WHERE l.status = 'active' AND u2.gift_id = ?")
+      .get(g.id).p;
+    const lastSale = db
+      .prepare("SELECT l.price p FROM listings l JOIN user_gifts u2 ON u2.id = l.user_gift_id WHERE l.status = 'sold' AND u2.gift_id = ? ORDER BY l.closed_at DESC LIMIT 1")
+      .get(g.id)?.p;
     collectible = {
       number: ug.number,
       slug: giftSlug(g.name, ug.number),
-      model: model && { name: model.name, emoji: model.emoji, filter: model.filter, rarity: model.rarity },
-      backdrop: backdrop && { name: backdrop.name, center: backdrop.center, edge: backdrop.edge, pattern: backdrop.pattern, rarity: backdrop.rarity },
-      symbol: symbol && { name: symbol.name, emoji: symbol.emoji, rarity: symbol.rarity },
+      issued: db.prepare('SELECT COUNT(*) c FROM user_gifts WHERE gift_id = ? AND upgraded_at IS NOT NULL').get(g.id).c,
+      estimate: floor || lastSale || g.price + (g.upgrade_price || 0),
+      model: model && { name: model.name, emoji: model.emoji, image: g.image, animation: g.animation, filter: model.filter, rarity: model.rarity, chance: pct(model.rarity, totals.model) },
+      backdrop: backdrop && { name: backdrop.name, center: backdrop.center, edge: backdrop.edge, pattern: backdrop.pattern, rarity: backdrop.rarity, chance: pct(backdrop.rarity, totals.backdrop) },
+      symbol: symbol && { name: symbol.name, emoji: symbol.emoji, rarity: symbol.rarity, chance: pct(symbol.rarity, totals.symbol) },
       upgradedAt: ug.upgraded_at,
     };
   }
@@ -267,6 +296,7 @@ export function serializeUserGift(idOrRow, viewerId = null) {
     hidden: !!ug.hidden,
     pinned: !!ug.pinned,
     converted: !!ug.converted,
+    worn: !!ug.owner_id && db.prepare('SELECT worn_gift_id w FROM users WHERE id = ?').get(ug.owner_id)?.w === ug.id,
     collectible,
     listing: listing || null,
     createdAt: ug.created_at,
@@ -304,6 +334,9 @@ export function sanitizeMedia(media) {
   return {
     url: safeUploadUrl(media.url),
     kind: String(media.kind || 'file').slice(0, 16),
+    title: media.title ? String(media.title).slice(0, 200) : undefined,
+    artist: media.artist ? String(media.artist).slice(0, 200) : undefined,
+    duration: Number(media.duration) || undefined,
     mime: String(media.mime || '').slice(0, 100),
     name: String(media.name || 'file').slice(0, 255),
     size: Number(media.size) || 0,

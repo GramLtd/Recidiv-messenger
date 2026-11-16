@@ -25,7 +25,7 @@ r.post('/upload', upload.single('file'), (req, res) => {
   let kind = 'file';
   if (mime.startsWith('image/') && mime !== 'image/svg+xml') kind = 'image';
   else if (mime.startsWith('video/')) kind = 'video';
-  else if (mime.startsWith('audio/')) kind = 'voice';
+  else if (mime.startsWith('audio/')) kind = /^voice-\d+\./.test(req.file.originalname) ? 'voice' : 'audio';
   res.json({
     url: `/uploads/${req.file.filename}`,
     kind,

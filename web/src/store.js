@@ -19,6 +19,7 @@ export const useStore = create((set, get) => ({
   modals: [],
   toasts: [],
   rightPanel: false,
+  tab: 'chats', // chats | gifts | profile | music | market | settings
 
   // ---------- session ----------
   async boot() {
@@ -41,7 +42,7 @@ export const useStore = create((set, get) => ({
     setToken(null);
     socket?.disconnect();
     socket = null;
-    set({ me: null, chats: [], messages: {}, activeChatId: null, stories: [], modals: [] });
+    set({ me: null, chats: [], messages: {}, activeChatId: null, stories: [], modals: [], tab: 'chats' });
   },
   afterLogin() {
     get().loadChats();
@@ -188,6 +189,9 @@ export const useStore = create((set, get) => ({
   },
   closeAllModals() {
     set({ modals: [] });
+  },
+  setTab(tab) {
+    set({ tab, modals: [] });
   },
   setRightPanel(v) {
     set({ rightPanel: v });

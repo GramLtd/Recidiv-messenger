@@ -119,6 +119,7 @@ r.post('/market/listings/:id/buy', (req, res) => {
       const ug = db.prepare('SELECT * FROM user_gifts WHERE id = ?').get(l.user_gift_id);
       if (ug.owner_id !== l.seller_id) fail(409, 'Продавец больше не владеет подарком');
       db.prepare('UPDATE user_gifts SET owner_id = ?, sender_id = ?, anonymous = 0, hidden = 0, pinned = 0 WHERE id = ?').run(req.user.id, l.seller_id, ug.id);
+      db.prepare('UPDATE users SET worn_gift_id = NULL WHERE worn_gift_id = ?').run(ug.id);
     } else {
       const row = db.prepare('SELECT * FROM usernames WHERE name = ?').get(l.username.toLowerCase());
       if (!row || row.user_id !== l.seller_id) fail(409, 'Продавец больше не владеет юзернеймом');

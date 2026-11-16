@@ -15,6 +15,7 @@ import giftRoutes from './routes/gifts.js';
 import marketRoutes from './routes/market.js';
 import walletRoutes, { webhooks } from './routes/wallet.js';
 import adminRoutes from './routes/admin.js';
+import musicRoutes from './routes/music.js';
 
 const app = express();
 app.set('trust proxy', true);
@@ -25,7 +26,7 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/webhooks', webhooks);
 app.use('/api/admin', requireAuth, requireAdmin, adminRoutes);
-app.use('/api', requireAuth, userRoutes, chatRoutes, storyRoutes, giftRoutes, marketRoutes, walletRoutes);
+app.use('/api', requireAuth, userRoutes, chatRoutes, storyRoutes, giftRoutes, marketRoutes, walletRoutes, musicRoutes);
 // Uploaded files: never let the browser render user-supplied HTML/SVG on our origin.
 const INLINE_EXT = /\.(jpe?g|png|gif|webp|avif|mp4|webm|mov|m4a|mp3|ogg|wav|opus)$/i;
 app.use('/uploads', express.static(config.uploadDir, {

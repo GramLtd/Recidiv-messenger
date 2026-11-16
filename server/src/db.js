@@ -328,27 +328,83 @@ export function seedModelsForGift(giftId, emoji) {
   for (const [name, filter, rarity] of MODEL_TEMPLATES) ins.run(giftId, name, emoji, filter, rarity);
 }
 
-if (!db.prepare('SELECT COUNT(*) c FROM gifts').get().c) {
-  const gifts = [
-    // name, emoji, price, supply, upgrade_price, convert_value
-    ['Красное сердце', '❤️', 15, null, null, 13],
-    ['Роза', '🌹', 25, null, null, 21],
-    ['Торт', '🎂', 50, null, null, 43],
-    ['Шампанское', '🍾', 50, null, null, 43],
-    ['Череп', '💀', 250, 10000, 150, 200],
-    ['Наручники', '⛓️', 350, 7500, 200, 280],
-    ['Ключ от камеры', '🗝️', 500, 5000, 250, 400],
-    ['Кубок', '🏆', 750, 3000, 300, 600],
-    ['Алмаз', '💎', 1000, 2000, 400, 800],
-    ['Корона рецидивиста', '👑', 2500, 777, 777, 2000],
-  ];
+// ---------- migrations for existing databases ----------
+function addColumn(table, col, def) {
+  if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+}
+addColumn('gifts', 'animation', 'TEXT');
+addColumn('users', 'worn_gift_id', 'INTEGER');
+db.exec(`
+CREATE TABLE IF NOT EXISTS tracks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  url TEXT NOT NULL,
+  title TEXT NOT NULL,
+  artist TEXT DEFAULT '',
+  duration INTEGER DEFAULT 0,
+  cover TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_tracks_user ON tracks(user_id, id);
+`);
+
+// ---------- 3D gift assets (Fluent Emoji, shipped in web/public) ----------
+const WEB_PUBLIC = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', 'web', 'public');
+export const emojiCode = (e) => [...String(e)].map((c) => c.codePointAt(0).toString(16)).join('-');
+/** Static 3D image + animated version (if we ship one) for an emoji. */
+export function giftAssets(emoji) {
+  const variants = [emojiCode(emoji), emojiCode(String(emoji).replace(/️/g, '')), `${emojiCode(String(emoji).replace(/️/g, ''))}-fe0f`];
+  const find = (dir) => {
+    for (const c of variants) if (fs.existsSync(path.join(WEB_PUBLIC, dir, `${c}.webp`))) return `/${dir}/${c}.webp`;
+    return null;
+  };
+  return { image: find('emoji3d'), animation: find('emoji-anim') };
+}
+
+const GIFT_CATALOG = [
+  // name, emoji, price, supply, upgrade_price, convert_value
+  ['Красное сердце', '❤️', 15, null, null, 13],
+  ['Роза', '🌹', 25, null, null, 21],
+  ['Кружка пива', '🍺', 35, null, null, 30],
+  ['Торт', '🎂', 50, null, null, 43],
+  ['Шампанское', '🍾', 50, null, null, 43],
+  ['Купидон', '💘', 75, null, null, 64],
+  ['Плюшевый мишка', '🧸', 100, null, null, 85],
+  ['Звезда', '⭐', 150, 20000, 100, 120],
+  ['Череп', '💀', 250, 10000, 150, 200],
+  ['Пламя', '🔥', 300, 8000, 150, 250],
+  ['Наручники', '⛓️', 350, 7500, 200, 280],
+  ['Призрак', '👻', 400, 6000, 200, 320],
+  ['Бомба', '💣', 450, 5000, 200, 360],
+  ['Ключ от камеры', '🗝️', 500, 5000, 250, 400],
+  ['Хрустальный шар', '🔮', 600, 4000, 250, 480],
+  ['Кубок', '🏆', 750, 3000, 300, 600],
+  ['Ракета', '🚀', 800, 3000, 300, 640],
+  ['Алмаз', '💎', 1000, 2000, 400, 800],
+  ['Единорог', '🦄', 1200, 1500, 400, 960],
+  ['Змей', '🐍', 1500, 1000, 500, 1200],
+  ['Лобстер', '🦞', 2000, 666, 600, 1600],
+  ['Корона рецидивиста', '👑', 2500, 777, 777, 2000],
+];
+{
   const ins = db.prepare(
-    'INSERT INTO gifts (name, emoji, price, supply, upgrade_price, convert_value, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO gifts (name, emoji, image, animation, price, supply, upgrade_price, convert_value, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
   );
-  gifts.forEach((g, i) => {
-    const r = ins.run(...g, i, now());
-    if (g[4] != null) seedModelsForGift(r.lastInsertRowid, g[1]);
+  GIFT_CATALOG.forEach(([name, emoji, price, supply, upg, conv], i) => {
+    if (db.prepare('SELECT 1 FROM gifts WHERE emoji = ?').get(emoji)) return;
+    const a = giftAssets(emoji);
+    const r = ins.run(name, emoji, a.image, a.animation, price, supply, upg, conv, i, now());
+    if (upg != null) seedModelsForGift(r.lastInsertRowid, emoji);
   });
+  // Older databases: attach 3D assets to gifts created before they existed.
+  for (const g of db.prepare('SELECT id, emoji, image, animation FROM gifts').all()) {
+    const a = giftAssets(g.emoji);
+    if ((!g.image && a.image) || (!g.animation && a.animation)) {
+      db.prepare('UPDATE gifts SET image = COALESCE(image, ?), animation = COALESCE(animation, ?) WHERE id = ?').run(a.image, a.animation, g.id);
+    }
+  }
+  const order = new Map(GIFT_CATALOG.map((g, i) => [g[1], i]));
+  for (const g of db.prepare('SELECT id, emoji FROM gifts').all()) if (order.has(g.emoji)) db.prepare('UPDATE gifts SET sort = ? WHERE id = ?').run(order.get(g.emoji), g.id);
 }
 
 export function tx(fn) {

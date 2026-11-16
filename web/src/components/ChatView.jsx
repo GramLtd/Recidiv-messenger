@@ -5,7 +5,9 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, upload, mediaUrl } from '../api.js';
-import { Avatar, Verified, Spark } from './common.jsx';
+import { Avatar, Verified, Spark, WornGift } from './common.jsx';
+import { AudioMessage } from './Music.jsx';
+import { audioDuration, titleFromFile } from '../player.js';
 import { GiftArt } from './GiftArt.jsx';
 import { colorFor, dayLabel, lastSeen, membersLabel, timeHM, fileSize } from '../util.js';
 
@@ -21,6 +23,7 @@ function MessageContent({ m, chat, onOpenMedia }) {
       {m.type === 'image' && media && <img className="media-img" src={mediaUrl(media.url)} alt="" onClick={() => onOpenMedia(media)} loading="lazy" />}
       {m.type === 'video' && media && <video src={mediaUrl(media.url)} controls preload="metadata" playsInline />}
       {m.type === 'voice' && media && <audio src={mediaUrl(media.url)} controls preload="metadata" />}
+      {m.type === 'audio' && media && <AudioMessage media={media} />}
       {m.type === 'file' && media && (
         <a className="file-box" href={mediaUrl(media.url)} target="_blank" rel="noreferrer" download={media.name} style={{ color: 'inherit' }}>
           <span className="file-icon"><FileText size={22} /></span>
@@ -32,7 +35,7 @@ function MessageContent({ m, chat, onOpenMedia }) {
       )}
       {m.type === 'gift' && m.gift && (
         <div style={{ cursor: 'pointer', textAlign: 'center', minWidth: 200 }} onClick={() => openModal('giftDetails', { userGiftId: m.gift.id })}>
-          <GiftArt userGift={m.gift} size={150} style={{ margin: '4px auto' }} />
+          <GiftArt userGift={m.gift} size={160} rounded={14} animated style={{ margin: '4px auto' }} />
           <div className="bold">{m.gift.collectible ? `${m.gift.gift.name} #${m.gift.collectible.number}` : m.gift.gift.name}</div>
           <div className="small muted">{m.gift.collectible ? 'Коллекционный подарок' : `Подарок за ${m.gift.gift.price} ✦`}</div>
           <button className="btn sm outline" style={{ marginTop: 8 }}><Gift size={15} /> Посмотреть</button>
@@ -227,7 +230,10 @@ function Composer({ chat }) {
     for (const f of files) {
       try {
         setProgress(0);
+        const isMusic = (f.type.startsWith('audio/') || /\.(mp3|m4a|flac|ogg|wav)$/i.test(f.name)) && !/^voice-\d+\./.test(f.name);
+        const duration = isMusic ? await audioDuration(f) : 0;
         const media = await upload(f, setProgress);
+        if (isMusic) Object.assign(media, { kind: 'audio', duration, ...titleFromFile(f.name) });
         await sendMessage(chat.id, { media, text: files.length === 1 ? text.trim() : '', replyTo: reply?.id });
         if (files.length === 1) { setText(''); drafts.current[chat.id] = ''; }
       } catch (e) {
@@ -442,7 +448,7 @@ export default function ChatView() {
             <div className="row info" onClick={() => setRightPanel(!rightPanel)}>
               <Avatar src={chat.avatar} name={chat.title} id={chat.peer?.id || chat.id} size={42} saved={chat.type === 'saved'} />
               <div className="grow">
-                <div className="title"><span className="ellipsis">{chat.title}</span>{chat.peer?.verified && <Verified />}</div>
+                <div className="title"><span className="ellipsis">{chat.title}</span>{chat.peer?.verified && <Verified />}{chat.peer?.wornGift && <WornGift gift={chat.peer.wornGift} size={20} />}</div>
                 {status}
               </div>
             </div>

@@ -6,9 +6,10 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api } from '../api.js';
-import { Avatar, Verified, Spark } from './common.jsx';
+import { Avatar, Verified, Spark, WornGift } from './common.jsx';
 import { chatTime } from '../util.js';
 import { loadTheme, saveTheme } from '../theme.js';
+import { BottomNav, TabPage, MiniPlayerSlot } from './Tabs.jsx';
 
 function StoriesBar() {
   const stories = useStore((s) => s.stories);
@@ -100,6 +101,7 @@ export function ChatRow({ chat, active, onClick, onContext }) {
             {chat.type === 'channel' && <Megaphone size={15} className="muted" />}
             <span className="ellipsis">{chat.title}</span>
             {chat.peer?.verified && <Verified size={15} />}
+            {chat.peer?.wornGift && <WornGift gift={chat.peer.wornGift} size={18} />}
             {chat.muted && <VolumeX size={14} className="muted" />}
           </div>
           <span className="time">
@@ -157,6 +159,18 @@ function ChatContextMenu({ chat, x, y, onClose }) {
 }
 
 export default function Sidebar() {
+  const tab = useStore((s) => s.tab);
+  const setTab = useStore((s) => s.setTab);
+  return (
+    <aside className="sidebar">
+      {tab === 'chats' ? <ChatsPage /> : <TabPage tab={tab} />}
+      {tab !== 'music' && <MiniPlayerSlot onOpen={() => setTab('music')} />}
+      <BottomNav />
+    </aside>
+  );
+}
+
+function ChatsPage() {
   const chats = useStore((s) => s.chats);
   const activeChatId = useStore((s) => s.activeChatId);
   const openChat = useStore((s) => s.openChat);
@@ -181,7 +195,7 @@ export default function Sidebar() {
   const resetSearch = () => { setQ(''); setResults(null); };
 
   return (
-    <aside className="sidebar">
+    <div className="tab-page chats-page">
       <div className="side-header">
         {q ? (
           <button className="icon-btn" onClick={resetSearch}><X size={22} /></button>
@@ -248,6 +262,6 @@ export default function Sidebar() {
 
       {drawer && <Drawer onClose={() => setDrawer(false)} />}
       {ctx && <ChatContextMenu {...ctx} onClose={() => setCtx(null)} />}
-    </aside>
+    </div>
   );
 }

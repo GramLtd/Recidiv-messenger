@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, tx, getSetting, setSetting, seedModelsForGift, SYSTEM_USER_ID } from '../db.js';
+import { db, tx, getSetting, setSetting, seedModelsForGift, SYSTEM_USER_ID, giftAssets } from '../db.js';
 import { fail } from '../auth.js';
 import { meUser, getUser, changeBalance, pushBalance, notify, serializeGift, emitToUser, now } from '../services.js';
 import { creditPayment } from './wallet.js';
@@ -113,10 +113,11 @@ function giftFields(b, prev = {}) {
 
 r.post('/gifts', (req, res) => {
   const f = giftFields(req.body);
+  const assets = giftAssets(f.emoji);
   const id = tx(() => {
     const ins = db
-      .prepare('INSERT INTO gifts (name, emoji, image, price, supply, upgrade_price, convert_value, enabled, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(f.name, f.emoji, f.image, f.price, f.supply, f.upgrade_price, f.convert_value, f.enabled, f.sort, now());
+      .prepare('INSERT INTO gifts (name, emoji, image, animation, price, supply, upgrade_price, convert_value, enabled, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(f.name, f.emoji, f.image || assets.image, assets.animation, f.price, f.supply, f.upgrade_price, f.convert_value, f.enabled, f.sort, now());
     seedModelsForGift(ins.lastInsertRowid, f.emoji);
     return ins.lastInsertRowid;
   });
@@ -131,7 +132,11 @@ r.patch('/gifts/:id', (req, res) => {
   db.prepare('UPDATE gifts SET name = ?, emoji = ?, image = ?, price = ?, supply = ?, upgrade_price = ?, convert_value = ?, enabled = ?, sort = ? WHERE id = ?').run(
     f.name, f.emoji, f.image, f.price, f.supply, f.upgrade_price, f.convert_value, f.enabled, f.sort, g.id,
   );
-  if (f.emoji !== g.emoji) db.prepare('UPDATE gift_models SET emoji = ? WHERE gift_id = ? AND emoji = ?').run(f.emoji, g.id, g.emoji);
+  if (f.emoji !== g.emoji) {
+    db.prepare('UPDATE gift_models SET emoji = ? WHERE gift_id = ? AND emoji = ?').run(f.emoji, g.id, g.emoji);
+    const a = giftAssets(f.emoji);
+    db.prepare('UPDATE gifts SET image = ?, animation = ? WHERE id = ?').run(req.body.image || a.image, a.animation, g.id);
+  }
   res.json({ gift: serializeGift(db.prepare('SELECT * FROM gifts WHERE id = ?').get(g.id)) });
 });
 

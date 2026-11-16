@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { X, ArrowLeft, BadgeCheck } from 'lucide-react';
 import { mediaUrl } from '../api.js';
 import { colorFor, initials } from '../util.js';
@@ -22,25 +22,57 @@ export function Avatar({ src, name, id, size = 48, online, ring, onClick, saved 
 
 export const Verified = ({ size = 16 }) => <BadgeCheck size={size} className="verified" fill="currentColor" color="var(--bg)" strokeWidth={2} style={{ color: 'var(--accent)' }} />;
 
+/** Small collectible "worn" next to a user's name. */
+export function WornGift({ gift, size = 20 }) {
+  if (!gift) return null;
+  return (
+    <span className="worn-gift" title={`${gift.name} #${gift.number}`} style={{ width: size, height: size, background: `radial-gradient(circle, ${gift.center || '#444'}, ${gift.edge || '#000'})` }}>
+      <img src={gift.image || `/emoji3d/${[...gift.emoji].map((c) => c.codePointAt(0).toString(16)).join('-')}.webp`} alt="" style={{ filter: gift.filter || undefined }} />
+    </span>
+  );
+}
+
 export function Name({ user, className }) {
   if (!user) return null;
   return (
     <span className={className} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
       <span className="ellipsis">{user.displayName}</span>
       {user.verified && <Verified size={15} />}
-      {user.emojiStatus && <span>{user.emojiStatus}</span>}
+      {user.wornGift ? <WornGift gift={user.wornGift} /> : user.emojiStatus && <span>{user.emojiStatus}</span>}
     </span>
   );
 }
 
+/** Inside a tab page, <Modal> renders as a full page instead of an overlay. */
+export const InlinePage = createContext(false);
+
 export function Modal({ title, children, footer, onClose, wide, back, className = '', headExtra }) {
+  const inline = useContext(InlinePage);
   const close = useStore((s) => s.closeModal);
   const doClose = onClose || close;
   useEffect(() => {
+    if (inline) return;
     const h = (e) => e.key === 'Escape' && doClose();
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [doClose]);
+  }, [doClose, inline]);
+  if (inline) {
+    return (
+      <div className={`page ${className}`}>
+        {title !== null && (
+          <div className="page-head">
+            {back && <button className="icon-btn" onClick={back}><ArrowLeft size={22} /></button>}
+            <h3>{title}</h3>
+            {headExtra}
+          </div>
+        )}
+        <div className="page-body">
+          {children}
+          {footer && <div className="page-foot">{footer}</div>}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && doClose()}>
       <div className={`modal ${wide === 'x' ? 'xwide' : wide ? 'wide' : ''} ${className}`}>

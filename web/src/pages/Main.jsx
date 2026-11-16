@@ -55,7 +55,14 @@ function useDeepLinks() {
     const st = useStore.getState();
     const m = location.pathname.match(/^\/@([a-zA-Z0-9_]+)$/);
     const j = location.pathname.match(/^\/join\/([a-f0-9]+)$/);
-    if (m) {
+    const g = location.pathname.match(/^\/gift\/(.+)$/);
+    if (g) {
+      const slug = decodeURIComponent(g[1]);
+      (/^\d+$/.test(slug) ? Promise.resolve({ userGift: { id: Number(slug) } }) : api(`/collectibles/${encodeURIComponent(slug)}`))
+        .then((r) => st.openModal('giftDetails', { userGiftId: r.userGift.id }))
+        .catch((e) => st.toast(e.message, 'error'))
+        .finally(() => navigate('/', { replace: true }));
+    } else if (m) {
       api(`/resolve/${m[1]}`)
         .then((r) => {
           if (r.user) st.openPrivate(r.user.id);

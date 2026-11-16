@@ -253,7 +253,7 @@ r.post('/chats/:id/messages', (req, res) => {
   const media = sanitizeMedia(req.body.media);
   if (!text.trim() && !media) fail(400, 'Пустое сообщение');
   let type = 'text';
-  if (media) type = ['image', 'video', 'voice', 'file', 'sticker'].includes(media.kind) ? media.kind : 'file';
+  if (media) type = ['image', 'video', 'voice', 'audio', 'file', 'sticker'].includes(media.kind) ? media.kind : 'file';
   let replyTo = req.body.replyTo ? Number(req.body.replyTo) : null;
   if (replyTo && !db.prepare('SELECT 1 FROM messages WHERE id = ? AND chat_id = ?').get(replyTo, c.id)) replyTo = null;
   const msg = createMessage({ chatId: c.id, senderId: req.user.id, type, text, media, replyTo });

@@ -123,6 +123,7 @@ r.post('/user-gifts/:id/convert', (req, res) => {
   const g = db.prepare('SELECT * FROM gifts WHERE id = ?').get(ug.gift_id);
   tx(() => {
     db.prepare('UPDATE user_gifts SET converted = 1 WHERE id = ?').run(ug.id);
+    db.prepare('UPDATE users SET worn_gift_id = NULL WHERE worn_gift_id = ?').run(ug.id);
     changeBalance(req.user.id, g.convert_value, 'gift_convert', `Конвертация «${g.name}»`, `ug:${ug.id}`);
   });
   pushBalance(req.user.id);
@@ -136,9 +137,18 @@ r.post('/user-gifts/:id/transfer', (req, res) => {
   const to = getUser(Number(req.body.toUserId));
   if (!to || to.is_bot || to.id === req.user.id) fail(400, 'Некорректный получатель');
   db.prepare('UPDATE user_gifts SET owner_id = ?, sender_id = ?, anonymous = 0, hidden = 0, pinned = 0 WHERE id = ?').run(to.id, req.user.id, ug.id);
+  db.prepare('UPDATE users SET worn_gift_id = NULL WHERE worn_gift_id = ?').run(ug.id);
   const chat = getOrCreatePrivateChat(req.user.id, to.id);
   createMessage({ chatId: chat.id, senderId: req.user.id, type: 'gift', text: '', userGiftId: ug.id });
   res.json({ ok: true });
+});
+
+/** "Wear" a collectible: it is shown next to the owner's name. */
+r.post('/user-gifts/:id/wear', (req, res) => {
+  const ug = loadOwned(req.params.id, req.user.id);
+  if (!ug.upgraded_at) fail(400, 'Надеть можно только коллекционный подарок');
+  db.prepare('UPDATE users SET worn_gift_id = ? WHERE id = ?').run(req.body.wear === false ? null : ug.id, req.user.id);
+  res.json({ userGift: serializeUserGift(ug.id, req.user.id) });
 });
 
 r.post('/user-gifts/:id/visibility', (req, res) => {
