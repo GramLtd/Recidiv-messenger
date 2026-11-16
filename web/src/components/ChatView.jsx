@@ -1,0 +1,543 @@
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  ArrowLeft, Search, MoreVertical, Paperclip, Smile, Send, Mic, X, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck,
+  FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square,
+} from 'lucide-react';
+import { useStore } from '../store.js';
+import { api, upload, mediaUrl } from '../api.js';
+import { Avatar, Verified, Spark } from './common.jsx';
+import { GiftArt } from './GiftArt.jsx';
+import { colorFor, dayLabel, lastSeen, membersLabel, timeHM, fileSize } from '../util.js';
+
+const QUICK_REACTIONS = ['❤️', '🔥', '👍', '😂', '😮', '😢', '💀', '🤡'];
+const EMOJIS = '😀😃😄😁😆😅🤣😂🙂😉😊😇🥰😍🤩😘😋😛😜🤪😝🤑🤗🤭🤫🤔🤐🤨😐😑😶😏😒🙄😬😮‍💨🤥😌😔😪🤤😴😷🤒🤕🤢🤮🥵🥶🥴😵🤯🤠🥳😎🤓🧐😕😟🙁😮😯😲😳🥺😦😧😨😰😥😢😭😱😖😣😞😓😩😫🥱😤😡😠🤬😈👿💀☠️💩🤡👹👺👻👽👾🤖😺😸😹😻😼😽🙀😿😾🙈🙉🙊💋💌💘💝💖💗💓💞💕💟❣️💔❤️‍🔥❤️🧡💛💚💙💜🤎🖤🤍💯💢💥💫💦💨🕳️💬💭💤👋🤚🖐️✋🖖👌🤌🤏✌️🤞🤟🤘🤙👈👉👆🖕👇☝️👍👎✊👊🤛🤜👏🙌👐🤲🤝🙏💪🦾🔥⭐🌟✨⚡🎉🎊🎁🏆👑💎🔪🗝️⛓️🚬🍾🥂🍻🎲🎯🎮'.match(/\p{Extended_Pictographic}(?:️)?(?:‍\p{Extended_Pictographic}(?:️)?)*/gu);
+
+function MessageContent({ m, chat, onOpenMedia }) {
+  const openModal = useStore((s) => s.openModal);
+  if (m.deleted) return <span className="deleted-text">Сообщение удалено</span>;
+  const media = m.media;
+  return (
+    <>
+      {m.type === 'image' && media && <img className="media-img" src={mediaUrl(media.url)} alt="" onClick={() => onOpenMedia(media)} loading="lazy" />}
+      {m.type === 'video' && media && <video src={mediaUrl(media.url)} controls preload="metadata" playsInline />}
+      {m.type === 'voice' && media && <audio src={mediaUrl(media.url)} controls preload="metadata" />}
+      {m.type === 'file' && media && (
+        <a className="file-box" href={mediaUrl(media.url)} target="_blank" rel="noreferrer" download={media.name} style={{ color: 'inherit' }}>
+          <span className="file-icon"><FileText size={22} /></span>
+          <span className="grow">
+            <div className="ellipsis bold">{media.name}</div>
+            <div className="small muted">{fileSize(media.size || 0)}</div>
+          </span>
+        </a>
+      )}
+      {m.type === 'gift' && m.gift && (
+        <div style={{ cursor: 'pointer', textAlign: 'center', minWidth: 200 }} onClick={() => openModal('giftDetails', { userGiftId: m.gift.id })}>
+          <GiftArt userGift={m.gift} size={150} style={{ margin: '4px auto' }} />
+          <div className="bold">{m.gift.collectible ? `${m.gift.gift.name} #${m.gift.collectible.number}` : m.gift.gift.name}</div>
+          <div className="small muted">{m.gift.collectible ? 'Коллекционный подарок' : `Подарок за ${m.gift.gift.price} ✦`}</div>
+          <button className="btn sm outline" style={{ marginTop: 8 }}><Gift size={15} /> Посмотреть</button>
+        </div>
+      )}
+      {m.type === 'transfer' && (
+        <div style={{ textAlign: 'center', padding: '6px 10px' }}>
+          <div style={{ fontSize: '2em' }}>💸</div>
+          <div className="bold" style={{ fontSize: '1.2em' }}><Spark amount={media?.amount} /></div>
+          <div className="small muted">Перевод</div>
+        </div>
+      )}
+      {m.text && m.type !== 'gift' && <span>{linkify(m.text)}</span>}
+      {m.type === 'gift' && m.text && <div style={{ marginTop: 6, fontStyle: 'italic' }}>«{m.text}»</div>}
+    </>
+  );
+}
+
+function linkify(text) {
+  const parts = text.split(/(https?:\/\/[^\s]+|@[a-zA-Z][a-zA-Z0-9_]{3,31})/g);
+  return parts.map((p, i) => {
+    if (/^https?:\/\//.test(p)) return <a key={i} href={p} target="_blank" rel="noreferrer">{p}</a>;
+    if (/^@/.test(p)) return <a key={i} href="#" onClick={(e) => { e.preventDefault(); resolveUsername(p.slice(1)); }}>{p}</a>;
+    return <Fragment key={i}>{p}</Fragment>;
+  });
+}
+
+async function resolveUsername(name) {
+  const st = useStore.getState();
+  try {
+    const r = await api(`/resolve/${name}`);
+    if (r.user) st.openModal('userProfile', { userId: r.user.id });
+    else if (r.chat) { st.upsertChat(r.chat); st.openChat(r.chat.id); }
+  } catch (e) {
+    st.toast(e.message, 'error');
+  }
+}
+
+function Message({ m, chat, me, grouped, groupedNext, onContext, onOpenMedia, highlight, onJump }) {
+  const openModal = useStore((s) => s.openModal);
+  if (m.type === 'system') return <div className="sys-msg">{m.text}</div>;
+  const out = m.sender?.id === me.id && chat.type !== 'channel';
+  const isChannel = chat.type === 'channel';
+  const showSender = !out && !grouped && (chat.type === 'group');
+  const showAvatar = chat.type === 'group' && !out && !groupedNext;
+  const mediaOnly = (m.type === 'image' || m.type === 'video') && !m.text && !m.replyTo && !m.deleted;
+  const read = out && chat.peerReadId >= m.id;
+  const react = (emoji) => api(`/messages/${m.id}/react`, { body: { emoji } }).then((r) => useStore.getState().patchMessage(r.message));
+  return (
+    <div
+      className={`msg-row ${out ? 'out' : 'in'} ${grouped ? 'grouped' : ''} ${groupedNext ? 'grouped-next' : ''} ${isChannel ? 'channel-post' : ''} ${highlight ? 'highlight' : ''}`}
+      data-mid={m.id}
+      onContextMenu={(e) => { e.preventDefault(); onContext(e, m); }}
+      onDoubleClick={() => !m.deleted && react('❤️')}
+    >
+      {chat.type === 'group' && !out && (
+        <div className="avatar-slot">
+          {showAvatar && <Avatar src={m.sender?.avatar} name={m.sender?.displayName} id={m.sender?.id} size={34} onClick={() => openModal('userProfile', { userId: m.sender.id })} />}
+        </div>
+      )}
+      <div className={`bubble ${mediaOnly ? 'media-only' : ''}`}>
+        {isChannel && !grouped && <div className="sender" style={{ color: 'var(--accent)' }}>{chat.title}</div>}
+        {showSender && m.sender && (
+          <div className="sender" style={{ color: colorFor(m.sender.id) }} onClick={() => openModal('userProfile', { userId: m.sender.id })}>
+            {m.sender.displayName} {m.sender.verified && <Verified size={13} />}
+          </div>
+        )}
+        {m.forwardFrom && <div className="forwarded">Переслано от {m.forwardFrom.displayName}</div>}
+        {m.replyTo && (
+          <div className="reply-quote" onClick={() => onJump(m.replyTo.id)}>
+            <b>{m.replyTo.senderName || 'Сообщение'}</b>
+            <span>{m.replyTo.text || (m.replyTo.type !== 'text' ? 'Медиа' : '')}</span>
+          </div>
+        )}
+        <MessageContent m={m} chat={chat} onOpenMedia={onOpenMedia} />
+        <span className="meta">
+          {m.edited && !m.deleted && 'изм. '}
+          {isChannel && <span className="views"><Eye size={13} /> {m.views}</span>}
+          {timeHM(m.createdAt)}
+          {out && chat.type !== 'saved' && (read ? <CheckCheck size={15} /> : <Check size={15} />)}
+        </span>
+        {m.reactions?.length > 0 && (
+          <div className="reactions">
+            {m.reactions.map((r) => (
+              <button key={r.emoji} className={`reaction ${r.users.includes(me.id) ? 'mine' : ''}`} onClick={() => react(r.emoji)}>
+                {r.emoji} {r.count}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MessageMenu({ m, x, y, chat, me, onClose, onReply, onEdit }) {
+  const openModal = useStore((s) => s.openModal);
+  const toast = useStore((s) => s.toast);
+  const own = m.sender?.id === me.id;
+  const canDelete = own || chat.role === 'owner' || chat.role === 'admin';
+  const canReply = chat.type !== 'channel' || chat.role !== 'member';
+  const react = (emoji) => {
+    onClose();
+    api(`/messages/${m.id}/react`, { body: { emoji } }).then((r) => useStore.getState().patchMessage(r.message));
+  };
+  const act = (fn) => () => { onClose(); fn(); };
+  return (
+    <>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 59 }} onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }} />
+      <div className="ctx-menu" style={{ left: Math.max(8, Math.min(x, innerWidth - 320)), top: Math.max(8, Math.min(y, innerHeight - 330)) }}>
+        {!m.deleted && chat.isMember && (
+          <div className="react-strip">{QUICK_REACTIONS.map((e) => <button key={e} onClick={() => react(e)}>{e}</button>)}</div>
+        )}
+        {canReply && !m.deleted && <button className="menu-item" onClick={act(() => onReply(m))}><Reply size={18} /> Ответить</button>}
+        {m.text && !m.deleted && <button className="menu-item" onClick={act(() => { navigator.clipboard?.writeText(m.text); toast('Скопировано'); })}><Copy size={18} /> Копировать</button>}
+        {!m.deleted && m.type !== 'gift' && m.type !== 'transfer' && <button className="menu-item" onClick={act(() => openModal('forward', { messageId: m.id }))}><Forward size={18} /> Переслать</button>}
+        {own && !m.deleted && ['text', 'image', 'video', 'file'].includes(m.type) && <button className="menu-item" onClick={act(() => onEdit(m))}><Pencil size={18} /> Изменить</button>}
+        {canDelete && !m.deleted && (
+          <button className="menu-item danger" onClick={act(() => confirm('Удалить сообщение для всех?') && api.del(`/messages/${m.id}`))}><Trash2 size={18} className="danger" /> Удалить</button>
+        )}
+      </div>
+    </>
+  );
+}
+
+function Composer({ chat }) {
+  const sendMessage = useStore((s) => s.sendMessage);
+  const emitTyping = useStore((s) => s.emitTyping);
+  const toast = useStore((s) => s.toast);
+  const patchMessage = useStore((s) => s.patchMessage);
+  const reply = useStore((s) => s.composerReply);
+  const edit = useStore((s) => s.composerEdit);
+  const [text, setText] = useState('');
+  const [emoji, setEmoji] = useState(false);
+  const [progress, setProgress] = useState(null);
+  const [rec, setRec] = useState(null);
+  const taRef = useRef();
+  const fileRef = useRef();
+  const lastTyping = useRef(0);
+  const drafts = useRef({});
+
+  const setReply = (v) => useStore.setState({ composerReply: v, composerEdit: null });
+  const setEdit = (v) => useStore.setState({ composerEdit: v, composerReply: null });
+
+  useEffect(() => {
+    setText(drafts.current[chat.id] || '');
+    setEmoji(false);
+    taRef.current?.focus();
+  }, [chat.id]);
+  useEffect(() => {
+    if (edit) { setText(edit.text || ''); taRef.current?.focus(); }
+  }, [edit]);
+  useEffect(() => {
+    if (reply) taRef.current?.focus();
+  }, [reply]);
+  useLayoutEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = `${Math.min(ta.scrollHeight, 180)}px`;
+  }, [text]);
+
+  const onChange = (v) => {
+    setText(v);
+    drafts.current[chat.id] = v;
+    if (Date.now() - lastTyping.current > 3000) {
+      lastTyping.current = Date.now();
+      emitTyping(chat.id);
+    }
+  };
+
+  const submit = async () => {
+    const t = text.trim();
+    if (!t) return;
+    try {
+      if (edit) {
+        const r = await api.patch(`/messages/${edit.id}`, { text: t });
+        patchMessage(r.message);
+        setEdit(null);
+      } else {
+        await sendMessage(chat.id, { text: t, replyTo: reply?.id });
+        setReply(null);
+      }
+      setText('');
+      drafts.current[chat.id] = '';
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
+
+  const sendFiles = async (files) => {
+    for (const f of files) {
+      try {
+        setProgress(0);
+        const media = await upload(f, setProgress);
+        await sendMessage(chat.id, { media, text: files.length === 1 ? text.trim() : '', replyTo: reply?.id });
+        if (files.length === 1) { setText(''); drafts.current[chat.id] = ''; }
+      } catch (e) {
+        toast(e.message, 'error');
+      }
+    }
+    setProgress(null);
+    setReply(null);
+  };
+
+  const startRec = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      const chunks = [];
+      mr.ondataavailable = (e) => chunks.push(e.data);
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        if (mr.cancelled) return;
+        const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' });
+        const file = new File([blob], `voice-${Date.now()}.${(mr.mimeType || '').includes('mp4') ? 'm4a' : 'webm'}`, { type: blob.type });
+        await sendFiles([file]);
+      };
+      mr.start();
+      setRec({ mr, started: Date.now() });
+    } catch {
+      toast('Нет доступа к микрофону', 'error');
+    }
+  };
+  const stopRec = (cancel) => {
+    if (!rec) return;
+    rec.mr.cancelled = cancel;
+    rec.mr.stop();
+    setRec(null);
+  };
+  const [, force] = useState(0);
+  useEffect(() => {
+    if (!rec) return;
+    const t = setInterval(() => force((x) => x + 1), 500);
+    return () => clearInterval(t);
+  }, [rec]);
+
+  const quote = edit || reply;
+  return (
+    <div className="composer-wrap" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files.length) sendFiles([...e.dataTransfer.files]); }}>
+      {emoji && (
+        <div className="emoji-panel" onMouseLeave={() => setEmoji(false)}>
+          {EMOJIS.map((e, i) => <button key={i} onClick={() => onChange(text + e)}>{e}</button>)}
+        </div>
+      )}
+      <div className="composer-inner">
+        <div className="composer">
+          {quote && (
+            <div className="composer-reply">
+              {edit ? <Pencil size={20} className="accent" /> : <Reply size={20} className="accent" />}
+              <div className="reply-quote">
+                <b>{edit ? 'Редактирование' : `Ответ ${reply.sender?.displayName || ''}`}</b>
+                <span>{quote.text || 'Медиа'}</span>
+              </div>
+              <button className="icon-btn" onClick={() => { if (edit) { setText(''); } setReply(null); setEdit(null); }}><X size={20} /></button>
+            </div>
+          )}
+          {progress !== null && <div className="upload-progress" style={{ width: `${progress * 100}%` }} />}
+          <div className="composer-row">
+            {rec ? (
+              <div className="row grow" style={{ padding: '0 14px', height: 48 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 5, background: 'var(--accent)', animation: 'pulse 1s infinite' }} />
+                <span>{Math.floor((Date.now() - rec.started) / 1000)} c</span>
+                <span className="spacer" />
+                <button className="btn ghost sm" onClick={() => stopRec(true)}>Отмена</button>
+              </div>
+            ) : (
+              <>
+                <button className="icon-btn" onClick={() => setEmoji(!emoji)}><Smile size={24} /></button>
+                <textarea
+                  ref={taRef}
+                  rows={1}
+                  placeholder={chat.type === 'channel' ? 'Опубликовать…' : 'Сообщение'}
+                  value={text}
+                  onChange={(e) => onChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); }
+                    if (e.key === 'Escape') { setReply(null); setEdit(null); }
+                  }}
+                  onPaste={(e) => { const files = [...e.clipboardData.files]; if (files.length) { e.preventDefault(); sendFiles(files); } }}
+                />
+                {!edit && <button className="icon-btn" onClick={() => fileRef.current.click()}><Paperclip size={22} /></button>}
+                <input ref={fileRef} type="file" multiple hidden onChange={(e) => { sendFiles([...e.target.files]); e.target.value = ''; }} />
+              </>
+            )}
+          </div>
+        </div>
+        {text.trim() || edit ? (
+          <button className="send-btn" onClick={submit}>{edit ? <Check size={24} /> : <Send size={22} style={{ marginLeft: 2 }} />}</button>
+        ) : rec ? (
+          <button className="send-btn recording" onClick={() => stopRec(false)}><Send size={22} /></button>
+        ) : (
+          <button className="send-btn" onClick={startRec} title="Голосовое сообщение"><Mic size={22} /></button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function ChatView() {
+  const chatId = useStore((s) => s.activeChatId);
+  const chat = useStore((s) => s.chats.find((c) => c.id === s.activeChatId));
+  const messages = useStore((s) => s.messages[s.activeChatId]);
+  const hasMore = useStore((s) => s.hasMore[s.activeChatId]);
+  const me = useStore((s) => s.me);
+  const typing = useStore((s) => s.typing[s.activeChatId]);
+  const openChat = useStore((s) => s.openChat);
+  const loadMessages = useStore((s) => s.loadMessages);
+  const setRightPanel = useStore((s) => s.setRightPanel);
+  const rightPanel = useStore((s) => s.rightPanel);
+  const upsertChat = useStore((s) => s.upsertChat);
+  const openModal = useStore((s) => s.openModal);
+  const [menu, setMenu] = useState(null);
+  const [lightbox, setLightbox] = useState(null);
+  const [showDown, setShowDown] = useState(false);
+  const [highlight, setHighlight] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQ, setSearchQ] = useState('');
+  const [searchRes, setSearchRes] = useState([]);
+  const scrollRef = useRef();
+  const loadingOlder = useRef(false);
+  const prevHeight = useRef(0);
+  const stick = useRef(true);
+
+  useEffect(() => {
+    stick.current = true;
+    setSearchOpen(false);
+    useStore.setState({ composerReply: null, composerEdit: null });
+  }, [chatId]);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (loadingOlder.current) {
+      el.scrollTop = el.scrollHeight - prevHeight.current;
+      loadingOlder.current = false;
+    } else if (stick.current) el.scrollTop = el.scrollHeight;
+  }, [messages, chatId]);
+
+  const onScroll = () => {
+    const el = scrollRef.current;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    stick.current = nearBottom;
+    setShowDown(!nearBottom);
+    if (el.scrollTop < 200 && hasMore && !loadingOlder.current && messages?.length) {
+      loadingOlder.current = true;
+      prevHeight.current = el.scrollHeight;
+      loadMessages(chatId, messages[0].id).catch(() => (loadingOlder.current = false));
+    }
+  };
+
+  useEffect(() => {
+    if (!searchOpen || searchQ.trim().length < 2) return setSearchRes([]);
+    const t = setTimeout(() => api(`/chats/${chatId}/search?q=${encodeURIComponent(searchQ)}`).then((r) => setSearchRes(r.messages)), 300);
+    return () => clearTimeout(t);
+  }, [searchQ, searchOpen, chatId]);
+
+  const jumpTo = (id) => {
+    const el = scrollRef.current?.querySelector(`[data-mid="${id}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlight(id);
+      setTimeout(() => setHighlight(null), 1500);
+    } else useStore.getState().toast('Сообщение слишком далеко в истории');
+  };
+
+  if (!chatId || !chat) {
+    return (
+      <div className="chat-main">
+        <div className="chat-bg-pattern" />
+        <div className="empty-chat"><span className="pill">Выберите чат, чтобы начать общение</span></div>
+      </div>
+    );
+  }
+
+  const typers = typing ? Object.values(typing).filter((t) => t.until > Date.now()) : [];
+  let status;
+  if (typers.length) status = <span className="status typing">{chat.type === 'private' ? 'печатает…' : `${typers.map((t) => t.name.split(' ')[0]).join(', ')} печатает…`}</span>;
+  else if (chat.type === 'private') status = <span className={`status ${chat.peer?.online ? 'online' : ''}`}>{lastSeen(chat.peer)}</span>;
+  else if (chat.type === 'saved') status = null;
+  else status = <span className="status">{membersLabel(chat)}</span>;
+
+  const canPost = chat.isMember && (chat.type !== 'channel' || chat.role !== 'member') && !(chat.type === 'private' && chat.peer?.isBot);
+  const join = async () => {
+    const r = await api(`/chats/${chat.id}/join`, { body: {} });
+    upsertChat(r.chat);
+  };
+  const toggleMute = async () => {
+    const r = await api(`/chats/${chat.id}/settings`, { body: { muted: !chat.muted } });
+    upsertChat(r.chat);
+  };
+
+  return (
+    <div className="chat-main">
+      <div className="chat-header">
+        <button className="icon-btn back-btn" onClick={() => openChat(null)}><ArrowLeft size={22} /></button>
+        {searchOpen ? (
+          <>
+            <div className="search-box">
+              <Search size={18} />
+              <input autoFocus placeholder="Поиск в чате" value={searchQ} onChange={(e) => setSearchQ(e.target.value)} />
+            </div>
+            <button className="icon-btn" onClick={() => { setSearchOpen(false); setSearchQ(''); }}><X size={22} /></button>
+          </>
+        ) : (
+          <>
+            <div className="row info" onClick={() => setRightPanel(!rightPanel)}>
+              <Avatar src={chat.avatar} name={chat.title} id={chat.peer?.id || chat.id} size={42} saved={chat.type === 'saved'} />
+              <div className="grow">
+                <div className="title"><span className="ellipsis">{chat.title}</span>{chat.peer?.verified && <Verified />}</div>
+                {status}
+              </div>
+            </div>
+            {chat.type === 'private' && !chat.peer?.isBot && (
+              <button className="icon-btn" title="Отправить подарок" onClick={() => openModal('giftShop', { toUser: chat.peer })}><Gift size={21} /></button>
+            )}
+            <button className="icon-btn" onClick={() => setSearchOpen(true)}><Search size={21} /></button>
+            <button className="icon-btn" onClick={() => setRightPanel(!rightPanel)}><MoreVertical size={21} /></button>
+          </>
+        )}
+      </div>
+
+      {searchOpen && searchRes.length > 0 && (
+        <div style={{ maxHeight: 240, overflowY: 'auto', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+          {searchRes.map((m) => (
+            <div key={m.id} className="list-item" onClick={() => jumpTo(m.id)}>
+              <div className="grow">
+                <div className="small bold">{m.sender?.displayName}</div>
+                <div className="small muted ellipsis">{m.text}</div>
+              </div>
+              <span className="tiny muted">{dayLabel(m.createdAt)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="messages" ref={scrollRef} onScroll={onScroll}>
+        <div className="chat-bg-pattern" />
+        <div className="messages-inner">
+          {!messages && <div className="center" style={{ padding: 40 }}><div className="spinner" /></div>}
+          {messages?.length === 0 && (
+            <div className="empty-chat" style={{ paddingTop: 80 }}>
+              <span className="pill">{chat.type === 'saved' ? 'Пересылайте сюда сообщения и сохраняйте файлы' : 'Сообщений пока нет — напишите первым!'}</span>
+            </div>
+          )}
+          {messages?.map((m, i) => {
+            const prev = messages[i - 1];
+            const next = messages[i + 1];
+            const newDay = !prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString();
+            const same = (a, b) => a && b && a.type !== 'system' && b.type !== 'system' && a.sender?.id === b.sender?.id && Math.abs(b.createdAt - a.createdAt) < 5 * 60_000 && new Date(a.createdAt).toDateString() === new Date(b.createdAt).toDateString();
+            return (
+              <Fragment key={m.id}>
+                {newDay && <div className="day-sep">{dayLabel(m.createdAt)}</div>}
+                <Message
+                  m={m}
+                  chat={chat}
+                  me={me}
+                  grouped={same(prev, m)}
+                  groupedNext={same(m, next)}
+                  highlight={highlight === m.id}
+                  onJump={jumpTo}
+                  onContext={(e, msg) => setMenu({ m: msg, x: e.clientX, y: e.clientY })}
+                  onOpenMedia={setLightbox}
+                />
+              </Fragment>
+            );
+          })}
+        </div>
+      </div>
+      {showDown && (
+        <button className="scroll-down" onClick={() => { const el = scrollRef.current; el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }); }}>
+          <ChevronDown size={24} />
+          {chat.unread > 0 && <span className="badge" style={{ position: 'absolute', top: -8 }}>{chat.unread}</span>}
+        </button>
+      )}
+
+      {canPost ? (
+        <Composer chat={chat} />
+      ) : (
+        <div className="channel-footer">
+          {!chat.isMember ? (
+            <button className="btn" style={{ minWidth: 220 }} onClick={join}>{chat.type === 'channel' ? <><Megaphone size={18} /> Подписаться</> : 'Вступить в группу'}</button>
+          ) : chat.type === 'channel' ? (
+            <button className="btn ghost" onClick={toggleMute}>{chat.muted ? <><Bell size={18} /> Включить уведомления</> : <><BellOff size={18} /> Отключить уведомления</>}</button>
+          ) : (
+            <span className="muted small">Этот аккаунт присылает только уведомления</span>
+          )}
+        </div>
+      )}
+
+      {menu && (
+        <MessageMenu
+          {...menu}
+          chat={chat}
+          me={me}
+          onClose={() => setMenu(null)}
+          onReply={(m) => useStore.setState({ composerReply: m, composerEdit: null })}
+          onEdit={(m) => useStore.setState({ composerEdit: m, composerReply: null })}
+        />
+      )}
+      {lightbox && (
+        <div className="lightbox" onClick={() => setLightbox(null)}>
+          <img src={mediaUrl(lightbox.url)} alt="" />
+        </div>
+      )}
+    </div>
+  );
+}
