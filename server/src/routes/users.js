@@ -203,6 +203,23 @@ r.post('/me/personal-channel', (req, res) => {
   res.json({ ok: true });
 });
 
+/** Info card for a collectible username: who owns it and how it was acquired. */
+r.get('/usernames/:name/info', (req, res) => {
+  const name = String(req.params.name).replace(/^@/, '').toLowerCase();
+  const row = db.prepare('SELECT * FROM usernames WHERE name = ?').get(name);
+  if (!row) fail(404, 'Юзернейм не найден');
+  const sale = db.prepare("SELECT price, closed_at FROM listings WHERE kind = 'username' AND status = 'sold' AND lower(username) = ? ORDER BY closed_at DESC LIMIT 1").get(name);
+  const owner = row.user_id ? getUser(row.user_id) : null;
+  res.json({
+    name: row.display,
+    owner: owner ? { id: owner.id, displayName: owner.display_name, avatar: owner.avatar } : null,
+    chatId: row.chat_id || null,
+    acquiredAt: sale?.closed_at || row.created_at,
+    purchase: sale ? { price: sale.price, at: sale.closed_at } : null,
+    listed: !!db.prepare("SELECT 1 FROM listings WHERE kind = 'username' AND status = 'active' AND lower(username) = ?").get(name),
+  });
+});
+
 /** Resolve @name to a user or a public chat. */
 r.get('/resolve/:name', (req, res) => {
   const row = db.prepare('SELECT * FROM usernames WHERE name = ?').get(String(req.params.name).replace(/^@/, '').toLowerCase());

@@ -8,12 +8,11 @@ import { Group, Row, NotificationsPage, PremiumPage, WalletCardPage, LanguagePag
 import { useT, useLang, LANGS } from '../i18n.js';
 import { useStore } from '../store.js';
 import { api, upload } from '../api.js';
-import { Avatar, Modal, Spark, Switch, useAsync, useAction, PremiumStar, nameStyleCss } from './common.jsx';
+import { Avatar, Modal, Spark, Switch, useAsync, useAction, PremiumStar, nameStyleCss, StyledName } from './common.jsx';
 import { AvatarCropper, BannerEditor, LinksEditor, WallpaperPicker, BlurBgEditor } from './ProfileExtras.jsx';
 import { WalletsSection } from './Wallets.jsx';
 import { ACCENTS, BACKGROUNDS, FONTS, loadTheme, saveTheme } from '../theme.js';
 
-const STATUS_EMOJI = ['', '🔴', '💀', '🔥', '⛓️', '👑', '💎', '🗝️', '⚡', '🎲', '🕷️', '🌙'];
 
 function ProfileTab() {
   const me = useStore((s) => s.me);
@@ -21,10 +20,9 @@ function ProfileTab() {
   const [name, setName] = useState(me.displayName);
   const [bio, setBio] = useState(me.bio || '');
   const [avatar, setAvatar] = useState(me.avatar);
-  const [emojiStatus, setEmojiStatus] = useState(me.emojiStatus || '');
   const [cropFile, setCropFile] = useState(null);
   const [run, busy] = useAction();
-  const save = () => run(async () => setMe((await api.patch('/me', { displayName: name, bio, avatar, emojiStatus: emojiStatus || null })).user), 'Профиль сохранён');
+  const save = () => run(async () => setMe((await api.patch('/me', { displayName: name, bio, avatar, emojiStatus: null })).user), 'Профиль сохранён');
   return (
     <div className="col" style={{ gap: 14 }}>
       <label style={{ cursor: 'pointer', position: 'relative', alignSelf: 'center' }}>
@@ -63,14 +61,6 @@ function ProfileTab() {
       <LocationField />
       <div className="field"><label>Имя</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={64} /></div>
       <div className="field"><label>О себе</label><textarea className="input" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={200} /><span className="hint">{bio.length}/200</span></div>
-      <div className="field">
-        <label>Эмодзи-статус</label>
-        <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
-          {STATUS_EMOJI.map((e) => (
-            <button key={e || 'none'} className={`chip ${emojiStatus === e ? 'on' : ''}`} style={{ fontSize: '1.1em' }} onClick={() => setEmojiStatus(e)}>{e || 'нет'}</button>
-          ))}
-        </div>
-      </div>
       <LinksEditor />
       <ProfileExtras />
       <button className="list-item" style={{ background: 'var(--bg-2)' }} onClick={() => import('./ProfileView.jsx').then((m) => m.openNumbersBot())}>
@@ -246,7 +236,7 @@ function SettingsHome({ open }) {
       <button className="set-me" onClick={() => open('profile')}>
         <Avatar src={me.avatar} name={me.displayName} id={me.id} size={64} />
         <div className="grow" style={{ minWidth: 0, textAlign: 'left' }}>
-          <div className="row" style={{ gap: 5 }}><b className="ellipsis" style={nameStyleCss(me.nameStyle)}>{me.displayName}</b>{me.premium && <PremiumStar />}</div>
+          <div className="row" style={{ gap: 5 }}><b className="row" style={{ minWidth: 0 }}><StyledName user={me} /></b>{me.premium && <PremiumStar />}</div>
           <div className="small muted ellipsis">{me.username ? `@${me.username}` : me.email}</div>
         </div>
         <span className="set-chev">›</span>

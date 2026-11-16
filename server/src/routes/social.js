@@ -37,20 +37,43 @@ function serializePost(p, viewerId, depth = 0) {
 const PAGE = 20;
 const notBlocked = `p.user_id NOT IN (SELECT blocked_id FROM blocks WHERE user_id = @me) AND p.user_id NOT IN (SELECT user_id FROM blocks WHERE blocked_id = @me)`;
 
+/** Messages of public channels shown in the feed next to posts (click → open the channel). */
+function channelItems(me, before, onlyMember) {
+  const rows = db.prepare(`
+    SELECT m.* FROM messages m JOIN chats c ON c.id = m.chat_id
+    WHERE c.type = 'channel' AND m.deleted = 0 AND m.type IN ('text','image','video') AND m.created_at < @before
+      AND ${onlyMember ? 'c.id IN (SELECT chat_id FROM chat_members WHERE user_id = @me)' : 'c.is_public = 1'}
+    ORDER BY m.created_at DESC LIMIT ${PAGE}`).all({ me, before });
+  return rows.map((m) => {
+    const media = parseJson(m.media, null);
+    return {
+      kind: 'channel', id: `c${m.id}`, msgId: m.id, chat: serializeChat(m.chat_id, me), text: m.text || '',
+      media: media && ['image', 'video'].includes(m.type) ? [{ url: media.url, kind: m.type }] : [], views: m.views, createdAt: m.created_at,
+    };
+  });
+}
+
 r.get('/feed', (req, res) => {
   const me = req.user.id;
-  const before = Number(req.query.before) || Number.MAX_SAFE_INTEGER;
+  const before = Number(req.query.before) || Number.MAX_SAFE_INTEGER; // created_at cursor
   const tab = String(req.query.tab || 'all');
   const tag = String(req.query.tag || '').replace(/^#/, '').toLowerCase();
   let rows;
   if (tab === 'following') {
-    rows = db.prepare(`SELECT p.* FROM posts p WHERE p.deleted = 0 AND p.id < @before AND (p.user_id IN (SELECT followee_id FROM follows WHERE follower_id = @me) OR p.user_id = @me) AND ${notBlocked} ORDER BY p.id DESC LIMIT ${PAGE}`).all({ me, before });
+    rows = db.prepare(`SELECT p.* FROM posts p WHERE p.deleted = 0 AND p.created_at < @before AND (p.user_id IN (SELECT followee_id FROM follows WHERE follower_id = @me) OR p.user_id = @me) AND ${notBlocked} ORDER BY p.created_at DESC LIMIT ${PAGE}`).all({ me, before });
   } else if (tab === 'tag' && tag) {
-    rows = db.prepare(`SELECT p.* FROM posts p JOIN post_tags t ON t.post_id = p.id AND t.tag = @tag WHERE p.deleted = 0 AND p.id < @before AND ${notBlocked} ORDER BY p.id DESC LIMIT ${PAGE}`).all({ me, before, tag });
+    rows = db.prepare(`SELECT p.* FROM posts p JOIN post_tags t ON t.post_id = p.id AND t.tag = @tag WHERE p.deleted = 0 AND p.created_at < @before AND ${notBlocked} ORDER BY p.created_at DESC LIMIT ${PAGE}`).all({ me, before, tag });
   } else {
-    rows = db.prepare(`SELECT p.* FROM posts p JOIN users u ON u.id = p.user_id AND u.is_banned = 0 WHERE p.deleted = 0 AND p.id < @before AND ${notBlocked} ORDER BY p.id DESC LIMIT ${PAGE}`).all({ me, before });
+    rows = db.prepare(`SELECT p.* FROM posts p JOIN users u ON u.id = p.user_id AND u.is_banned = 0 WHERE p.deleted = 0 AND p.created_at < @before AND ${notBlocked} ORDER BY p.created_at DESC LIMIT ${PAGE}`).all({ me, before });
   }
-  res.json({ posts: rows.map((p) => serializePost(p, me)), hasMore: rows.length === PAGE });
+  let items = rows.map((p) => ({ kind: 'post', ...serializePost(p, me) }));
+  let more = rows.length === PAGE;
+  if (tab === 'all' || tab === 'following') {
+    const ch = channelItems(me, before, tab === 'following');
+    more = more || ch.length === PAGE;
+    items = [...items, ...ch].sort((x, y) => y.createdAt - x.createdAt).slice(0, PAGE);
+  }
+  res.json({ posts: items, hasMore: more });
 });
 
 r.get('/tags/trending', (_req, res) => {
@@ -62,7 +85,7 @@ r.get('/users/:id/posts', (req, res) => {
   const before = Number(req.query.before) || Number.MAX_SAFE_INTEGER;
   const uid = Number(req.params.id);
   if (isBlocked(uid, req.user.id)) return res.json({ posts: [], hasMore: false });
-  const rows = db.prepare(`SELECT * FROM posts WHERE user_id = ? AND deleted = 0 AND id < ? ORDER BY id DESC LIMIT ${PAGE}`).all(uid, before);
+  const rows = db.prepare(`SELECT * FROM posts WHERE user_id = ? AND deleted = 0 AND created_at < ? ORDER BY created_at DESC LIMIT ${PAGE}`).all(uid, before);
   res.json({ posts: rows.map((p) => serializePost(p, req.user.id)), hasMore: rows.length === PAGE });
 });
 

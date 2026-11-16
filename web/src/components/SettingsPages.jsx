@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Check, Star, Crown, Eye, Sparkles, Smartphone, Monitor, Trash2, ArrowDownLeft, ArrowUpRight, Plus, Send, KeyRound, ShieldCheck, Lock, HardDrive } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api } from '../api.js';
-import { Avatar, Spark, Spinner, Switch, useAsync, useAction, PremiumStar, nameStyleCss } from './common.jsx';
+import { Avatar, Spark, Spinner, Switch, useAsync, useAction, PremiumStar, nameStyleCss, StyledName } from './common.jsx';
 import { LANGS, useLang } from '../i18n.js';
 import { FONTS, loadTheme, saveTheme } from '../theme.js';
 import { useLock, PinPad, checkCode } from './Lock.jsx';
@@ -274,16 +274,7 @@ export function WalletCardPage() {
   const txs = (data?.transactions || []).filter((x) => filter === 'all' || (filter === 'in' ? x.amount > 0 : x.amount < 0));
   return (
     <>
-      <div className="wcard">
-        <div className="wcard-shine" />
-        <div className="row" style={{ alignItems: 'flex-start' }}>
-          <img src="/icon.svg" alt="" width={46} height={46} style={{ borderRadius: 14 }} />
-          <div className="grow"><div className="wcard-brand">Recidivist</div><span className="wcard-tag">CARD</span></div>
-          <span className="wcard-chip" />
-        </div>
-        <div className="wcard-amount"><span>{fmtNum(me.balance)}</span><small>{currency.symbol} {currency.name}</small></div>
-        <div className="wcard-owner">{me.username ? `@${me.username}` : me.displayName}</div>
-      </div>
+      <WalletCard amount={me.balance} owner={me.username ? `@${me.username}` : me.displayName} />
       <div className="row" style={{ gap: 10, margin: '14px 0' }}>
         <button className="btn secondary grow" onClick={() => openModal('wallet')}><Plus size={18} /> Пополнить</button>
         <button className="btn secondary grow" onClick={() => setPick(true)}><Send size={18} /> Отправить</button>
@@ -303,6 +294,22 @@ export function WalletCardPage() {
         </div>
       ))}
     </>
+  );
+}
+
+export function WalletCard({ amount, owner }) {
+  const currency = useStore((s) => s.currency);
+  return (
+    <div className="wcard">
+      <div className="wcard-shine" />
+      <div className="row" style={{ alignItems: 'flex-start' }}>
+        <img src="/icon.svg" alt="" width={46} height={46} style={{ borderRadius: 14 }} />
+        <div className="grow"><div className="wcard-brand">Recidivist</div><span className="wcard-tag">CARD</span></div>
+        <span className="wcard-chip" />
+      </div>
+      <div className="wcard-amount"><span>{fmtNum(amount || 0)}</span><small>{currency.symbol} {currency.name}</small></div>
+      <div className="wcard-owner">{owner}</div>
+    </div>
   );
 }
 
@@ -348,7 +355,7 @@ export function PremiumPage() {
         <>
           <div className="set-group-title">Своё имя</div>
           <div className="set-group" style={{ padding: 14 }}>
-            <div className="prem-preview" style={nameStyleCss(ns)}>{me.displayName}</div>
+            <div className="prem-preview"><StyledName user={{ displayName: me.displayName, nameStyle: ns }} className="" /></div>
             <div className="row" style={{ flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
               <label className="small row" style={{ gap: 6 }}>цвет<input type="color" value={ns.color || '#ffffff'} onChange={(e) => setNs({ ...ns, color: e.target.value })} /></label>
               <label className="small row" style={{ gap: 6 }}>перелив<input type="color" value={ns.color2 || '#ffffff'} onChange={(e) => setNs({ ...ns, color2: e.target.value })} /></label>

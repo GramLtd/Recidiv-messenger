@@ -166,7 +166,7 @@ export function PostList({ source, onTag, header, emptyText }) {
   const sentinel = useRef();
   useEffect(() => {
     if (!sentinel.current || !more) return undefined;
-    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting && !loading && posts?.length) load(posts[posts.length - 1].id); }, { rootMargin: '400px' });
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting && !loading && posts?.length) load(posts[posts.length - 1].createdAt); }, { rootMargin: '400px' });
     io.observe(sentinel.current);
     return () => io.disconnect();
   }, [more, loading, posts, load]);
@@ -177,21 +177,21 @@ export function PostList({ source, onTag, header, emptyText }) {
       {header}
       {!posts ? <div className="center" style={{ padding: 30 }}><Spinner /></div>
         : !posts.length ? <div className="muted center small" style={{ padding: 40 }}>{emptyText || t('Постов пока нет')}</div>
-          : posts.map((p, i) => <PostCard key={p.id} post={p} index={i} onChange={change} onRemove={remove} onTag={onTag} />)}
+          : posts.map((p, i) => (p.kind === 'channel' ? <ChannelCard key={p.id} item={p} index={i} onTag={onTag} /> : <PostCard key={p.id} post={p} index={i} onChange={change} onRemove={remove} onTag={onTag} />))}
       {more && <div ref={sentinel} className="center" style={{ padding: 20 }}>{loading && <Spinner size={22} />}</div>}
     </div>
   );
 }
 
 // ---------------- composer ----------------
-function Composer() {
+export function Composer({ autoOpen, onDone }) {
   const t = useT();
   const me = useStore((s) => s.me);
   const toast = useStore((s) => s.toast);
   const [text, setText] = useState('');
   const [media, setMedia] = useState([]);
   const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(!!autoOpen);
   const pick = async (files) => {
     for (const f of [...files].slice(0, 4 - media.length)) {
       if (!/^(image|video)\//.test(f.type)) continue;
@@ -206,14 +206,15 @@ function Composer() {
     try {
       const r = await api('/posts', { body: { text, media } });
       window.dispatchEvent(new CustomEvent('post:new', { detail: r.post }));
-      setText(''); setMedia([]); setOpen(false);
+      setText(''); setMedia([]); setOpen(!!autoOpen);
+      onDone?.(r.post);
     } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); }
   };
   return (
     <div className={`post-composer ${open ? 'open' : ''}`}>
       <Avatar src={me.avatar} name={me.displayName} id={me.id} size={40} />
       <div className="grow">
-        <textarea placeholder={t('Что нового?')} value={text} onFocus={() => setOpen(true)} onChange={(e) => setText(e.target.value)} maxLength={2000} rows={open ? 3 : 1} />
+        <textarea autoFocus={autoOpen} placeholder={t('Что нового?')} value={text} onFocus={() => setOpen(true)} onChange={(e) => setText(e.target.value)} maxLength={2000} rows={open ? 3 : 1} />
         {media.length > 0 && (
           <div className="composer-media">
             {media.map((m, i) => (
@@ -362,5 +363,53 @@ export function PostPreview({ media }) {
         <span>{media.text || 'Открыть пост'}</span>
       </div>
     </div>
+  );
+}
+
+/** A message from a public channel in the feed: tap → open the channel. */
+function ChannelCard({ item, index, onTag }) {
+  const openChat = useStore((s) => s.openChat);
+  const upsertChat = useStore((s) => s.upsertChat);
+  const setTab = useStore((s) => s.setTab);
+  const openModal = useStore((s) => s.openModal);
+  const c = item.chat;
+  const open = () => { upsertChat(c); setTab('chats'); openChat(c.id); };
+  return (
+    <article className="post channel-post-card" style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }} onClick={open}>
+      <div className="post-head">
+        <Avatar src={c.avatar} name={c.title} id={c.id} size={42} />
+        <div className="grow" style={{ minWidth: 0 }}>
+          <div className="row" style={{ gap: 6, minWidth: 0 }}>
+            <b className="ellipsis">{c.title}</b>
+            <span className="chan-tag">канал</span>
+          </div>
+          <div className="muted small ellipsis">{c.username ? `@${c.username} · ` : ''}{ago(item.createdAt)}</div>
+        </div>
+      </div>
+      {item.text && <div className="post-text selectable"><RichText text={item.text} onTag={onTag} /></div>}
+      {item.media?.length > 0 && (
+        <div className="post-media n1">
+          {item.media.map((m, i) => (m.kind === 'video'
+            ? <video key={i} src={mediaUrl(m.url)} controls playsInline preload="metadata" onClick={(e) => e.stopPropagation()} />
+            : <img key={i} src={mediaUrl(m.url)} alt="" loading="lazy" onClick={(e) => { e.stopPropagation(); openModal('lightbox', { url: m.url }); }} />))}
+        </div>
+      )}
+      <div className="post-actions">
+        <button className="pa chan-open" onClick={(e) => { e.stopPropagation(); open(); }}>Открыть канал</button>
+        <span className="spacer" />
+        <span className="pa muted"><Eye size={18} /><span>{fmtNum(item.views || 0)}</span></span>
+      </div>
+    </article>
+  );
+}
+
+export function CreatePostModal() {
+  const close = useStore((s) => s.closeModal);
+  const setTab = useStore((s) => s.setTab);
+  return (
+    <Modal title="Новый пост">
+      <Composer autoOpen onDone={() => { close(); setTab('feed'); useStore.getState().toast('Пост опубликован'); }} />
+      <div className="tiny muted" style={{ marginTop: 10 }}>Добавьте #теги — по ним пост найдут во вкладке «Теги».</div>
+    </Modal>
   );
 }

@@ -116,7 +116,7 @@ function ChatContextMenu({ chat, x, y, onClose }) {
   );
 }
 
-const TAB_ORDER = ['feed', 'chats', 'music', 'profile', 'settings'];
+const TAB_ORDER = ['feed', 'chats', 'profile', 'music', 'settings'];
 
 export default function Sidebar() {
   const tab = useStore((s) => s.tab);

@@ -12,7 +12,7 @@ import { WalletModal } from '../components/Wallet.jsx';
 import { MarketModal } from '../components/Market.jsx';
 import { SettingsModal } from '../components/Settings.jsx';
 import { StoryCreateModal, StoryViewer } from '../components/Stories.jsx';
-import { PostModal, SharePostModal, LightboxModal } from '../components/Feed.jsx';
+import { PostModal, SharePostModal, LightboxModal, CreatePostModal } from '../components/Feed.jsx';
 import { UserListModal, GiftPremiumModal } from '../components/ProfileView.jsx';
 
 const MODALS = {
@@ -33,6 +33,7 @@ const MODALS = {
   post: PostModal,
   sharePost: SharePostModal,
   lightbox: LightboxModal,
+  createPost: CreatePostModal,
   userList: UserListModal,
   giftPremium: GiftPremiumModal,
 };

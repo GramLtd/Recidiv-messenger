@@ -98,9 +98,7 @@ export function GiftShopModal({ toUser: initialTo }) {
     <Modal title="Подарки" wide headExtra={<span className="chip" onClick={() => openModal('wallet')}><Spark amount={me.balance} /></span>}>
       {initialTo && <div className="small muted" style={{ marginBottom: 10 }}>Подарок для <b style={{ color: 'var(--text)' }}>{initialTo.displayName}</b></div>}
       <div className="row" style={{ gap: 6, marginBottom: 12, overflowX: 'auto' }}>
-        {[['all', 'Все'], ['limited', 'Лимитированные'], ['regular', 'Обычные']].map(([k, l]) => (
-          <button key={k} className={`chip ${filter === k ? 'on' : ''}`} onClick={() => setFilter(k)}>{l}</button>
-        ))}
+        <span className="small muted">Коллекционные подарки — их можно улучшить, продать и передать</span>
         <span className="spacer" />
         <button className="chip" onClick={() => openModal('market', { kind: 'gift' })}><Tag size={14} /> Маркет</button>
       </div>

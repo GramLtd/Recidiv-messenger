@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   X, Pencil, Shield, MessageCircle, Gift, Send, Pin, Eye, CalendarDays, Hash, Filter, Play, Pause, ChevronRight, Music2, Megaphone, Check, Phone,
-  MoreHorizontal, UserPlus, UserMinus, UserCheck, Star, Ban, Link2, MapPin, Coins,
+  MoreHorizontal, UserPlus, UserMinus, UserCheck, Star, Ban, Link2, MapPin, Coins, AtSign, Copy, Store,
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, mediaUrl } from '../api.js';
-import { Avatar, Verified, Modal, useAsync, Spinner, WornGift, Spark, PremiumStar, nameStyleCss, useAction } from './common.jsx';
+import { Avatar, Verified, Modal, useAsync, Spinner, WornGift, Spark, PremiumStar, nameStyleCss, useAction, StyledName } from './common.jsx';
 import { PostList } from './Feed.jsx';
+import { Popover } from './Popover.jsx';
+import { WalletCard } from './SettingsPages.jsx';
 import { profileBgCss } from './SettingsPages.jsx';
 import { useT } from '../i18n.js';
 import { GiftArt, GiftModel, emoji3d } from './GiftArt.jsx';
@@ -16,9 +18,21 @@ import { lastSeen, fmtNum, plural, colorFor } from '../util.js';
 import { BannerMedia, ProfileLinks } from './ProfileExtras.jsx';
 
 // ---------------- gift tiles ----------------
+function useInView(ref) {
+  const [v, setV] = useState(false);
+  useEffect(() => {
+    if (!ref.current) return undefined;
+    const io = new IntersectionObserver(([e]) => setV(e.isIntersecting), { rootMargin: '80px' });
+    io.observe(ref.current);
+    return () => io.disconnect();
+  }, [ref]);
+  return v;
+}
+
 export function GiftTile({ ug, onClick, index = 0, canPin, onPin }) {
   const col = ug.collectible;
   const ref = useRef();
+  const inView = useInView(ref);
   // 3D tilt + glare that follow the finger / cursor
   const move = (e) => {
     const el = ref.current;
@@ -42,9 +56,9 @@ export function GiftTile({ ug, onClick, index = 0, canPin, onPin }) {
       style={{ animationDelay: `${Math.min(index, 20) * 45}ms`, opacity: ug.hidden ? 0.45 : undefined }}>
       <span className="glare" />
       {col ? (
-        <GiftArt userGift={ug} size="100%" height="100%" rounded={0} style={{ position: 'absolute', inset: 0 }} />
+        <GiftArt userGift={ug} size="100%" height="100%" rounded={0} animated={inView} style={{ position: 'absolute', inset: 0 }} />
       ) : (
-        <div className="gift-card-art"><GiftArt userGift={ug} size="78%" height="78%" /></div>
+        <div className="gift-card-art"><GiftArt userGift={ug} size="78%" height="78%" animated={inView} /></div>
       )}
       {col && <span className="gift-num">#{col.number}</span>}
       {ug.listing && <span className="gift-sale">продаётся</span>}
@@ -118,11 +132,12 @@ function Sparkles() {
   );
 }
 
-/** Gifts scattered around the avatar (like the reference): they fly out of the avatar and gently bob. */
+/** Pinned gifts scattered around the avatar: a calm bob, a glow and sparks in the gift's colour. */
 const SPOTS = [
-  [16, 22, -12], [84, 20, 10], [6, 52, 8], [94, 50, -8], [18, 82, 14], [82, 84, -14],
-  [36, 6, 6], [64, 7, -6], [30, 96, -10], [70, 96, 10], [2, 30, 0], [98, 72, 0],
+  [16, 22, -4], [84, 20, 4], [6, 54, 3], [94, 52, -3], [20, 84, 4], [80, 86, -4],
+  [36, 6, 2], [64, 7, -2], [32, 98, -3], [68, 98, 3], [2, 30, 0], [98, 74, 0],
 ];
+const SPARKS_PER = 5;
 function Orbit({ gifts, onOpen }) {
   const items = gifts.slice(0, SPOTS.length);
   if (!items.length) return null;
@@ -131,15 +146,21 @@ function Orbit({ gifts, onOpen }) {
       {items.map((ug, i) => {
         const [x, y, rot] = SPOTS[i];
         const m = ug.collectible?.model;
+        const color = ug.collectible?.backdrop?.center || 'var(--accent)';
+        const size = i < 6 ? 44 : 34;
         return (
           <button
             key={ug.id}
             className="pv-scatter-item"
-            style={{ left: `${x}%`, top: `${y}%`, '--fx': `${(50 - x) * 2.9}px`, '--fy': `${(50 - y) * 2.4}px`, '--rot': `${rot}deg`, animationDelay: `${0.25 + i * 0.07}s` }}
+            style={{ left: `${x}%`, top: `${y}%`, '--fx': `${(50 - x) * 2.9}px`, '--fy': `${(50 - y) * 2.4}px`, '--rot': `${rot}deg`, '--gc': color, animationDelay: `${0.25 + i * 0.08}s` }}
             onClick={() => onOpen(ug, items)}
           >
-            <span style={{ animationDelay: `${i * 0.37}s`, animationDuration: `${3.4 + (i % 4) * 0.5}s` }}>
-              <GiftModel emoji={m?.emoji || ug.gift.emoji} image={m?.image || ug.gift.image} filter={m?.filter} size={i < 6 ? 42 : 32} />
+            <i className="pv-gift-glow" />
+            {Array.from({ length: SPARKS_PER }, (_, k) => (
+              <i key={k} className="pv-gift-spark" style={{ '--a': `${(k / SPARKS_PER) * 360 + i * 23}deg`, animationDelay: `${(k * 0.7 + i * 0.3) % 3.5}s` }} />
+            ))}
+            <span style={{ animationDelay: `${i * 0.6}s`, animationDuration: `${7 + (i % 3)}s` }}>
+              <GiftModel emoji={m?.emoji || ug.gift.emoji} image={m?.image || ug.gift.image} animation={m?.animation} animated filter={m?.filter} size={size} />
             </span>
           </button>
         );
@@ -260,16 +281,13 @@ export function ProfileView({ userId, onClose }) {
   const [filter, setFilter] = useState('all');
   const [filterMenu, setFilterMenu] = useState(false);
   const gifts = giftsReq.data?.gifts;
-  const orbit = useMemo(() => {
-    if (!gifts) return [];
-    const pinned = gifts.filter((g) => g.pinned);
-    const rest = gifts.filter((g) => !g.pinned && g.collectible);
-    return [...pinned, ...rest];
-  }, [gifts]);
+  const orbit = useMemo(() => (gifts ? gifts.filter((g) => g.pinned) : []), [gifts]);
+  const [pop, setPop] = useState(null);
+  const openPop = (type, e, extra = {}) => setPop({ type, from: e.currentTarget.getBoundingClientRect(), ...extra });
 
   if (!data) return <div className="center" style={{ padding: 60 }}><Spinner /></div>;
-  const u = data.user;
-  const isMe = u.id === me.id;
+  const isMe = data.user.id === me.id;
+  const u = isMe ? { ...data.user, displayName: me.displayName, avatar: me.avatar, nameStyle: me.nameStyle, premium: me.premium, profileBg: me.profileBg, banner: me.banner, blurBg: me.blurBg, links: me.links, location: me.location, username: me.username, anonNumber: me.anonNumber, bio: me.bio } : data.user;
   const worn = u.wornGift;
   const glow = worn?.center || 'var(--accent)';
   const balance = isMe ? me.balance : null;
@@ -328,16 +346,16 @@ export function ProfileView({ userId, onClose }) {
           )}
         </div>
         <h2 className="pv-name">
-          <span className="ellipsis" style={nameStyleCss(u.nameStyle)}>{u.displayName}</span>
+          <StyledName user={u} />
           {u.verified && <Verified size={20} />}
           {u.premium && <PremiumStar size={20} />}
-          {worn ? <WornGift gift={worn} size={24} /> : u.emojiStatus && <span>{u.emojiStatus}</span>}
+          {worn && <WornGift gift={worn} size={24} />}
         </h2>
         <div className="pv-pills">
           <span className={`pill ${u.online ? 'on' : ''}`}>{isMe ? 'в сети' : lastSeen(u)}</span>
-          {!isMe && u.publicBalance != null && <span className="pill">Баланс: <Spark /> <b>{fmtNum(u.publicBalance)}</b></span>}
+          {!isMe && u.publicBalance != null && <button className="pill" onClick={(e) => openPop('wallet', e)}>Баланс: <Spark /> <b>{fmtNum(u.publicBalance)}</b></button>}
           {isMe && (
-            <button className="pill" onClick={() => openModal('wallet')}>
+            <button className="pill" onClick={(e) => openPop('wallet', e)}>
               Баланс: <Spark /> <b><CountUp value={balance} /></b> <ChevronRight size={14} />
             </button>
           )}
@@ -391,10 +409,14 @@ export function ProfileView({ userId, onClose }) {
         </>
       )}
 
+      {pop && <ProfilePopup pop={pop} u={u} isMe={isMe} onClose={() => setPop(null)} />}
+      {isMe && u.profileTrack && (
+        <button className="pv-music-btn lg" onClick={() => useStore.getState().setTab('music')}><Music2 size={18} /> <span className="grow">Моя музыка</span> <ChevronRight size={16} /></button>
+      )}
       <div className="pv-info">
         {u.anonNumber ? (
           <div className="pv-row">
-            <div className="pv-value pv-number" onClick={() => { navigator.clipboard?.writeText(u.anonNumber.replace(/\s/g, '')); useStore.getState().toast('Номер скопирован'); }}>{u.anonNumber}</div>
+            <button className="pv-value pv-number" onClick={(e) => openPop('number', e)}>{u.anonNumber}</button>
             <div className="pv-label">Анонимный номер</div>
           </div>
         ) : isMe ? (
@@ -404,8 +426,10 @@ export function ProfileView({ userId, onClose }) {
         ) : null}
         {u.username && (
           <div className="pv-row">
-            <div className="pv-value accent">@{u.username}</div>
-            {u.otherUsernames?.length > 0 && <div className="pv-also">а также {u.otherUsernames.map((n) => `@${n}`).join(', ')}</div>}
+            <button className="pv-value accent" onClick={(e) => openPop('username', e, { name: u.username })}>@{u.username}</button>
+            {u.otherUsernames?.length > 0 && (
+              <div className="pv-also">а также {u.otherUsernames.map((n, k) => <span key={n}><button className="pv-also-name" onClick={(e) => openPop('username', e, { name: n })}>@{n}</button>{k < u.otherUsernames.length - 1 ? ', ' : ''}</span>)}</div>
+            )}
             <div className="pv-label">Имя пользователя</div>
           </div>
         )}
@@ -478,7 +502,7 @@ export function UserListModal({ title, url }) {
         <div key={u.id} className="list-item" onClick={() => openModal('userProfile', { userId: u.id })}>
           <Avatar src={u.avatar} name={u.displayName} id={u.id} size={44} online={u.online} />
           <div className="grow">
-            <div className="row bold" style={{ gap: 4 }}><span className="ellipsis" style={nameStyleCss(u.nameStyle)}>{u.displayName}</span>{u.verified && <Verified size={14} />}{u.premium && <PremiumStar size={14} />}</div>
+            <div className="row bold" style={{ gap: 4 }}><StyledName user={u} />{u.verified && <Verified size={14} />}{u.premium && <PremiumStar size={14} />}</div>
             <div className="small muted">{u.username ? `@${u.username}` : lastSeen(u)}</div>
           </div>
         </div>
@@ -506,5 +530,77 @@ export function GiftPremiumModal({ toUser }) {
         </div>
       </div>
     </Modal>
+  );
+}
+
+function UserChip({ user }) {
+  if (!user) return null;
+  return <span className="pop-chip"><Avatar src={user.avatar} name={user.displayName} id={user.id} size={22} /> {user.displayName}</span>;
+}
+
+/** Popups for the username / anonymous number / balance (grow out of the tapped element). */
+function ProfilePopup({ pop, u, isMe, onClose }) {
+  const openModal = useStore((s) => s.openModal);
+  const toast = useStore((s) => s.toast);
+  const currency = useStore((s) => s.currency);
+  const me = useStore((s) => s.me);
+  const [info, setInfo] = useState(null);
+  useEffect(() => {
+    if (pop.type === 'username') api(`/usernames/${encodeURIComponent(pop.name)}/info`).then(setInfo).catch(() => setInfo({ name: pop.name }));
+  }, [pop]);
+  const owner = { id: u.id, displayName: u.displayName, avatar: u.avatar };
+  const when = (ts) => new Date(ts).toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  if (pop.type === 'wallet') {
+    const amount = isMe ? me.balance : u.publicBalance;
+    return (
+      <Popover from={pop.from} onClose={onClose} className="pop-wallet" closeButton={false}>
+        {(close) => (
+          <>
+            <div className="pop-title">Кошелёк {u.username ? `@${u.username}` : u.displayName}</div>
+            <WalletCard amount={amount} owner={u.username ? `@${u.username}` : u.displayName} />
+            <div className="pop-sub">≈ {fmtNum(amount)} {currency.symbol} {currency.name}</div>
+            {isMe && <button className="btn block" onClick={() => { close(); setTimeout(() => openModal('settings', { tab: 'wallet' }), 360); }}>Открыть кошелёк</button>}
+            <button className="btn secondary block" onClick={close}>Закрыть</button>
+          </>
+        )}
+      </Popover>
+    );
+  }
+  if (pop.type === 'number') {
+    return (
+      <Popover from={pop.from} onClose={onClose}>
+        {(close) => (
+          <>
+            <div className="pop-ico"><Phone size={30} /></div>
+            <div className="pop-text"><b>{u.anonNumber}</b> — анонимный номер, принадлежащий</div>
+            <UserChip user={owner} />
+            <div className="pop-desc">Номер скрывает настоящий телефон. Анонимные номера выдаёт бот @numbers прямо в Recidivist.</div>
+            <button className="btn block" onClick={() => { navigator.clipboard?.writeText(u.anonNumber.replace(/\s/g, '')); toast('Номер скопирован'); close(); }}><Copy size={17} /> Копировать номер</button>
+            {!isMe && <button className="btn secondary block" onClick={() => { close(); setTimeout(() => openNumbersBot(), 360); }}>Получить свой номер</button>}
+          </>
+        )}
+      </Popover>
+    );
+  }
+  // username
+  const name = info?.name || pop.name;
+  return (
+    <Popover from={pop.from} onClose={onClose}>
+      {(close) => (
+        <>
+          <div className="pop-ico"><AtSign size={30} /></div>
+          <div className="pop-text"><b>@{name}</b> — коллекционное имя пользователя, принадлежащее</div>
+          <UserChip user={info?.owner || owner} />
+          <div className="pop-desc">
+            {!info ? 'Загрузка…' : info.purchase
+              ? <>Это имя куплено на Маркете Recidivist {when(info.purchase.at)} за <Spark amount={info.purchase.price} /></>
+              : info.acquiredAt ? <>Имя зарегистрировано {when(info.acquiredAt)}. Юзернеймы переходят из рук в руки на Маркете.</> : 'Юзернеймы переходят из рук в руки на Маркете.'}
+          </div>
+          <button className="btn block" onClick={() => { close(); setTimeout(() => openModal('market', { kind: 'username', q: name }), 360); }}><Store size={17} /> Маркет</button>
+          <button className="btn secondary block" onClick={() => { navigator.clipboard?.writeText(`${location.origin}/@${name}`); toast('Ссылка скопирована'); close(); }}><Link2 size={17} /> Копировать ссылку</button>
+        </>
+      )}
+    </Popover>
   );
 }

@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { MessageCircle, Music2, Settings, Newspaper } from 'lucide-react';
+import { MessageCircle, Settings, Newspaper, Plus } from 'lucide-react';
 import { useStore } from '../store.js';
 import { Avatar, InlinePage } from './common.jsx';
 import { ProfileView } from './ProfileView.jsx';
@@ -14,7 +14,7 @@ import { usePlayer } from '../player.js';
 const TABS = [
   { id: 'feed', icon: Newspaper, label: 'Лента' },
   { id: 'chats', icon: MessageCircle, label: 'Чаты' },
-  { id: 'music', icon: Music2, label: 'Музыка' },
+  { id: 'post', icon: Plus, label: 'Пост', action: true },
   { id: 'profile', label: 'Профиль' },
   { id: 'settings', icon: Settings, label: 'Настройки' },
 ];
@@ -30,14 +30,16 @@ export function BottomNav() {
   const idx = TABS.findIndex((t) => t.id === tab);
   return (
     <nav className="bottom-nav">
-      <div className="nav-indicator" style={{ transform: `translateX(${idx * 100}%)`, width: `${100 / TABS.length}%` }} />
+      <div className="nav-indicator" style={{ transform: `translateX(${idx * 100}%)`, width: `${100 / TABS.length}%`, opacity: idx < 0 ? 0 : 1 }} />
       {TABS.map((tb) => {
         const Icon = tb.icon;
         const on = tb.id === tab;
         return (
-          <button key={tb.id} className={`nav-btn ${on ? 'on' : ''}`} onClick={() => setTab(tb.id)} aria-label={t(tb.label)}>
+          <button key={tb.id} className={`nav-btn ${on ? 'on' : ''} ${tb.action ? 'nav-plus' : ''}`} onClick={() => (tb.action ? useStore.getState().openModal('createPost') : setTab(tb.id))} aria-label={t(tb.label)}>
             {tb.id === 'profile' ? (
               <span className={`nav-avatar ${on ? 'on' : ''}`}><Avatar src={me.avatar} name={me.displayName} id={me.id} size={26} /></span>
+            ) : tb.action ? (
+              <span className="nav-plus-btn"><Icon size={24} strokeWidth={2.6} /></span>
             ) : (
               <span className="nav-icon">
                 <Icon size={23} strokeWidth={on ? 2.3 : 1.8} />
@@ -45,7 +47,7 @@ export function BottomNav() {
                 {tb.id === 'music' && playing && <span className="nav-dot" />}
               </span>
             )}
-            <span className="nav-label">{t(tb.label)}</span>
+            {!tb.action && <span className="nav-label">{t(tb.label)}</span>}
           </button>
         );
       })}

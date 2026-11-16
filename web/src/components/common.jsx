@@ -32,11 +32,11 @@ export function WornGift({ gift, size = 20 }) {
   );
 }
 
-/** Premium badge: a small star next to the name. */
+/** Premium badge: a spark — the same shape as our currency ✦. */
 export const PremiumStar = ({ size = 15 }) => (
   <svg className="premium-star" width={size} height={size} viewBox="0 0 24 24" aria-label="Premium">
-    <defs><linearGradient id="pstar" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ffd86b" /><stop offset="1" stopColor="#ff8a2a" /></linearGradient></defs>
-    <path fill="url(#pstar)" d="M12 2.5l2.9 6 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.2 1.3-6.6L2.5 9.3l6.6-.8z" />
+    <defs><linearGradient id="pspark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ffb3a0" /><stop offset=".45" stopColor="var(--accent)" /><stop offset="1" stopColor="#ff7a1a" /></linearGradient></defs>
+    <path fill="url(#pspark)" d="M12 1.5c.6 4.9 2.4 7.9 10.5 10.5C14.4 14.6 12.6 17.6 12 22.5c-.6-4.9-2.4-7.9-10.5-10.5C9.6 9.4 11.4 6.4 12 1.5z" />
   </svg>
 );
 
@@ -49,16 +49,27 @@ export function nameStyleCss(ns) {
     st.backgroundSize = ns.animated ? '200% 100%' : '100% 100%';
     st.WebkitBackgroundClip = 'text';
     st.backgroundClip = 'text';
+    st.WebkitTextFillColor = 'transparent';
     st.color = 'transparent';
     if (ns.animated) st.animation = 'nameShift 3s linear infinite';
-  } else if (ns.color) st.color = ns.color;
-  if (ns.glow) st.filter = `drop-shadow(0 0 6px ${ns.color || '#fff'})`;
+  } else if (ns.color) {
+    st.color = ns.color;
+    st.WebkitTextFillColor = ns.color;
+  }
   if (ns.bold) st.fontWeight = 900;
   return st;
 }
+/** Glow lives on a wrapper: Safari breaks gradient text when `filter` is on the same element. */
+export const nameGlowCss = (ns) => (ns?.glow ? { filter: `drop-shadow(0 0 6px ${ns.color || '#fff'})` } : undefined);
 
 export function StyledName({ user, className = 'ellipsis' }) {
-  return <span className={className} style={nameStyleCss(user?.nameStyle)}>{user?.displayName}</span>;
+  const ns = user?.nameStyle;
+  if (!ns) return <span className={className}>{user?.displayName}</span>;
+  return (
+    <span className={`styled-name ${className}`} style={nameGlowCss(ns)}>
+      <span style={nameStyleCss(ns)}>{user?.displayName}</span>
+    </span>
+  );
 }
 
 export function Name({ user, className }) {
@@ -68,7 +79,7 @@ export function Name({ user, className }) {
       <StyledName user={user} />
       {user.verified && <Verified size={15} />}
       {user.premium && <PremiumStar />}
-      {user.wornGift ? <WornGift gift={user.wornGift} /> : user.emojiStatus && <span>{user.emojiStatus}</span>}
+      {user.wornGift && <WornGift gift={user.wornGift} />}
     </span>
   );
 }

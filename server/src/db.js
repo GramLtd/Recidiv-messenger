@@ -592,6 +592,11 @@ function catalogRow(slug, emoji, legacy) {
       setSetting('gift_catalog_version', GIFT_CATALOG_VERSION);
     }
   });
+  // v5: the shop sells collectible (upgradable) gifts only — regular gifts are hidden, owners keep them.
+  if (!getSetting('gift_catalog_v5')) {
+    for (const [slug, , , , , upg] of GIFT_CATALOG) if (upg == null) db.prepare('UPDATE gifts SET enabled = 0 WHERE slug = ?').run(slug);
+    setSetting('gift_catalog_v5', '1');
+  }
   // Older databases: attach 3D assets to emoji gifts created before they existed.
   for (const g of db.prepare('SELECT id, emoji, image, animation FROM gifts').all()) {
     const a = giftAssets(g.emoji);
