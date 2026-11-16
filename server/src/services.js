@@ -53,7 +53,7 @@ export function lightUser(u) {
 }
 
 export function meUser(u) {
-  return { ...publicUser(u), email: u.email, balance: u.balance, isBanned: !!u.is_banned, createdAt: u.created_at };
+  return { ...publicUser(u), email: u.email, balance: u.balance, isBanned: !!u.is_banned, createdAt: u.created_at, profileTrackId: u.profile_track_id, personalChannelId: u.personal_channel_id };
 }
 
 // ---------------- ledger ----------------

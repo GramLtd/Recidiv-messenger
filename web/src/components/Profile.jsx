@@ -6,93 +6,8 @@ import { Avatar, Verified, Modal, useAsync, Spinner, useAction, WornGift } from 
 import { GiftArt } from './GiftArt.jsx';
 import { lastSeen, membersLabel } from '../util.js';
 
-export function GiftTile({ ug, onClick, index = 0 }) {
-  const col = ug.collectible;
-  return (
-    <div className={`gift-card ${col ? 'is-col' : ''}`} onClick={onClick} style={{ animationDelay: `${Math.min(index, 20) * 30}ms`, opacity: ug.hidden ? 0.45 : undefined }}>
-      {col ? (
-        <GiftArt userGift={ug} size="100%" height="100%" rounded={0} style={{ position: 'absolute', inset: 0 }} />
-      ) : (
-        <div className="gift-card-art"><GiftArt userGift={ug} size="78%" height="78%" /></div>
-      )}
-      {ug.pinned && <span className="gift-pin"><Pin size={12} /></span>}
-      {ug.listing && <span className="gift-sale">продаётся</span>}
-      <div className="gift-card-name ellipsis">{col ? `${ug.gift.name} #${col.number}` : ug.gift.name}</div>
-    </div>
-  );
-}
-
-export function GiftsGrid({ userId, onlyCollectible }) {
-  const openModal = useStore((s) => s.openModal);
-  const { data, loading } = useAsync(() => api(`/users/${userId}/gifts`), [userId]);
-  if (loading) return <div className="center" style={{ padding: 20 }}><Spinner /></div>;
-  const gifts = (data?.gifts || []).filter((g) => !onlyCollectible || g.collectible);
-  if (!gifts.length) return <div className="muted center small" style={{ padding: 30, flexDirection: 'column', gap: 6 }}><Gift size={34} className="accent" />{onlyCollectible ? 'Нет коллекционных подарков' : 'Подарков пока нет'}</div>;
-  return (
-    <div className="gift-cards">
-      {gifts.map((ug, i) => <GiftTile key={ug.id} ug={ug} index={i} onClick={() => openModal('giftDetails', { userGiftId: ug.id })} />)}
-    </div>
-  );
-}
-
-export function UserProfileBody({ userId, compact }) {
-  const me = useStore((s) => s.me);
-  const openPrivate = useStore((s) => s.openPrivate);
-  const openModal = useStore((s) => s.openModal);
-  const { data, loading } = useAsync(() => api(`/users/${userId}`), [userId]);
-  const [tab, setTab] = useState('info');
-  if (loading || !data) return <div className="center" style={{ padding: 40 }}><Spinner /></div>;
-  const u = data.user;
-  const isMe = u.id === me.id;
-  return (
-    <>
-      <div className="profile-hero">
-        <Avatar src={u.avatar} name={u.displayName} id={u.id} size={compact ? 100 : 110} />
-        <h2>{u.displayName}{u.verified && <Verified size={20} />}{u.wornGift ? <WornGift gift={u.wornGift} size={26} /> : u.emojiStatus && <span>{u.emojiStatus}</span>}</h2>
-        <div className={u.online ? 'accent small' : 'muted small'}>{isMe ? 'это вы' : lastSeen(u)}</div>
-      </div>
-      {!isMe && !u.isBot && (
-        <div className="action-grid">
-          <button onClick={() => openPrivate(u.id)}><MessageCircle size={22} />Сообщение</button>
-          <button onClick={() => openModal('giftShop', { toUser: u })}><Gift size={22} />Подарок</button>
-          <button onClick={() => openModal('transfer', { toUser: u })}><Send size={22} />Перевод</button>
-        </div>
-      )}
-      <div className="tabs" style={{ margin: '0 16px 8px' }}>
-        <button className={tab === 'info' ? 'on' : ''} onClick={() => setTab('info')}>Инфо</button>
-        <button className={tab === 'gifts' ? 'on' : ''} onClick={() => setTab('gifts')}>Подарки {data.user.giftsCount ? `(${data.user.giftsCount})` : ''}</button>
-      </div>
-      {tab === 'info' ? (
-        <>
-          {u.username && (
-            <div className="info-row">
-              <AtSign size={22} />
-              <div className="grow">
-                <div>@{u.username}</div>
-                {u.otherUsernames?.length > 0 && <div className="small muted">также {u.otherUsernames.map((n) => `@${n}`).join(', ')}</div>}
-                <div className="label">Имя пользователя</div>
-              </div>
-            </div>
-          )}
-          {u.bio && (
-            <div className="info-row"><Info size={22} /><div className="grow"><div style={{ whiteSpace: 'pre-wrap' }}>{u.bio}</div><div className="label">О себе</div></div></div>
-          )}
-          {u.isAdmin && <div className="info-row"><Shield size={22} /><div className="grow"><div>Администратор Recidivist</div></div></div>}
-        </>
-      ) : (
-        <div style={{ padding: '4px 12px 16px' }}><GiftsGrid userId={u.id} /></div>
-      )}
-    </>
-  );
-}
-
-export function UserProfileModal({ userId }) {
-  return (
-    <Modal title="Профиль">
-      <div style={{ margin: '0 -18px' }}><UserProfileBody userId={userId} /></div>
-    </Modal>
-  );
-}
+export { GiftTile, GiftsGrid, ProfileView, UserProfileModal } from './ProfileView.jsx';
+import { ProfileView } from './ProfileView.jsx';
 
 function GroupInfo({ chat }) {
   const me = useStore((s) => s.me);
@@ -170,13 +85,20 @@ export function RightPanel() {
   const chat = useStore((s) => s.chats.find((c) => c.id === s.activeChatId));
   const setRightPanel = useStore((s) => s.setRightPanel);
   if (!chat) return null;
+  if (chat.type === 'private' && chat.peer) {
+    return (
+      <aside className="right-panel">
+        <ProfileView userId={chat.peer.id} onClose={() => setRightPanel(false)} />
+      </aside>
+    );
+  }
   return (
     <aside className="right-panel">
       <div className="chat-header" style={{ borderBottom: 0 }}>
         <button className="icon-btn" onClick={() => setRightPanel(false)}><X size={22} /></button>
         <div className="bold">{chat.type === 'private' ? 'Информация' : chat.type === 'channel' ? 'Канал' : chat.type === 'saved' ? 'Избранное' : 'Группа'}</div>
       </div>
-      {chat.type === 'private' && chat.peer ? <UserProfileBody userId={chat.peer.id} compact /> : chat.type === 'saved' ? (
+      {chat.type === 'saved' ? (
         <div className="muted center" style={{ padding: 30, textAlign: 'center' }}>Ваше личное облачное хранилище: пересылайте сюда сообщения и файлы.</div>
       ) : <GroupInfo chat={chat} />}
     </aside>

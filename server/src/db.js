@@ -334,6 +334,9 @@ function addColumn(table, col, def) {
 }
 addColumn('gifts', 'animation', 'TEXT');
 addColumn('users', 'worn_gift_id', 'INTEGER');
+addColumn('users', 'profile_track_id', 'INTEGER');
+addColumn('users', 'personal_channel_id', 'INTEGER');
+addColumn('users', 'profile_views', 'INTEGER NOT NULL DEFAULT 0');
 db.exec(`
 CREATE TABLE IF NOT EXISTS tracks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -361,31 +364,37 @@ export function giftAssets(emoji) {
   return { image: find('emoji3d'), animation: find('emoji-anim') };
 }
 
+// Catalog v2. Gifts that are not in the catalog get hidden from the shop (owners keep them).
+const GIFT_CATALOG_VERSION = 2;
 const GIFT_CATALOG = [
   // name, emoji, price, supply, upgrade_price, convert_value
-  ['Красное сердце', '❤️', 15, null, null, 13],
-  ['Роза', '🌹', 25, null, null, 21],
-  ['Кружка пива', '🍺', 35, null, null, 30],
-  ['Торт', '🎂', 50, null, null, 43],
-  ['Шампанское', '🍾', 50, null, null, 43],
-  ['Купидон', '💘', 75, null, null, 64],
-  ['Плюшевый мишка', '🧸', 100, null, null, 85],
-  ['Звезда', '⭐', 150, 20000, 100, 120],
-  ['Череп', '💀', 250, 10000, 150, 200],
-  ['Пламя', '🔥', 300, 8000, 150, 250],
-  ['Наручники', '⛓️', 350, 7500, 200, 280],
-  ['Призрак', '👻', 400, 6000, 200, 320],
-  ['Бомба', '💣', 450, 5000, 200, 360],
-  ['Ключ от камеры', '🗝️', 500, 5000, 250, 400],
-  ['Хрустальный шар', '🔮', 600, 4000, 250, 480],
-  ['Кубок', '🏆', 750, 3000, 300, 600],
-  ['Ракета', '🚀', 800, 3000, 300, 640],
-  ['Алмаз', '💎', 1000, 2000, 400, 800],
-  ['Единорог', '🦄', 1200, 1500, 400, 960],
-  ['Змей', '🐍', 1500, 1000, 500, 1200],
-  ['Лобстер', '🦞', 2000, 666, 600, 1600],
-  ['Корона рецидивиста', '👑', 2500, 777, 777, 2000],
+  ['Горящее сердце', '❤️‍🔥', 25, null, null, 21],
+  ['Плюшевая жаба', '🐸', 35, null, null, 30],
+  ['Мартини', '🍸', 50, null, null, 43],
+  ['Чёрный кот', '🐈‍⬛', 75, null, null, 64],
+  ['Тыква', '🎃', 90, null, null, 77],
+  ['Пластинка', '💿', 150, 15000, 100, 120],
+  ['Сигара', '🚬', 200, 12000, 120, 160],
+  ['Фотоаппарат', '📸', 250, 10000, 150, 200],
+  ['Бабочка', '🦋', 300, 9000, 150, 240],
+  ['Часы', '⌚', 400, 7000, 200, 320],
+  ['Чертёнок', '😈', 450, 6666, 222, 360],
+  ['Клоун', '🤡', 500, 5000, 250, 400],
+  ['Пиксель', '👾', 550, 5000, 250, 440],
+  ['Робот', '🤖', 700, 4000, 300, 560],
+  ['Перстень', '💍', 900, 3000, 350, 720],
+  ['Акула', '🦈', 1000, 2500, 400, 800],
+  ['Волк', '🐺', 1200, 2000, 450, 960],
+  ['Мозг', '🧠', 1400, 1500, 500, 1120],
+  ['НЛО', '🛸', 1700, 1200, 550, 1360],
+  ['Дракон', '🐉', 2200, 888, 666, 1760],
+  ['Всевидящее око', '👁️', 3000, 666, 777, 2400],
 ];
+if (Number(getSetting('gift_catalog_version') || 1) < GIFT_CATALOG_VERSION) {
+  const keep = new Set(GIFT_CATALOG.map((g) => g[1]));
+  for (const g of db.prepare('SELECT id, emoji FROM gifts').all()) if (!keep.has(g.emoji)) db.prepare('UPDATE gifts SET enabled = 0 WHERE id = ?').run(g.id);
+  setSetting('gift_catalog_version', GIFT_CATALOG_VERSION);
+}
 {
   const ins = db.prepare(
     'INSERT INTO gifts (name, emoji, image, animation, price, supply, upgrade_price, convert_value, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',

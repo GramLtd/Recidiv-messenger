@@ -10,7 +10,7 @@ import { Spinner, useAction } from './common.jsx';
 export function Cover({ track, size = 48, radius = 12, big }) {
   return (
     <div className="cover" style={{ width: size, height: size, borderRadius: radius, background: track?.cover ? `center/cover url(${mediaUrl(track.cover)})` : coverGradient(track) }}>
-      {!track?.cover && <Music2 size={big ? size * 0.42 : size * 0.45} strokeWidth={big ? 1.6 : 2} color="rgba(255,255,255,.85)" />}
+      {!track?.cover && <Music2 size={big || typeof size !== 'number' ? 84 : size * 0.45} strokeWidth={big ? 1.6 : 2} color="rgba(255,255,255,.85)" />}
     </div>
   );
 }
@@ -45,6 +45,29 @@ function Progress() {
 
 const SLEEP_OPTIONS = [0, 15, 30, 45, 60, 90];
 
+/** Heart = "this track plays in my profile". */
+function ProfileHeart({ track }) {
+  const me = useStore((s) => s.me);
+  const setMe = useStore((s) => s.setMe);
+  const toast = useStore((s) => s.toast);
+  const on = track.id && me.profileTrackId === track.id;
+  const toggle = async () => {
+    if (!track.id) return toast('Сначала добавьте трек в «Мою музыку»');
+    try {
+      await api('/me/profile-track', { body: { trackId: on ? null : track.id } });
+      setMe({ profileTrackId: on ? null : track.id });
+      toast(on ? 'Трек убран из профиля' : 'Трек теперь играет в вашем профиле ❤️');
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
+  return (
+    <button className={`heart-btn ${on ? 'on' : ''}`} onClick={toggle} title={on ? 'Убрать из профиля' : 'Поставить в профиль'} key={on ? 'on' : 'off'}>
+      <Heart size={26} fill={on ? 'var(--accent)' : 'none'} color={on ? 'var(--accent)' : 'currentColor'} />
+    </button>
+  );
+}
+
 export function NowPlaying() {
   const p = usePlayer();
   const track = p.current();
@@ -69,7 +92,7 @@ export function NowPlaying() {
           <div className="np-title ellipsis">{track.title}</div>
           <div className="np-artist ellipsis">{track.artist || 'Неизвестный исполнитель'}</div>
         </div>
-        <Heart size={26} fill="var(--accent)" color="var(--accent)" className="pop-in" />
+        <ProfileHeart track={track} />
       </div>
       <Progress />
       <div className="np-controls">

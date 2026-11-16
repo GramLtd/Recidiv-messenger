@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Menu, Search, Pencil, Users, Megaphone, User, Wallet, Gift, Store, Settings, Shield, Bookmark, LogOut, Plus, Pin, VolumeX,
@@ -84,7 +84,7 @@ function Drawer({ onClose }) {
   );
 }
 
-export function ChatRow({ chat, active, onClick, onContext }) {
+export function ChatRow({ chat, active, onClick, onContext, index = 0 }) {
   const me = useStore((s) => s.me);
   const typing = useStore((s) => s.typing[chat.id]);
   const typers = typing ? Object.values(typing).filter((t) => t.until > Date.now()) : [];
@@ -92,7 +92,7 @@ export function ChatRow({ chat, active, onClick, onContext }) {
   const own = lm && lm.senderId === me.id;
   const read = own && chat.peerReadId >= lm.id;
   return (
-    <div className={`chat-item ${active ? 'active' : ''}`} onClick={onClick} onContextMenu={onContext}>
+    <div className={`chat-item ${active ? 'active' : ''}`} style={{ animationDelay: `${Math.min(index, 14) * 28}ms` }} onClick={onClick} onContextMenu={onContext}>
       <Avatar src={chat.avatar} name={chat.title} id={chat.peer?.id || chat.id} size={54} online={chat.peer?.online} saved={chat.type === 'saved'} />
       <div className="grow">
         <div className="top">
@@ -158,12 +158,17 @@ function ChatContextMenu({ chat, x, y, onClose }) {
   );
 }
 
+const TAB_ORDER = ['chats', 'gifts', 'profile', 'music', 'market', 'settings'];
+
 export default function Sidebar() {
   const tab = useStore((s) => s.tab);
   const setTab = useStore((s) => s.setTab);
+  const prev = useRef(tab);
+  const dir = TAB_ORDER.indexOf(tab) >= TAB_ORDER.indexOf(prev.current) ? 'fwd' : 'back';
+  useEffect(() => { prev.current = tab; }, [tab]);
   return (
-    <aside className="sidebar">
-      {tab === 'chats' ? <ChatsPage /> : <TabPage tab={tab} />}
+    <aside className={`sidebar dir-${dir}`}>
+      {tab === 'chats' ? <ChatsPage key="chats" /> : <TabPage tab={tab} />}
       {tab !== 'music' && <MiniPlayerSlot onOpen={() => setTab('music')} />}
       <BottomNav />
     </aside>
@@ -236,9 +241,10 @@ function ChatsPage() {
             {results && !results.users.length && !results.chats.length && !localMatches.length && <div className="muted center" style={{ padding: 30 }}>Ничего не найдено</div>}
           </>
         ) : (
-          chats.map((c) => (
+          chats.map((c, i) => (
             <ChatRow
               key={c.id}
+              index={i}
               chat={c}
               active={c.id === activeChatId}
               onClick={() => openChat(c.id)}

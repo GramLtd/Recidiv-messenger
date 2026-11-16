@@ -198,8 +198,17 @@ export const useStore = create((set, get) => ({
   },
   toast(text, kind = 'info') {
     const id = Math.random();
-    set({ toasts: [...get().toasts, { id, text, kind }] });
-    setTimeout(() => set({ toasts: get().toasts.filter((t) => t.id !== id) }), 3500);
+    const ttl = kind === 'error' ? 5000 : 3500;
+    // keep at most 3 on screen
+    set({ toasts: [...get().toasts.slice(-2), { id, text, kind, ttl }] });
+    setTimeout(() => get().dismissToast(id), ttl);
+    return id;
+  },
+  dismissToast(id) {
+    const t = get().toasts.find((x) => x.id === id);
+    if (!t || t.leaving) return;
+    set({ toasts: get().toasts.map((x) => (x.id === id ? { ...x, leaving: true } : x)) });
+    setTimeout(() => set({ toasts: get().toasts.filter((x) => x.id !== id) }), 220);
   },
 }));
 

@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react';
-import { MessageCircle, Gift, Music2, Store, Settings, Wallet, Pencil, Share2, AtSign, Sparkles } from 'lucide-react';
+import { useRef } from 'react';
+import { MessageCircle, Gift, Music2, Store, Settings } from 'lucide-react';
 import { useStore } from '../store.js';
-import { Avatar, Verified, Spark, InlinePage, WornGift } from './common.jsx';
-import { GiftsGrid } from './Profile.jsx';
+import { Avatar, InlinePage } from './common.jsx';
+import { ProfileView } from './ProfileView.jsx';
 import { GiftShopModal } from './Gifts.jsx';
 import { MarketModal } from './Market.jsx';
 import { SettingsModal } from './Settings.jsx';
@@ -52,38 +52,10 @@ export function BottomNav() {
 
 function ProfilePage() {
   const me = useStore((s) => s.me);
-  const openModal = useStore((s) => s.openModal);
-  const toast = useStore((s) => s.toast);
-  const [tab, setTab] = useState('gifts');
-  const share = () => {
-    const link = me.username ? `${location.origin}/@${me.username}` : location.origin;
-    if (navigator.share) navigator.share({ title: me.displayName, url: link }).catch(() => {});
-    else { navigator.clipboard?.writeText(link); toast('Ссылка на профиль скопирована'); }
-  };
   return (
     <div className="page">
-      <div className="page-head">
-        <button className="chip" onClick={() => openModal('wallet')}><Wallet size={15} /> <Spark amount={me.balance} /></button>
-        <span className="spacer" />
-        <button className="icon-btn" onClick={() => openModal('settings')}><Pencil size={20} /></button>
-      </div>
-      <div className="page-body" style={{ paddingTop: 0 }}>
-        <div className="profile-hero hero-glow">
-          <div className="avatar-glow"><Avatar src={me.avatar} name={me.displayName} id={me.id} size={104} /></div>
-          <h2>{me.displayName}{me.verified && <Verified size={20} />}{me.wornGift ? <WornGift gift={me.wornGift} size={26} /> : me.emojiStatus && <span>{me.emojiStatus}</span>}</h2>
-          <div className="muted small">{me.username ? `@${me.username}` : me.email}</div>
-        </div>
-        <div className="action-grid" style={{ padding: '0 0 14px' }}>
-          <button onClick={() => openModal('wallet')}><Wallet size={22} />Кошелёк</button>
-          <button onClick={() => openModal('giftShop', { toUser: me })}><Sparkles size={22} />Подарок</button>
-          <button onClick={share}><Share2 size={22} />Поделиться</button>
-          <button onClick={() => openModal('settings', { tab: 'usernames' })}><AtSign size={22} />Юзернеймы</button>
-        </div>
-        <div className="tabs">
-          <button className={tab === 'gifts' ? 'on' : ''} onClick={() => setTab('gifts')}>Подарки</button>
-          <button className={tab === 'collectible' ? 'on' : ''} onClick={() => setTab('collectible')}>Коллекционные</button>
-        </div>
-        <GiftsGrid userId={me.id} onlyCollectible={tab === 'collectible'} />
+      <div className="page-body pv-page">
+        <ProfileView userId={me.id} />
       </div>
     </div>
   );

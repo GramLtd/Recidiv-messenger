@@ -33,9 +33,48 @@ function ProfileTab() {
           ))}
         </div>
       </div>
+      <ProfileExtras />
       <div className="small muted">Email: {me.email}</div>
       <button className="btn" disabled={busy} onClick={save}>Сохранить</button>
     </div>
+  );
+}
+
+function ProfileExtras() {
+  const me = useStore((s) => s.me);
+  const setMe = useStore((s) => s.setMe);
+  const chats = useStore((s) => s.chats);
+  const toast = useStore((s) => s.toast);
+  const { data } = useAsync(() => api('/music'), []);
+  const channels = chats.filter((c) => c.type === 'channel' && c.role === 'owner');
+  const set = async (path, body, patch) => {
+    try {
+      await api(path, { body });
+      setMe(patch);
+      toast('Сохранено');
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
+  return (
+    <>
+      <div className="field">
+        <label>Музыка в профиле</label>
+        <select className="input" value={me.profileTrackId || ''} onChange={(e) => set('/me/profile-track', { trackId: e.target.value || null }, { profileTrackId: Number(e.target.value) || null })}>
+          <option value="">— не показывать —</option>
+          {data?.tracks.map((t) => <option key={t.id} value={t.id}>{t.artist ? `${t.artist} — ` : ''}{t.title}</option>)}
+        </select>
+        <span className="hint">Или нажмите ❤️ в плеере на нужном треке.</span>
+      </div>
+      <div className="field">
+        <label>Личный канал</label>
+        <select className="input" value={me.personalChannelId || ''} onChange={(e) => set('/me/personal-channel', { chatId: e.target.value || null }, { personalChannelId: Number(e.target.value) || null })}>
+          <option value="">— не показывать —</option>
+          {channels.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+        </select>
+        {!channels.length && <span className="hint">Создайте канал, чтобы показать его в профиле.</span>}
+      </div>
+    </>
   );
 }
 

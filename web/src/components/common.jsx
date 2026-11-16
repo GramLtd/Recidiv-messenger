@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { X, ArrowLeft, BadgeCheck } from 'lucide-react';
 import { mediaUrl } from '../api.js';
 import { colorFor, initials } from '../util.js';
@@ -73,9 +73,41 @@ export function Modal({ title, children, footer, onClose, wide, back, className 
       </div>
     );
   }
+  return <SheetModal {...{ title, children, footer, back, className, headExtra, wide }} doClose={doClose} />;
+}
+
+/** Overlay modal; on phones it is a bottom sheet you can drag down to close. */
+function SheetModal({ title, children, footer, back, className, headExtra, wide, doClose }) {
+  const ref = useRef();
+  const drag = useRef(null);
+  const onStart = (e) => {
+    if (window.innerWidth > 560) return;
+    const body = ref.current.querySelector('.modal-body');
+    if (body && body.scrollTop > 0 && !e.target.closest('.modal-head, .sheet-grip')) return;
+    drag.current = { y: e.touches[0].clientY, dy: 0 };
+  };
+  const onMove = (e) => {
+    if (!drag.current) return;
+    const dy = e.touches[0].clientY - drag.current.y;
+    if (dy < 0) return;
+    drag.current.dy = dy;
+    ref.current.style.transition = 'none';
+    ref.current.style.transform = `translateY(${dy}px)`;
+  };
+  const onEnd = () => {
+    if (!drag.current) return;
+    const { dy } = drag.current;
+    drag.current = null;
+    ref.current.style.transition = 'transform .25s cubic-bezier(.2,.8,.2,1)';
+    if (dy > 110) {
+      ref.current.style.transform = 'translateY(100%)';
+      setTimeout(doClose, 200);
+    } else ref.current.style.transform = '';
+  };
   return (
     <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && doClose()}>
-      <div className={`modal ${wide === 'x' ? 'xwide' : wide ? 'wide' : ''} ${className}`}>
+      <div ref={ref} className={`modal ${wide === 'x' ? 'xwide' : wide ? 'wide' : ''} ${className}`} onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}>
+        <div className="sheet-grip" />
         {title !== null && (
           <div className="modal-head">
             {back && (

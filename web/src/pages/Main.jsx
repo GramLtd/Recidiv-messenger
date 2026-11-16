@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from '../store.js';
 import { api } from '../api.js';
@@ -38,11 +39,40 @@ export function ModalHost() {
   return C ? <C key={top.key} {...top.props} /> : null;
 }
 
+function Toast({ t }) {
+  const dismiss = useStore((s) => s.dismissToast);
+  const start = useRef(null);
+  const [dy, setDy] = useState(0);
+  const onDown = (e) => { start.current = e.clientY; e.currentTarget.setPointerCapture?.(e.pointerId); };
+  const onMove = (e) => { if (start.current != null) setDy(Math.min(0, e.clientY - start.current)); };
+  const onUp = () => {
+    if (start.current == null) return;
+    start.current = null;
+    if (dy < -25) dismiss(t.id);
+    setDy(0);
+  };
+  return (
+    <div
+      className={`toast ${t.kind} ${t.leaving ? 'leaving' : ''}`}
+      style={dy ? { transform: `translateY(${dy}px)`, opacity: 1 + dy / 80, transition: 'none' } : undefined}
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+      onClick={() => dy === 0 && dismiss(t.id)}
+    >
+      <span className="grow">{t.text}</span>
+      <button className="toast-x" onClick={(e) => { e.stopPropagation(); dismiss(t.id); }} aria-label="Закрыть"><X size={16} /></button>
+      <i className="toast-timer" style={{ animationDuration: `${t.ttl}ms` }} />
+    </div>
+  );
+}
+
 export function Toasts() {
   const toasts = useStore((s) => s.toasts);
   return (
     <div className="toasts">
-      {toasts.map((t) => <div key={t.id} className={`toast ${t.kind}`}>{t.text}</div>)}
+      {toasts.map((t) => <Toast key={t.id} t={t} />)}
     </div>
   );
 }

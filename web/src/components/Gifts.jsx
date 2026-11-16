@@ -51,6 +51,10 @@ export function GiftShopModal({ toUser: initialTo }) {
     const buy = () =>
       run(async () => {
         await api(`/gifts/${picked.id}/buy`, { body: { toUserId: recipient.id, message, anonymous } });
+        setPicked(null);
+        setMessage('');
+        setAnonymous(false);
+        reload();
         closeAll();
       }, recipient.id === me.id ? 'Подарок добавлен в профиль 🎁' : `Подарок отправлен ${recipient.displayName} 🎁`);
     return (

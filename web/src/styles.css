@@ -699,3 +699,147 @@ input, textarea, select { font-size: max(16px, 1em); }
 .toast { animation: toastDown .3s var(--ease); }
 @keyframes toastDown { from { opacity: 0; transform: translateY(-16px); } }
 .info-table b > span { min-width: 0; }
+
+/* =====================================================================
+   v0.3 — profile like the reference, toasts, keyboard, more motion
+   ===================================================================== */
+
+/* ---------- keyboard-safe viewport (iOS) ---------- */
+.app { height: var(--vvh, 100dvh); transform: translateY(var(--vvt, 0px)); }
+html.kb-open .bottom-nav, html.kb-open .mini-slot, html.kb-open .fab { opacity: 0; pointer-events: none; transform: translateY(30px); }
+.bottom-nav, .mini-slot, .fab { transition: opacity .2s, transform .25s var(--ease); }
+html.kb-open .composer-wrap { padding-bottom: 8px; }
+
+/* ---------- ripple ---------- */
+.ripple { position: absolute; border-radius: 50%; pointer-events: none; background: currentColor; opacity: .18; transform: scale(0); animation: ripple .6s ease-out forwards; z-index: 0; }
+@keyframes ripple { to { transform: scale(1); opacity: 0; } }
+
+/* ---------- direction-aware tab transitions ---------- */
+@keyframes slideFwd { from { opacity: 0; transform: translateX(28px); } }
+@keyframes slideBack { from { opacity: 0; transform: translateX(-28px); } }
+.sidebar.dir-fwd > .tab-page { animation: slideFwd .32s var(--ease); }
+.sidebar.dir-back > .tab-page { animation: slideBack .32s var(--ease); }
+.sidebar > .tab-page .page { animation: none; }
+
+/* ---------- messages ---------- */
+@keyframes msgOut { from { opacity: 0; transform: translateX(24px) scale(.96); } }
+.msg-row.out { animation-name: msgOut; }
+.badge { animation: popIn .35s var(--ease); }
+
+/* ---------- toasts ---------- */
+.toasts { pointer-events: none; width: min(440px, calc(100vw - 24px)); }
+.toast {
+  pointer-events: auto; display: flex; align-items: center; gap: 8px; position: relative; overflow: hidden; cursor: pointer;
+  padding: 11px 8px 11px 16px; transition: transform .22s var(--ease), opacity .22s; touch-action: none;
+}
+.toast.leaving { opacity: 0; transform: translateY(-18px) scale(.96); }
+.toast-x { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-2); flex-shrink: 0; }
+.toast-x:hover { background: var(--bg-hover); color: var(--text); }
+.toast-timer { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--accent); transform-origin: left; animation: toastTimer linear forwards; }
+.toast.error .toast-timer { background: #ff4d4f; }
+@keyframes toastTimer { to { transform: scaleX(0); } }
+
+/* ---------- bottom-sheet grip ---------- */
+.sheet-grip { display: none; }
+@media (max-width: 560px) {
+  .sheet-grip { display: block; width: 38px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .22); margin: 8px auto -2px; flex-shrink: 0; }
+  .modal { position: relative; }
+}
+
+/* ---------- profile (reference layout) ---------- */
+.pv-page { padding: 0 0 170px !important; }
+.pv { position: relative; animation: pageIn .35s var(--ease); }
+.pv-modal .modal-body { padding-top: 0; }
+.pv-modal .sheet-grip { position: absolute; left: 50%; transform: translateX(-50%); z-index: 6; margin: 8px 0 0; }
+.pv-hero { position: relative; padding: 10px 14px 6px; text-align: center; isolation: isolate; }
+.pv-hero::before {
+  content: ''; position: absolute; inset: -40px 0 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse 60% 48% at 50% 34%, color-mix(in srgb, var(--glow) 45%, transparent), transparent 75%);
+  animation: glowPulse 5s ease-in-out infinite;
+}
+@keyframes glowPulse { 50% { opacity: .65; } }
+.pv-top { display: flex; gap: 8px; position: relative; z-index: 4; min-height: 40px; }
+.pv-top .glass-icon { color: var(--text); background: rgba(127, 127, 127, .14); border-color: rgba(255, 255, 255, .1); width: 38px; height: 38px; }
+.pv-stage { position: relative; width: 290px; height: 250px; margin: -18px auto 0; display: flex; align-items: center; justify-content: center; }
+.pv-avatar { position: relative; z-index: 2; border-radius: 50%; padding: 4px; background: conic-gradient(from 0deg, var(--glow), transparent 35%, var(--glow) 70%, transparent); animation: avatarIn .6s cubic-bezier(.2, 1.3, .3, 1), spin 14s linear infinite; }
+.pv-avatar .avatar { box-shadow: 0 0 0 4px var(--bg); animation: spin 14s linear infinite reverse; }
+@keyframes avatarIn { from { transform: scale(.5); opacity: 0; } }
+.pv-online { position: absolute; right: 12px; bottom: 12px; width: 18px; height: 18px; border-radius: 50%; background: #2ecc71; border: 3px solid var(--bg); z-index: 3; }
+.pv-worn-label {
+  position: absolute; z-index: 3; right: 6px; bottom: 34px; padding: 4px 10px; border-radius: 12px; font-size: .72em; font-weight: 800;
+  background: rgba(0, 0, 0, .55); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, .18); color: #fff; animation: popIn .5s .3s var(--ease) both;
+}
+.pv-sparks { position: absolute; inset: 0; pointer-events: none; color: color-mix(in srgb, var(--glow) 40%, #fff); }
+.pv-sparks svg { position: absolute; transform: translate(-50%, -50%); animation: twinkle 3s ease-in-out infinite; opacity: 0; }
+@keyframes twinkle { 0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(.4) rotate(0); } 50% { opacity: .9; transform: translate(-50%, -50%) scale(1) rotate(45deg); } }
+.pv-orbit { position: absolute; inset: 0; animation: spin 70s linear infinite; z-index: 1; }
+.pv-orbit-arm { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.pv-orbit-item { position: absolute; left: 0; top: 0; translate: 112px -50%; width: 46px; height: 46px; margin-left: -23px; display: flex; align-items: center; justify-content: center; animation: orbitPop .6s var(--ease) both; }
+.pv-orbit-counter { display: flex; animation: spin 70s linear infinite reverse, floaty 3.5s ease-in-out infinite; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .5)); }
+@keyframes orbitPop { from { opacity: 0; scale: .2; } }
+.pv-name { margin: 2px 0 6px; font-size: 1.5em; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 6px; letter-spacing: -.01em; animation: rise .45s .1s var(--ease) both; }
+.pv-pills { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; animation: rise .45s .16s var(--ease) both; }
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 14px; font-size: .82em; font-weight: 700; background: transparent; border: 1.5px solid rgba(255, 255, 255, .25); white-space: nowrap; }
+[data-bg='light'] .pill { border-color: rgba(0, 0, 0, .2); }
+.pill.on { border-color: rgba(46, 204, 113, .6); color: #2ecc71; }
+.pv-track {
+  position: relative; overflow: hidden; display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 12px 9px 9px; margin-bottom: 10px; border-radius: 18px; cursor: pointer; text-align: left;
+  background: linear-gradient(135deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .03)); border: 1px solid rgba(255, 255, 255, .1); animation: rise .45s .22s var(--ease) both;
+}
+.pv-track.empty { color: var(--text-2); justify-content: flex-start; padding: 14px; font-weight: 600; }
+.pv-track.active { border-color: rgba(var(--accent-rgb), .45); }
+.pv-track-play { width: 34px; height: 34px; border-radius: 50%; background: var(--text); color: var(--bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pv-track-progress { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--accent); transition: width .25s linear; }
+.pv-channel { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-bottom: 8px; border-radius: 18px; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .08); cursor: pointer; text-align: left; animation: rise .45s .28s var(--ease) both; }
+.pv-channel .pill { font-size: .72em; background: rgba(255, 255, 255, .1); border: 0; }
+.pv-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 6px 14px 4px; }
+.pv-actions button { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 11px 4px; border-radius: 16px; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .08); color: var(--accent); font-size: .8em; font-weight: 700; }
+.pv-info { padding: 8px 16px 4px; display: flex; flex-direction: column; gap: 14px; }
+.pv-row { animation: rise .4s var(--ease) both; text-align: left; }
+.pv-row:nth-child(2) { animation-delay: .05s; } .pv-row:nth-child(3) { animation-delay: .1s; } .pv-row:nth-child(4) { animation-delay: .15s; } .pv-row:nth-child(5) { animation-delay: .2s; } .pv-row:nth-child(6) { animation-delay: .25s; }
+.pv-row.inline { display: flex; align-items: center; gap: 8px; font-size: .92em; }
+.pv-value { font-weight: 600; font-size: 1.02em; }
+.pv-also { font-size: .88em; color: var(--text-2); margin-top: 2px; line-height: 1.35; }
+.pv-label { font-size: .78em; color: var(--text-2); margin-top: 2px; }
+.pv-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv-badge { width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, .05); animation: popIn .4s var(--ease) both; transition: transform .2s var(--ease); }
+.pv-badge:active { transform: scale(.85); }
+.pv-badge img { width: 28px; height: 28px; }
+.pv-tabs { position: relative; display: flex; align-items: center; margin: 18px 0 10px; border-bottom: 1px solid var(--border); padding-right: 8px; }
+.pv-tabs > button:not(.icon-btn) { flex: 1; max-width: calc((100% - 48px) / 2); height: 46px; font-weight: 800; color: var(--text-2); transition: color .2s; }
+.pv-tabs > button.on { color: var(--text); }
+.pv-tab-line { position: absolute; left: 0; bottom: -1px; width: calc((100% - 48px) / 2); height: 3px; border-radius: 3px 3px 0 0; background: var(--accent); transition: transform .35s cubic-bezier(.2, 1.2, .3, 1); }
+.pv-tabs > div { margin-left: auto; }
+.pv-content { padding: 0 12px; animation: pageIn .3s var(--ease); }
+.pv-stories { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.pv-story { aspect-ratio: 9 / 16; border-radius: 16px; overflow: hidden; display: flex; align-items: center; justify-content: center; animation: rise .35s var(--ease) both; color: #fff; font-weight: 800; font-size: .8em; padding: 0; }
+.pv-story img, .pv-story video { width: 100%; height: 100%; object-fit: cover; }
+.pv-story span { padding: 8px; text-align: center; }
+.right-panel .pv-hero { padding-top: 12px; }
+
+/* gift tiles: number ribbon + pin button like the reference */
+.gift-num { position: absolute; top: 12px; right: -26px; z-index: 3; transform: rotate(45deg); width: 100px; text-align: center; font-size: .66em; font-weight: 800; color: rgba(255, 255, 255, .85); background: rgba(0, 0, 0, .45); padding: 2px 0; backdrop-filter: blur(4px); }
+.gift-pin-btn { position: absolute; right: 8px; bottom: 8px; z-index: 3; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; background: rgba(0, 0, 0, .45); backdrop-filter: blur(6px); border: 1px solid rgba(255, 255, 255, .15); transition: transform .2s var(--ease), background .2s; }
+.gift-pin-btn.on { background: var(--accent); border-color: transparent; }
+.gift-pin-btn:active { transform: scale(.8); }
+.gift-card.is-col { aspect-ratio: 1; }
+.gift-card .gift-pin { display: none; }
+
+/* player heart */
+.heart-btn { color: var(--text-2); animation: popIn .35s var(--ease); }
+.heart-btn.on { color: var(--accent); }
+
+/* collectible tiles: gentle tilt-on-hover for desktop */
+@media (hover: hover) {
+  .gift-card:hover .model-wrap, .market-card:hover .model-wrap { transform: rotateY(-12deg) rotateX(6deg) scale(1.06); }
+}
+
+.page-foot { position: static; padding-top: 14px; }
+
+/* avatar ring v2: ring spins, avatar and online dot stay still */
+.pv-stage { height: 236px; }
+.pv-avatar { padding: 0; background: none; animation: avatarIn .6s cubic-bezier(.2, 1.3, .3, 1); }
+.pv-avatar .avatar { box-shadow: none; animation: none; }
+.pv-ring { position: absolute; inset: -7px; border-radius: 50%; background: conic-gradient(from 0deg, var(--glow), transparent 30%, var(--glow) 55%, transparent 80%, var(--glow)); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); animation: spin 6s linear infinite; }
+.pv-online { right: 6px; bottom: 6px; }
+.pv-worn-label { bottom: 22px; right: 22px; }
