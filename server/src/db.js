@@ -481,15 +481,20 @@ export function giftAssets(emoji) {
 // Catalog v3: the limited line-up is replaced by the Recidivist collections (own art,
 // one model per picture, rarity from the design sheet). Gifts that are not in the catalog
 // get hidden from the shop (owners keep them).
-const GIFT_CATALOG_VERSION = 3;
+const GIFT_CATALOG_VERSION = 4;
 const COLLECTION_MODELS = JSON.parse(fs.readFileSync(new URL('./gift-collections.json', import.meta.url), 'utf8'));
 const GIFT_CATALOG = [
-  // slug, name, emoji (fallback), price, supply, upgrade_price, convert_value, base model #
-  ['heart', 'Горящее сердце', '❤️‍🔥', 25, null, null, 21],
-  ['frog', 'Плюшевая жаба', '🐸', 35, null, null, 30],
-  ['martini', 'Мартини', '🍸', 50, null, null, 43],
-  ['black-cat', 'Чёрный кот', '🐈‍⬛', 75, null, null, 64],
-  ['pumpkin', 'Тыква', '🎃', 90, null, null, 77],
+  // slug, name, emoji (fallback), price, supply, upgrade_price, convert_value, art
+  // art: a number = base model of a collection; a string = animated sticker in /gifts/regular
+  // (Noto Animated Emoji, Google, CC BY 4.0).
+  ['heart', 'Горящее сердце', '❤️‍🔥', 25, null, null, 21, '2764_fe0f_200d_1f525'],
+  ['rose', 'Роза', '🌹', 30, null, null, 25, '1f339'],
+  ['frog', 'Плюшевая жаба', '🐸', 35, null, null, 30, '1f438'],
+  ['champagne', 'Шампанское', '🍾', 50, null, null, 43, '1f37e'],
+  ['pumpkin', 'Тыква', '🎃', 75, null, null, 64, '1f383'],
+  ['dice', 'Кости', '🎲', 90, null, null, 77, '1f3b2'],
+  ['skull', 'Череп', '💀', 110, null, null, 94, '1f480'],
+  ['diamond', 'Бриллиант', '💎', 150, null, null, 128, '1f48e'],
   ['kot-stukach', 'Кот-Стукач', '🐈', 350, 9000, 150, 280, 50],
   ['pahan-pepe', 'Пахан Пепе', '🐸', 700, 5000, 300, 560, 50],
   ['sigara-smotryashchego', 'Сигара Смотрящего', '🚬', 1200, 2500, 450, 960, 55],
@@ -507,12 +512,18 @@ function catalogRow(slug, emoji, legacy) {
   const insModel = db.prepare('INSERT INTO gift_models (gift_id, name, emoji, filter, image, animation, rarity) VALUES (?, ?, ?, ?, ?, ?, ?)');
   const keep = new Set();
   tx0(() => {
-    GIFT_CATALOG.forEach(([slug, name, emoji, price, supply, upg, conv, baseModel], i) => {
+    const upgradeCatalog = Number(getSetting('gift_catalog_version') || 1) < GIFT_CATALOG_VERSION;
+    GIFT_CATALOG.forEach(([slug, name, emoji, price, supply, upg, conv, art], i) => {
       const models = COLLECTION_MODELS[slug];
+      const sticker = typeof art === 'string' ? { image: `/gifts/regular/${art}.webp`, animation: `/gifts/regular/${art}.tgs` } : null;
       let row = catalogRow(slug, emoji, !models);
+      if (row && sticker && upgradeCatalog) {
+        // restyle an existing regular gift: new art, catalog price; owners keep what they have
+        db.prepare('UPDATE gifts SET name = ?, image = ?, animation = ?, price = ?, convert_value = ?, enabled = 1 WHERE id = ?').run(name, sticker.image, sticker.animation, price, conv, row.id);
+      }
       if (!row) {
-        const base = models?.find((m) => m.n === baseModel);
-        const a = base ? { image: base.image, animation: base.animation } : giftAssets(emoji);
+        const base = models?.find((m) => m.n === art);
+        const a = sticker || (base ? { image: base.image, animation: base.animation } : giftAssets(emoji));
         const r = ins.run(slug, name, emoji, a.image, a.animation, price, supply, upg, conv, i, now());
         row = { id: Number(r.lastInsertRowid) };
         if (models) for (const m of models) insModel.run(row.id, m.name, emoji, '', m.image, m.animation, m.rarity);
@@ -521,7 +532,7 @@ function catalogRow(slug, emoji, legacy) {
       db.prepare('UPDATE gifts SET sort = ? WHERE id = ?').run(i, row.id);
       keep.add(row.id);
     });
-    if (Number(getSetting('gift_catalog_version') || 1) < GIFT_CATALOG_VERSION) {
+    if (upgradeCatalog) {
       for (const g of db.prepare('SELECT id FROM gifts').all()) if (!keep.has(g.id)) db.prepare('UPDATE gifts SET enabled = 0 WHERE id = ?').run(g.id);
       setSetting('gift_catalog_version', GIFT_CATALOG_VERSION);
     }

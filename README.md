@@ -122,3 +122,8 @@ web/               React 18 · Vite · Zustand · socket.io-client · TonConnect
 - Звонки (WebRTC), стикеры, GIF, опросы, отложенные сообщения.
 - Перенос на PostgreSQL и S3 для масштабирования, Redis-адаптер Socket.IO для нескольких инстансов.
 - Ограничение частоты запросов (rate limiting) и антиспам, модерация жалоб.
+
+## Лицензии графики
+
+- Анимации обычных подарков (`web/public/gifts/regular`) — [Noto Animated Emoji](https://googlefonts.github.io/noto-emoji-animation/), Google, CC BY 4.0.
+- 3D-эмодзи (`web/public/emoji3d`) — Fluent Emoji, Microsoft, MIT.
