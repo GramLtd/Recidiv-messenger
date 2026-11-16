@@ -344,17 +344,17 @@ export function ProfileView({ userId, onClose }) {
             <Avatar src={u.avatar} name={u.displayName} id={u.id} size={118} />
             {u.online && <span className="pv-online" />}
           </div>
-          {worn && (
-            <button className="pv-worn-label" onClick={() => openModal('giftDetails', { userGiftId: worn.id })}>
-              {worn.name} #{worn.number}
-            </button>
-          )}
         </div>
         <h2 className="pv-name">
           <StyledName user={u} />
           {u.verified && <Verified size={20} />}
           {u.premium && <PremiumStar size={20} />}
-          {worn && <WornGift gift={worn} size={24} />}
+          {worn && (
+            <span className="pv-worn">
+              <button className="pv-worn-bubble" onClick={() => openModal('giftDetails', { userGiftId: worn.id })}>{worn.name} #{worn.number}</button>
+              <WornGift gift={worn} size={24} />
+            </span>
+          )}
         </h2>
         <div className="pv-pills">
           <span className={`pill ${u.online ? 'on' : ''}`}>{isMe ? 'в сети' : lastSeen(u)}</span>
