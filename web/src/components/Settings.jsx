@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck } from 'lucide-react';
+import { Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, upload } from '../api.js';
 import { Avatar, Modal, Spark, useAsync, useAction } from './common.jsx';
@@ -34,6 +34,10 @@ function ProfileTab() {
         </div>
       </div>
       <ProfileExtras />
+      <button className="list-item" style={{ background: 'var(--bg-2)' }} onClick={() => import('./ProfileView.jsx').then((m) => m.openNumbersBot())}>
+        <Phone size={20} className="accent" />
+        <div className="grow" style={{ textAlign: 'left' }}><div className="bold">Анонимный номер</div><div className="tiny muted">{me.anonNumber || 'Создать номер +888 через бота'}</div></div>
+      </button>
       <div className="small muted">Email: {me.email}</div>
       <button className="btn" disabled={busy} onClick={save}>Сохранить</button>
     </div>

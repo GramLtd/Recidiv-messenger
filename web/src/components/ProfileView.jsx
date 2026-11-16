@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  X, Pencil, Shield, MessageCircle, Gift, Send, Pin, Eye, CalendarDays, Hash, Filter, Play, Pause, ChevronRight, Music2, Megaphone, Check,
+  X, Pencil, Shield, MessageCircle, Gift, Send, Pin, Eye, CalendarDays, Hash, Filter, Play, Pause, ChevronRight, Music2, Megaphone, Check, Phone,
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, mediaUrl } from '../api.js';
@@ -169,23 +169,6 @@ function ChannelCard({ chat, onOpen }) {
   );
 }
 
-function Badges({ list }) {
-  const [tip, setTip] = useState(null);
-  if (!list?.length) return null;
-  return (
-    <div className="pv-row">
-      <div className="pv-badges">
-        {list.map((b, i) => (
-          <button key={b.id} className="pv-badge" style={{ animationDelay: `${i * 60}ms` }} onClick={() => setTip(tip === b.id ? null : b.id)} title={b.title}>
-            <img src={emoji3d(b.emoji)} alt={b.title} />
-          </button>
-        ))}
-      </div>
-      <div className="pv-label">{tip ? list.find((b) => b.id === tip)?.title : 'Значки'}</div>
-    </div>
-  );
-}
-
 function StoriesGrid({ userId }) {
   const feed = useStore((s) => s.stories);
   const openModal = useStore((s) => s.openModal);
@@ -212,6 +195,19 @@ function StoriesGrid({ userId }) {
       )}
     </>
   );
+}
+
+/** Open the in-app bot that issues anonymous numbers. */
+export async function openNumbersBot() {
+  const st = useStore.getState();
+  try {
+    const r = await api('/resolve/numbers');
+    st.closeAllModals();
+    st.setTab('chats');
+    await st.openPrivate(r.user.id);
+  } catch (e) {
+    st.toast(e.message, 'error');
+  }
 }
 
 // ---------------- the profile ----------------
@@ -299,6 +295,16 @@ export function ProfileView({ userId, onClose }) {
       )}
 
       <div className="pv-info">
+        {u.anonNumber ? (
+          <div className="pv-row">
+            <div className="pv-value pv-number" onClick={() => { navigator.clipboard?.writeText(u.anonNumber.replace(/\s/g, '')); useStore.getState().toast('Номер скопирован'); }}>{u.anonNumber}</div>
+            <div className="pv-label">Анонимный номер</div>
+          </div>
+        ) : isMe ? (
+          <button className="pv-track empty" style={{ marginBottom: 0 }} onClick={() => openNumbersBot()}>
+            <Phone size={18} /> <span className="grow">Получить анонимный номер +888</span> <ChevronRight size={16} />
+          </button>
+        ) : null}
         {u.username && (
           <div className="pv-row">
             <div className="pv-value accent">@{u.username}</div>
@@ -312,7 +318,6 @@ export function ProfileView({ userId, onClose }) {
             <div className="pv-label">Описание</div>
           </div>
         )}
-        <Badges list={u.badges} />
         <div className="pv-row inline"><CalendarDays size={16} /> На Recidivist с {new Date(u.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
         <div className="pv-row">
           <div className="pv-value row" style={{ gap: 6 }}><Hash size={15} className="muted" /> ID: {u.code}</div>

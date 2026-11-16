@@ -337,6 +337,22 @@ addColumn('users', 'worn_gift_id', 'INTEGER');
 addColumn('users', 'profile_track_id', 'INTEGER');
 addColumn('users', 'personal_channel_id', 'INTEGER');
 addColumn('users', 'profile_views', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('users', 'anon_number', 'TEXT');
+addColumn('users', 'is_tester', 'INTEGER NOT NULL DEFAULT 0');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_anon_number ON users(anon_number)');
+
+// ---------- in-app bot: anonymous numbers ----------
+function ensureBot(username, name, bio) {
+  const row = db.prepare('SELECT n.user_id FROM usernames n JOIN users u ON u.id = n.user_id WHERE n.name = ? AND u.is_bot = 1').get(username);
+  if (row?.user_id) return row.user_id;
+  // someone already took the handle — fall back to <name>_bot
+  if (db.prepare('SELECT 1 FROM usernames WHERE name = ?').get(username)) return ensureBot(`${username}_bot`, name, bio);
+  const r = db.prepare('INSERT INTO users (display_name, bio, is_bot, verified, created_at) VALUES (?, ?, 1, 1, ?)').run(name, bio, now());
+  db.prepare('INSERT INTO usernames (name, display, user_id, created_at) VALUES (?, ?, ?, ?)').run(username, username, r.lastInsertRowid, now());
+  db.prepare('UPDATE users SET username = ? WHERE id = ?').run(username, r.lastInsertRowid);
+  return Number(r.lastInsertRowid);
+}
+export const NUMBERS_BOT_ID = ensureBot('numbers', 'Анонимные номера', 'Бот Recidivist: создайте анонимный номер и привяжите его к профилю.');
 db.exec(`
 CREATE TABLE IF NOT EXISTS tracks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

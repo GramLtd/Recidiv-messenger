@@ -65,12 +65,13 @@ r.post('/users/:id/balance', (req, res) => {
 r.post('/users/:id/flags', (req, res) => {
   const u = getUser(Number(req.params.id));
   if (!u) fail(404, 'Не найден');
-  const { banned, verified, admin } = req.body;
+  const { banned, verified, admin, tester } = req.body;
   if (u.id === req.user.id && (banned || admin === false)) fail(400, 'Нельзя заблокировать или разжаловать себя');
-  db.prepare('UPDATE users SET is_banned = ?, verified = ?, is_admin = ? WHERE id = ?').run(
+  db.prepare('UPDATE users SET is_banned = ?, verified = ?, is_admin = ?, is_tester = ? WHERE id = ?').run(
     banned !== undefined ? (banned ? 1 : 0) : u.is_banned,
     verified !== undefined ? (verified ? 1 : 0) : u.verified,
     admin !== undefined ? (admin ? 1 : 0) : u.is_admin,
+    tester !== undefined ? (tester ? 1 : 0) : u.is_tester,
     u.id,
   );
   if (banned) {

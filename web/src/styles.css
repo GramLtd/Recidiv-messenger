@@ -843,3 +843,17 @@ html.kb-open .composer-wrap { padding-bottom: 8px; }
 .pv-ring { position: absolute; inset: -7px; border-radius: 50%; background: conic-gradient(from 0deg, var(--glow), transparent 30%, var(--glow) 55%, transparent 80%, var(--glow)); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); animation: spin 6s linear infinite; }
 .pv-online { right: 6px; bottom: 6px; }
 .pv-worn-label { bottom: 22px; right: 22px; }
+
+/* ---------- v0.4: bot buttons, anon number, music search ---------- */
+.bot-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; clear: both; }
+.bot-buttons button { padding: 9px 8px; border-radius: 12px; background: rgba(var(--accent-rgb), .14); color: var(--accent); font-weight: 700; font-size: .88em; transition: transform .15s var(--ease), background .2s; }
+.bot-buttons button:active { transform: scale(.95); background: rgba(var(--accent-rgb), .25); }
+.pv-number { color: var(--accent); font-size: 1.15em; font-weight: 800; letter-spacing: .02em; cursor: pointer; }
+.music-search { animation: pageIn .3s var(--ease); }
+.shazam-btn { width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #fff; background: radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--accent) 70%, #fff), var(--accent)); box-shadow: 0 6px 18px rgba(var(--accent-rgb), .45); transition: transform .2s var(--ease); }
+.shazam-btn.on { animation: pulse 1s infinite; transform: scale(1.08); }
+.listening { display: flex; align-items: center; gap: 8px; padding: 14px 6px; color: var(--accent); font-weight: 600; font-size: .9em; }
+.listening span { width: 4px; height: 16px; border-radius: 2px; background: var(--accent); animation: eq .8s ease-in-out infinite; }
+.listening span:nth-child(2) { animation-delay: .15s; } .listening span:nth-child(3) { animation-delay: .3s; }
+.src-tag { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 6px; font-size: .78em; font-weight: 700; background: rgba(255, 255, 255, .08); color: var(--text-2); }
+.src-tag.archive, .src-tag.jamendo { color: #2ecc71; background: rgba(46, 204, 113, .12); }

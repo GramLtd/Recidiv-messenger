@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { mediaUrl } from './api.js';
+import { mediaUrl, api } from './api.js';
 
 /** One <audio> for the whole app, so music keeps playing while you switch chats and tabs. */
 const audio = typeof Audio !== 'undefined' ? new Audio() : null;
@@ -46,11 +46,22 @@ export const usePlayer = create((set, get) => ({
     if (cur && cur.url === track.url) return get().toggle();
     get().playQueue([track], 0);
   },
-  _load(autoplay) {
+  async _load(autoplay) {
     const t = get().current();
     if (!audio || !t) return;
-    audio.src = mediaUrl(t.url);
     set({ time: 0, duration: t.duration || 0 });
+    let src = t.stream || t.url;
+    // Saved Deezer previews expire — get a fresh link right before playing.
+    if (src.startsWith('deezer:')) {
+      try {
+        src = (await api(`/music/resolve?src=${encodeURIComponent(src)}`)).url;
+      } catch {
+        set({ playing: false });
+        return;
+      }
+      if (get().current() !== t) return;
+    }
+    audio.src = mediaUrl(src);
     if (autoplay) audio.play().catch(() => set({ playing: false }));
     updateMediaSession(t);
   },

@@ -49,6 +49,13 @@ function MessageContent({ m, chat, onOpenMedia }) {
         </div>
       )}
       {m.text && m.type !== 'gift' && <span>{linkify(m.text)}</span>}
+      {m.media?.buttons?.length > 0 && (
+        <div className="bot-buttons">
+          {m.media.buttons.map((b) => (
+            <button key={b} onClick={() => useStore.getState().sendMessage(chat.id, { text: b }).catch((e) => useStore.getState().toast(e.message, 'error'))}>{b}</button>
+          ))}
+        </div>
+      )}
       {m.type === 'gift' && m.text && <div style={{ marginTop: 6, fontStyle: 'italic' }}>«{m.text}»</div>}
     </>
   );
@@ -421,7 +428,7 @@ export default function ChatView() {
   else if (chat.type === 'saved') status = null;
   else status = <span className="status">{membersLabel(chat)}</span>;
 
-  const canPost = chat.isMember && (chat.type !== 'channel' || chat.role !== 'member') && !(chat.type === 'private' && chat.peer?.isBot);
+  const canPost = chat.isMember && (chat.type !== 'channel' || chat.role !== 'member') && !(chat.type === 'private' && chat.peer?.isBot && !chat.peer?.interactive);
   const join = async () => {
     const r = await api(`/chats/${chat.id}/join`, { body: {} });
     upsertChat(r.chat);
@@ -452,7 +459,7 @@ export default function ChatView() {
                 {status}
               </div>
             </div>
-            {chat.type === 'private' && !chat.peer?.isBot && (
+            {chat.type === 'private' && !chat.peer?.isBot && chat.peer && (
               <button className="icon-btn" title="Отправить подарок" onClick={() => openModal('giftShop', { toUser: chat.peer })}><Gift size={21} /></button>
             )}
             <button className="icon-btn" onClick={() => setSearchOpen(true)}><Search size={21} /></button>

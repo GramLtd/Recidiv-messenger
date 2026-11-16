@@ -1,4 +1,4 @@
-import { db, SYSTEM_USER_ID, getSetting } from './db.js';
+import { db, SYSTEM_USER_ID, NUMBERS_BOT_ID, getSetting } from './db.js';
 import { emitToUser, emitToChat, isOnline, chatMemberIds } from './realtime.js';
 import { fail } from './auth.js';
 
@@ -39,7 +39,9 @@ export function publicUser(u) {
     bio: u.bio,
     verified: !!u.verified,
     isBot: !!u.is_bot,
+    interactive: u.id === NUMBERS_BOT_ID,
     isAdmin: !!u.is_admin,
+    anonNumber: u.anon_number ? `+${u.anon_number.slice(0, 3)} ${u.anon_number.slice(3, 7)} ${u.anon_number.slice(7)}` : null,
     emojiStatus: u.emoji_status,
     wornGift: wornGift(u),
     online: isOnline(u.id),
@@ -53,7 +55,7 @@ export function lightUser(u) {
 }
 
 export function meUser(u) {
-  return { ...publicUser(u), email: u.email, balance: u.balance, isBanned: !!u.is_banned, createdAt: u.created_at, profileTrackId: u.profile_track_id, personalChannelId: u.personal_channel_id };
+  return { ...publicUser(u), email: u.email, balance: u.balance, isBanned: !!u.is_banned, createdAt: u.created_at, profileTrackId: u.profile_track_id, personalChannelId: u.personal_channel_id, isTester: !!u.is_tester };
 }
 
 // ---------------- ledger ----------------

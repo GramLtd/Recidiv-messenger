@@ -39,6 +39,10 @@ export const config = {
     toncenter: env.TONCENTER_URL || 'https://toncenter.com/api/v2',
     toncenterKey: env.TONCENTER_API_KEY || '',
   },
+  music: {
+    jamendoClientId: env.JAMENDO_CLIENT_ID || '',
+    auddToken: env.AUDD_API_TOKEN || '',
+  },
   // Allows the "test payment" button in the wallet. Disable in production.
   allowTestPayments: env.ALLOW_TEST_PAYMENTS ? env.ALLOW_TEST_PAYMENTS === 'true' : env.NODE_ENV !== 'production',
 };

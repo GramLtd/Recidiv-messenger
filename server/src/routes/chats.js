@@ -2,6 +2,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { db, tx } from '../db.js';
 import { fail } from '../auth.js';
+import { INTERACTIVE_BOTS } from '../bots.js';
 import {
   serializeChat, serializeMessage, getOrCreatePrivateChat, getMember, getUser, createMessage, canPost,
   assertUsernameFree, emitToUser, emitToChat, chatMemberIds, publicUser, now, sanitizeMedia, safeUploadUrl,
@@ -49,6 +50,8 @@ r.post('/chats/private', (req, res) => {
   const other = getUser(Number(req.body.userId));
   if (!other) fail(404, 'Пользователь не найден');
   const chat = getOrCreatePrivateChat(req.user.id, other.id);
+  const bot = INTERACTIVE_BOTS.get(other.id);
+  if (bot && !db.prepare('SELECT 1 FROM messages WHERE chat_id = ?').get(chat.id)) bot(req.user.id, '/start');
   res.json({ chat: serializeChat(chat, req.user.id) });
 });
 
@@ -247,7 +250,7 @@ r.post('/chats/:id/messages', (req, res) => {
   if (!canPost(c, m)) fail(403, 'Только администраторы могут публиковать в канале');
   if (c.type === 'private') {
     const peer = db.prepare('SELECT u.* FROM chat_members m JOIN users u ON u.id = m.user_id WHERE m.chat_id = ? AND m.user_id != ?').get(c.id, req.user.id);
-    if (peer?.is_bot) fail(403, 'Этот аккаунт не принимает сообщения');
+    if (peer?.is_bot && !INTERACTIVE_BOTS.has(peer.id)) fail(403, 'Этот аккаунт не принимает сообщения');
   }
   const text = String(req.body.text || '').slice(0, 4096);
   const media = sanitizeMedia(req.body.media);
@@ -258,6 +261,11 @@ r.post('/chats/:id/messages', (req, res) => {
   if (replyTo && !db.prepare('SELECT 1 FROM messages WHERE id = ? AND chat_id = ?').get(replyTo, c.id)) replyTo = null;
   const msg = createMessage({ chatId: c.id, senderId: req.user.id, type, text, media, replyTo });
   res.json({ message: msg });
+  if (c.type === 'private') {
+    const peerId = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').get(c.id, req.user.id)?.user_id;
+    const bot = INTERACTIVE_BOTS.get(peerId);
+    if (bot) setTimeout(() => { try { bot(req.user.id, text); } catch (e) { console.error(e); } }, 350);
+  }
 });
 
 r.post('/messages/:id/forward', (req, res) => {

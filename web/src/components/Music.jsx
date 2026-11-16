@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Music2, Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Plus, Search, Trash2, ListMusic, Moon, Heart, X,
+  Music2, Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Plus, Search, Trash2, ListMusic, Moon, Heart, X, Mic, Check,
 } from 'lucide-react';
 import { useStore } from '../store.js';
-import { api, upload, mediaUrl } from '../api.js';
+import { api, upload, mediaUrl, API_ORIGIN, getToken } from '../api.js';
 import { usePlayer, fmtTime, audioDuration, coverGradient } from '../player.js';
 import { Spinner, useAction } from './common.jsx';
 
@@ -136,7 +136,117 @@ export function NowPlaying() {
   );
 }
 
-export function TrackRow({ track, onClick, onDelete, style }) {
+const SOURCE_LABEL = { deezer: 'превью 30с', archive: 'Archive', jamendo: 'Jamendo' };
+
+/** Search open sources by name + recognise a song playing nearby (Shazam-like). */
+function MusicSearch({ onSaved }) {
+  const toast = useStore((s) => s.toast);
+  const playQueue = usePlayer((s) => s.playQueue);
+  const [q, setQ] = useState('');
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [saved, setSaved] = useState({});
+  useEffect(() => {
+    if (q.trim().length < 2) { setData(null); return; }
+    const ctrl = new AbortController();
+    setLoading(true);
+    const t = setTimeout(() => {
+      api(`/music/search?q=${encodeURIComponent(q.trim())}`, { signal: ctrl.signal })
+        .then((r) => setData(r))
+        .catch((e) => e.name !== 'AbortError' && toast(e.message, 'error'))
+        .finally(() => setLoading(false));
+    }, 450);
+    return () => { clearTimeout(t); ctrl.abort(); };
+  }, [q]);
+
+  const recognize = async () => {
+    if (listening) return;
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      return toast('Нет доступа к микрофону', 'error');
+    }
+    setListening(true);
+    const rec = new MediaRecorder(stream);
+    const chunks = [];
+    rec.ondataavailable = (e) => chunks.push(e.data);
+    rec.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      try {
+        const fd = new FormData();
+        fd.append('file', new Blob(chunks, { type: rec.mimeType || 'audio/webm' }), 'sample.webm');
+        const res = await fetch(`${API_ORIGIN}/api/music/recognize`, { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: fd });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'Ошибка распознавания');
+        if (!d.match) toast('Не удалось узнать трек 😕');
+        else {
+          toast(`Это ${d.match.artist} — ${d.match.title}`);
+          setQ(`${d.match.artist} ${d.match.title}`);
+        }
+      } catch (e) {
+        toast(e.message, 'error');
+      } finally {
+        setListening(false);
+      }
+    };
+    rec.start();
+    setTimeout(() => rec.state !== 'inactive' && rec.stop(), 8000);
+  };
+
+  const save = async (t) => {
+    try {
+      const { track } = await api('/music', { body: { url: t.url, title: t.title, artist: t.artist, duration: t.duration, cover: t.cover } });
+      setSaved((x) => ({ ...x, [t.id]: true }));
+      onSaved?.(track);
+      toast('Добавлено в «Мою музыку» 🎵');
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
+
+  const results = data?.results || [];
+  return (
+    <div className="music-search">
+      <div className="row" style={{ gap: 8 }}>
+        <div className="search-box grow">
+          <Search size={18} />
+          <input placeholder="Исполнитель или название трека" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+          {q && <button className="icon-btn" style={{ position: 'absolute', right: 2, top: 1 }} onClick={() => setQ('')}><X size={18} /></button>}
+        </div>
+        <button className={`shazam-btn ${listening ? 'on' : ''}`} onClick={recognize} title="Распознать песню рядом">
+          <Mic size={22} />
+        </button>
+      </div>
+      {listening && <div className="listening"><span /><span /><span />Слушаю… поднесите телефон к источнику звука</div>}
+      {loading && <div className="center" style={{ padding: 24 }}><Spinner /></div>}
+      {!loading && data && !results.length && <div className="muted center small" style={{ padding: 24 }}>Ничего не нашли</div>}
+      {!loading && results.map((t, i) => (
+        <TrackRow
+          key={t.id + i}
+          track={t}
+          style={{ animationDelay: `${Math.min(i, 15) * 25}ms` }}
+          onClick={() => playQueue(results, i)}
+          extra={<button className={`icon-btn ${saved[t.id] ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); if (!saved[t.id]) save(t); }}>{saved[t.id] ? <Check size={18} /> : <Plus size={20} />}</button>}
+        />
+      ))}
+      {!q && (
+        <div className="muted small" style={{ padding: '18px 4px', lineHeight: 1.5 }}>
+          Ищем по открытым источникам: Internet Archive и Jamendo (полные треки под свободными лицензиями) и Deezer (30-секундные превью).
+          Кнопка с микрофоном узнаёт песню, которая играет рядом.
+        </div>
+      )}
+      {data?.sources && (
+        <div className="tiny muted center" style={{ marginTop: 10 }}>
+          {data.sources.filter((x) => x.enabled).map((x) => `${x.name}${x.ok ? '' : ' (недоступен)'}`).join(' · ')}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function TrackRow({ track, onClick, onDelete, style, extra }) {
   const cur = usePlayer((s) => s.current());
   const playing = usePlayer((s) => s.playing);
   const active = cur?.url === track.url;
@@ -148,9 +258,13 @@ export function TrackRow({ track, onClick, onDelete, style }) {
       </div>
       <div className="grow">
         <div className="ellipsis bold">{track.title}</div>
-        <div className="ellipsis small muted">{track.artist || 'Неизвестный исполнитель'}</div>
+        <div className="ellipsis small muted">
+          {track.source && <span className={`src-tag ${track.source}`}>{SOURCE_LABEL[track.source]}</span>}
+          {track.artist || 'Неизвестный исполнитель'}
+        </div>
       </div>
       <span className="small muted">{fmtTime(track.duration)}</span>
+      {extra}
       {onDelete && <button className="icon-btn" onClick={(e) => { e.stopPropagation(); onDelete(); }}><Trash2 size={17} /></button>}
     </div>
   );
@@ -179,6 +293,7 @@ export function MusicPage() {
   const [tracks, setTracks] = useState(null);
   const [q, setQ] = useState('');
   const [progress, setProgress] = useState(null);
+  const [mode, setMode] = useState('library');
   const fileRef = useRef();
   const [run] = useAction();
 
@@ -209,7 +324,13 @@ export function MusicPage() {
       </div>
       <div className="page-body" ref={bodyRef}>
         {progress !== null && <div className="upload-progress" style={{ width: `${progress * 100}%`, marginBottom: 10 }} />}
-        {current ? <NowPlaying /> : (
+        {current && <NowPlaying />}
+        <div className="tabs" style={{ marginTop: current ? 22 : 4 }}>
+          <button className={mode === 'library' ? 'on' : ''} onClick={() => setMode('library')}>Моя музыка</button>
+          <button className={mode === 'search' ? 'on' : ''} onClick={() => setMode('search')}><Search size={14} style={{ verticalAlign: -2 }} /> Поиск</button>
+        </div>
+        {mode === 'search' ? <MusicSearch onSaved={(t) => setTracks((x) => [t, ...(x || [])])} /> : <>
+        {current || tracks?.length ? null : (
           <div className="music-empty">
             <div className="cover" style={{ width: 120, height: 120, borderRadius: 28, background: coverGradient({ title: 'r' }) }}><Music2 size={52} color="#fff" /></div>
             <div className="bold" style={{ fontSize: '1.1em' }}>Ваша музыка</div>
@@ -219,7 +340,7 @@ export function MusicPage() {
         )}
         {tracks?.length > 0 && (
           <>
-            <div className="row" style={{ marginTop: 22, marginBottom: 8 }}>
+            <div className="row" style={{ marginTop: 6, marginBottom: 8 }}>
               <b className="grow">Мои треки · {tracks.length}</b>
               <button className="btn sm secondary" onClick={() => playQueue(list, 0)}><Play size={15} fill="currentColor" /> Слушать</button>
               <button className="btn sm secondary" onClick={() => { usePlayer.setState({ shuffle: true }); playQueue(list, Math.floor(Math.random() * list.length)); }}><Shuffle size={15} /></button>
@@ -233,6 +354,7 @@ export function MusicPage() {
           </>
         )}
         {tracks === null && <div className="center" style={{ padding: 30 }}><Spinner /></div>}
+        </>}
       </div>
     </div>
   );

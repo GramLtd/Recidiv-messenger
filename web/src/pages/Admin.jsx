@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, Gift, Palette, Receipt, CreditCard, Store, Settings, Megaphone, ArrowLeft, Search, Plus, Ban, BadgeCheck, Shield, Coins,
+  LayoutDashboard, Users, Gift, Palette, Receipt, CreditCard, Store, Settings, Megaphone, ArrowLeft, Search, Plus, Ban, BadgeCheck, Shield, Coins, FlaskConical,
 } from 'lucide-react';
 import { api } from '../api.js';
 import { useStore } from '../store.js';
@@ -66,6 +66,8 @@ function UserEditor({ userId, onChanged }) {
         <div className="row"><Ban size={18} /><span className="grow">Заблокирован</span><Switch on={u.isBanned} onChange={(v) => flag({ banned: v })} /></div>
         <div className="row"><BadgeCheck size={18} /><span className="grow">Верифицирован (галочка)</span><Switch on={u.verified} onChange={(v) => flag({ verified: v })} /></div>
         <div className="row"><Shield size={18} /><span className="grow">Администратор</span><Switch on={u.isAdmin} onChange={(v) => flag({ admin: v })} /></div>
+        <div className="row"><FlaskConical size={18} /><span className="grow">Тестировщик (доступ к номерам +999)</span><Switch on={u.isTester} onChange={(v) => flag({ tester: v })} /></div>
+        <div className="small muted">Анонимный номер: {u.anonNumber || '—'}</div>
       </div>
       <div className="bold small" style={{ marginBottom: 6 }}>Последние операции</div>
       <div className="table-wrap">
@@ -96,7 +98,7 @@ function UsersPage() {
                 <td><span className="row" style={{ gap: 8 }}><Avatar src={u.avatar} name={u.displayName} id={u.id} size={28} />{u.displayName}{u.username && <span className="muted">@{u.username}</span>}</span></td>
                 <td>{u.email}</td>
                 <td className="accent bold">{fmtNum(u.balance)}</td>
-                <td>{u.isBanned && <span className="tag red">бан</span>} {u.isAdmin && <span className="tag accent">админ</span>} {u.verified && <span className="tag green">✓</span>}</td>
+                <td>{u.isBanned && <span className="tag red">бан</span>} {u.isAdmin && <span className="tag accent">админ</span>} {u.isTester && <span className="tag">тест</span>} {u.verified && <span className="tag green">✓</span>} {u.anonNumber && <span className="muted small">{u.anonNumber}</span>}</td>
                 <td>{dt(u.createdAt)}</td>
               </tr>
             ))}
