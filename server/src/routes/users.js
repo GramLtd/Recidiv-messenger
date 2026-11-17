@@ -1,3 +1,4 @@
+import { deleteMessageFiles } from '../security.js';
 import { Router } from 'express';
 import { db, getSetting, tx } from '../db.js';
 import { fail } from '../auth.js';
@@ -226,6 +227,39 @@ r.get('/resolve/:name', (req, res) => {
   if (!row) fail(404, 'Не найдено');
   if (row.user_id) return res.json({ user: publicUser(getUser(row.user_id)) });
   res.json({ chat: serializeChat(row.chat_id, req.user.id) });
+});
+
+/**
+ * Delete my account for good: messages, posts, comments, stories, files, usernames, contacts, sessions and
+ * wallets are wiped; the profile becomes «Удалённый аккаунт» and can never log in again (the seed hash is erased).
+ */
+r.delete('/me', (req, res) => {
+  if (String(req.body?.confirm || '') !== 'УДАЛИТЬ') fail(400, 'Подтвердите удаление словом УДАЛИТЬ');
+  const uid = req.user.id;
+  if (req.user.is_admin) fail(400, 'Администратор не может удалить аккаунт из приложения');
+  const media = db.prepare('SELECT media FROM messages WHERE sender_id = ? AND media IS NOT NULL').all(uid);
+  tx(() => {
+    db.prepare('DELETE FROM reactions WHERE user_id = ?').run(uid);
+    db.prepare("UPDATE messages SET deleted = 1, text = '', media = NULL, expires_at = NULL WHERE sender_id = ?").run(uid);
+    db.prepare('DELETE FROM post_comments WHERE user_id = ?').run(uid);
+    db.prepare('DELETE FROM posts WHERE user_id = ?').run(uid);
+    db.prepare('DELETE FROM story_views WHERE user_id = ? OR story_id IN (SELECT id FROM stories WHERE user_id = ?)').run(uid, uid);
+    db.prepare('DELETE FROM stories WHERE user_id = ?').run(uid);
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(uid);
+    for (const t of ['contacts', 'blocks']) db.prepare(`DELETE FROM ${t} WHERE user_id = ? OR ${t === 'contacts' ? 'contact_id' : 'blocked_id'} = ?`).run(uid, uid);
+    db.prepare('DELETE FROM follows WHERE follower_id = ? OR followee_id = ?').run(uid, uid);
+    db.prepare('DELETE FROM profile_views WHERE viewer_id = ? OR user_id = ?').run(uid, uid);
+    db.prepare("UPDATE listings SET status = 'cancelled' WHERE seller_id = ? AND status = 'active'").run(uid);
+    db.prepare('DELETE FROM usernames WHERE user_id = ?').run(uid);
+    db.prepare('UPDATE user_gifts SET hidden = 1, pinned = 0 WHERE owner_id = ?').run(uid);
+    try { db.prepare('DELETE FROM user_wallets WHERE user_id = ?').run(uid); } catch {}
+    db.prepare(`UPDATE users SET email = NULL, auth_hash = NULL, display_name = 'Удалённый аккаунт', bio = '', avatar = NULL, username = NULL,
+      banner = NULL, banner_type = NULL, links = NULL, location = NULL, anon_number = NULL, e2e_key = NULL, wallpaper = NULL, name_style = NULL,
+      profile_bg = NULL, blur_bg = NULL, privacy = NULL, worn_gift_id = NULL, profile_track_id = NULL, personal_channel_id = NULL,
+      emoji_status = NULL, balance = 0, is_banned = 1, deleted_at = ? WHERE id = ?`).run(Date.now(), uid);
+  });
+  for (const m of media) deleteMessageFiles(m.media);
+  res.json({ ok: true });
 });
 
 export default r;

@@ -422,6 +422,7 @@ function ConfigPage() {
           <div className="row"><KeyRound size={18} className="accent" /><b className="grow">Вход и регистрация</b></div>
           <div className="row"><span className="grow small">Регистрация новых пользователей открыта</span><Switch on={val.registration !== 'false'} onChange={(on) => set('registration')(on ? 'true' : 'false')} /></div>
           <div className="row"><span className="grow small">Подтверждать почту кодом</span><Switch on={val.email_verification !== 'false'} onChange={(on) => set('email_verification')(on ? 'true' : 'false')} /></div>
+          <div className="row"><span className="grow small">Регистрация без почты (только сид-фраза)</span><Switch on={val.anon_registration !== 'false'} onChange={(on) => set('anon_registration')(on ? 'true' : 'false')} /></div>
           <div className="field"><label>Email администраторов (через запятую)</label><input className="input" value={val.admin_emails} onChange={set('admin_emails')} placeholder={ef.adminEmails.join(', ') || 'admin@example.com'} /><span className="hint">Пользователь с таким email при регистрации сразу получает права админа.</span></div>
         </div>
         <div className="card col">

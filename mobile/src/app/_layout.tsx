@@ -9,6 +9,8 @@ import { useStore } from '../lib/store';
 import { onNotificationTap, requestNotifications } from '../lib/notify';
 import { C } from '../lib/theme';
 import { TopFade } from '../components/ui';
+import { LockGate } from '../components/LockScreen';
+import { initLock } from '../lib/lock';
 
 const theme = { ...DarkTheme, colors: { ...DarkTheme.colors, background: C.bg, card: C.bg, primary: C.accent } };
 
@@ -16,7 +18,7 @@ export default function Root() {
   const booted = useStore((s) => s.booted);
   const me = useStore((s) => s.me);
   const segments = useSegments();
-  useEffect(() => { useStore.getState().boot(); }, []);
+  useEffect(() => { useStore.getState().boot(); initLock(); }, []);
   useEffect(() => {
     if (!booted) return;
     const inAuth = segments[0] === 'login';
@@ -58,6 +60,7 @@ export default function Root() {
             <Stack.Screen name="gift-transfer" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
             <Stack.Screen name="newchat" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.9, 1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
             <Stack.Screen name="topup" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.8, 1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
+            <Stack.Screen name="passcode" options={{ presentation: 'formSheet', sheetAllowedDetents: [1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg } }} />
             <Stack.Screen name="media" options={{ presentation: 'transparentModal', animation: 'fade', contentStyle: { backgroundColor: 'transparent' } }} />
             <Stack.Screen name="story/[userId]" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: true }} />
             <Stack.Screen name="gift/[id]" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, sheetCornerRadius: 30, contentStyle: { backgroundColor: C.bg2 } }} />
@@ -65,6 +68,7 @@ export default function Root() {
         )}
         {/* dim + blur under the status bar on every screen */}
         <TopFade />
+        {me && <LockGate />}
       </ThemeProvider>
     </GestureHandlerRootView>
   );

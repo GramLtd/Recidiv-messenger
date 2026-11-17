@@ -465,6 +465,10 @@ addColumn('users', 'sessions_after', 'INTEGER');
 addColumn('users', 'blur_bg', 'TEXT');
 addColumn('user_gifts', 'chat_id', 'INTEGER');
 addColumn('users', 'e2e_key', 'TEXT');
+addColumn('users', 'deleted_at', 'INTEGER');
+addColumn('chats', 'auto_delete', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('messages', 'expires_at', 'INTEGER');
+db.exec('CREATE INDEX IF NOT EXISTS idx_messages_expires ON messages(expires_at) WHERE expires_at IS NOT NULL');
 db.exec(`
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
@@ -505,6 +509,7 @@ CREATE TABLE IF NOT EXISTS blocks (user_id INTEGER NOT NULL REFERENCES users(id)
 CREATE TABLE IF NOT EXISTS profile_views (viewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, viewed_at INTEGER NOT NULL, PRIMARY KEY (viewer_id, user_id));
 `);
 addColumn('posts', 'edited_at', 'INTEGER');
+db.exec('UPDATE sessions SET ip = NULL WHERE ip IS NOT NULL'); // IPs are not stored any more
 for (const [k, v] of Object.entries({ premium_price: '300', posts_per_day: '5', posts_per_day_premium: '20', post_cooldown: '30', post_cooldown_premium: '15' })) {
   db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)').run(k, v);
 }

@@ -7,6 +7,8 @@ import compression from 'compression';
 import { config, ROOT } from './config.js';
 import './db.js';
 import { requireAuth, requireAdmin } from './auth.js';
+import { securityHeaders, rateLimit, startExpirySweeper } from './security.js';
+import { emitToChat } from './services.js';
 import { initRealtime } from './realtime.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
@@ -23,12 +25,15 @@ import stickerRoutes from './routes/stickers.js';
 
 const app = express();
 app.set('trust proxy', true);
+app.disable('x-powered-by');
+app.use(securityHeaders);
 app.use(cors());
 app.use(compression({ threshold: 1024 }));
 app.use(express.json({ limit: '2mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', rateLimit({ windowMs: 10 * 60_000, max: 60 }), authRoutes);
+app.use('/api/upload', rateLimit({ windowMs: 10 * 60_000, max: 200 }));
 app.use('/api/webhooks', webhooks);
 app.use('/api/admin', requireAuth, requireAdmin, adminRoutes);
 app.use('/api', requireAuth, userRoutes, chatRoutes, storyRoutes, giftRoutes, marketRoutes, walletRoutes, musicRoutes, walletLinkRoutes, socialRoutes, stickerRoutes);
@@ -71,4 +76,5 @@ app.use((err, _req, res, _next) => {
 
 const server = http.createServer(app);
 initRealtime(server);
+startExpirySweeper(emitToChat);
 server.listen(config.port, () => console.log(`🔴 Recidivist server on http://localhost:${config.port}`));

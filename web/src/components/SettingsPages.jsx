@@ -165,7 +165,7 @@ export function DevicesPage() {
       )}
       {others.length > 0 && (
         <Group title="Активные сеансы">
-          {others.map((s) => <Row key={s.id} icon={icon(s.device)} color="#5856d6" title={s.device} sub={`${s.ip || ''} · ${when(s.lastActive)}`} right={<button className="icon-btn" onClick={() => run(async () => { await api.del(`/sessions/${s.id}`); reload(); }, 'Сеанс завершён')}><Trash2 size={18} className="danger" /></button>} />)}
+          {others.map((s) => <Row key={s.id} icon={icon(s.device)} color="#5856d6" title={s.device} sub={when(s.lastActive)} right={<button className="icon-btn" onClick={() => run(async () => { await api.del(`/sessions/${s.id}`); reload(); }, 'Сеанс завершён')}><Trash2 size={18} className="danger" /></button>} />)}
         </Group>
       )}
     </>
@@ -196,6 +196,13 @@ export function SecurityPage() {
           </div>
         )}
         {enabled && <Row title="Заблокировать сейчас" onClick={() => lockState.lock()} />}
+      </Group>
+      <Group title="Удаление аккаунта" footer="Сообщения, посты, истории, файлы, юзернеймы и контакты будут стёрты с сервера безвозвратно. Войти по этой сид-фразе будет нельзя.">
+        <Row icon={Trash2} color="#ff453a" title={<span className="danger">Удалить аккаунт навсегда</span>} onClick={async () => {
+          const word = prompt('Это нельзя отменить. Чтобы удалить аккаунт, введите слово УДАЛИТЬ');
+          if (word !== 'УДАЛИТЬ') return;
+          try { await api('/me', { method: 'DELETE', body: { confirm: 'УДАЛИТЬ' } }); localStorage.clear(); location.href = '/'; } catch (e) { toast(e.message, 'error'); }
+        }} />
       </Group>
       <Group title="Сид-фраза">
         <div className="warn-box" style={{ margin: 10 }}>

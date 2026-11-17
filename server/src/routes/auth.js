@@ -23,7 +23,7 @@ function getMailer() {
 }
 
 r.get('/config', (_req, res) => {
-  res.json({ auth: { registration: config.auth.registration, emailVerification: config.auth.emailVerification } });
+  res.json({ auth: { registration: config.auth.registration, emailVerification: config.auth.emailVerification, anonRegistration: config.auth.anonRegistration } });
 });
 
 async function sendMail(to, subject, text) {
@@ -70,27 +70,32 @@ r.post('/verify-code', (req, res) => {
 
 r.post('/register', (req, res) => {
   if (!config.auth.registration) fail(403, 'Регистрация временно закрыта');
-  const { emailToken, authKey, displayName, username } = req.body;
-  let email;
-  try {
-    const p = jwt.verify(emailToken, config.jwtSecret);
-    if (p.purpose !== 'register') throw new Error();
-    email = p.email;
-  } catch {
-    fail(400, 'Подтверждение почты истекло, начните заново');
+  const { emailToken, authKey, displayName, username, anonymous } = req.body;
+  let email = null;
+  if (anonymous === true) {
+    // fully anonymous sign-up: no e-mail at all, the seed phrase is the only key
+    if (!config.auth.anonRegistration) fail(403, 'Регистрация без почты отключена');
+  } else {
+    try {
+      const p = jwt.verify(emailToken, config.jwtSecret);
+      if (p.purpose !== 'register') throw new Error();
+      email = p.email;
+    } catch {
+      fail(400, 'Подтверждение почты истекло, начните заново');
+    }
   }
   if (typeof authKey !== 'string' || authKey.length < 64) fail(400, 'Некорректный ключ');
   const name = String(displayName || '').trim().slice(0, 64);
   if (!name) fail(400, 'Укажите имя');
   const authHash = hashAuthKey(authKey);
-  if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email)) fail(409, 'Email уже зарегистрирован');
+  if (email && db.prepare('SELECT 1 FROM users WHERE email = ?').get(email)) fail(409, 'Email уже зарегистрирован');
   if (db.prepare('SELECT 1 FROM users WHERE auth_hash = ?').get(authHash)) fail(409, 'Эта сид-фраза уже используется');
   if (username) assertUsernameFree(username);
 
   const user = tx(() => {
     const realUsers = db.prepare('SELECT COUNT(*) c FROM users WHERE is_bot = 0').get().c;
     const isAdmin =
-      config.adminEmails.includes(email) || (realUsers === 0 && config.adminEmails.length === 0 && process.env.NODE_ENV !== 'production');
+      (email && config.adminEmails.includes(email)) || (realUsers === 0 && config.adminEmails.length === 0 && process.env.NODE_ENV !== 'production');
     const ins = db
       .prepare('INSERT INTO users (email, auth_hash, display_name, is_admin, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?)')
       .run(email, authHash, name, isAdmin ? 1 : 0, now(), now());

@@ -17,7 +17,8 @@
           "audio",
           "remote-notification"
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Face ID защищает вход в Recidivist"
       }
     },
     "android": {
@@ -61,6 +62,12 @@
           "cameraPermission": "Камера нужна для видеосообщений-кружков и фото",
           "microphonePermission": "Микрофон нужен для голосовых и видеосообщений",
           "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Face ID защищает вход в Recidivist"
         }
       ]
     ],

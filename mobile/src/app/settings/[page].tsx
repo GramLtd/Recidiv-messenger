@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Dimensions, Linking, StyleSheet, TextInput, View } from 'react-native';
+import { ActionSheetIOS, Alert, Dimensions, Linking, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import {
-  ArrowDownLeft, ArrowUpRight, Tag, Camera, Check, Crown, Eye, HardDrive, KeyRound, Lock, MapPin, Monitor, Plus, Send, ShieldCheck, Smartphone, Sparkles, Trash2,
+  ArrowDownLeft, ArrowUpRight, Tag, ScanFace, Timer, EyeOff, Shield, MapPinOff, Network, Camera, Check, Crown, Eye, HardDrive, KeyRound, Lock, MapPin, Monitor, Plus, Send, ShieldCheck, Smartphone, Sparkles, Trash2,
 } from 'lucide-react-native';
 import { api, upload } from '../../lib/api';
 import { useCached } from '../../lib/useCached';
+import { biometricsAvailable, useLock } from '../../lib/lock';
 import { WalletCard } from '../../components/WalletCard';
 import { useStore } from '../../lib/store';
 import { usePerf } from '../../lib/perf';
@@ -223,7 +224,7 @@ function DevicesPage() {
   return (
     <>
       <Group title="Это устройство">
-        <Row icon={cur ? icon(cur.device) : Smartphone} color="#34c759" title={cur?.device || 'Это устройство'} sub={`в сети${cur?.ip ? ` · ${cur.ip}` : ''}`} />
+        <Row icon={cur ? icon(cur.device) : Smartphone} color="#34c759" title={cur?.device || 'Это устройство'} sub="в сети" />
       </Group>
       {others.length > 0 && (
         <Group footer="Выход на других устройствах потребует снова ввести сид-фразу.">
@@ -232,7 +233,7 @@ function DevicesPage() {
       )}
       {others.length > 0 && (
         <Group title="Активные сеансы">
-          {others.map((s: any, i: number) => <Row key={s.id} index={i} icon={icon(s.device)} color="#5856d6" title={s.device} sub={`${s.ip || ''} · ${when(s.lastActive)}`}
+          {others.map((s: any, i: number) => <Row key={s.id} index={i} icon={icon(s.device)} color="#5856d6" title={s.device} sub={when(s.lastActive)}
             right={<Press scale={0.85} onPress={() => run(async () => { await api.del(`/sessions/${s.id}`); load(); })} style={{ padding: 6 }}><Trash2 size={18} color={C.danger} /></Press>} />)}
         </Group>
       )}
@@ -242,16 +243,51 @@ function DevicesPage() {
 
 /* ---------------- security ---------------- */
 function SecurityPage() {
+  const sec = useLock();
+  const [bioOk, setBioOk] = useState(false);
+  useEffect(() => { biometricsAvailable().then(setBioOk); }, []);
+  const LOCKS: [number, string][] = [[0, 'сразу'], [1, 'через 1 минуту'], [5, 'через 5 минут'], [60, 'через 1 час']];
+  const pickLock = () => {
+    const opts = LOCKS.map((l) => l[1]);
+    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ options: [...opts, 'Отмена'], cancelButtonIndex: opts.length }, (i) => LOCKS[i] && sec.set({ autoLock: LOCKS[i][0] }));
+    else Alert.alert('Блокировать', '', LOCKS.map(([v, l]) => ({ text: l, onPress: () => sec.set({ autoLock: v }) })));
+  };
+  const deleteAccount = () => Alert.alert('Удалить аккаунт навсегда?', 'Сообщения, посты, истории, файлы, юзернеймы и контакты будут стёрты с сервера. Это нельзя отменить.', [
+    { text: 'Отмена' },
+    { text: 'Удалить', style: 'destructive', onPress: () => Alert.alert('Точно удалить?', 'Войти по этой сид-фразе больше будет нельзя.', [
+      { text: 'Нет' },
+      { text: 'Да, удалить', style: 'destructive', onPress: () => run(async () => { await api('/me', { method: 'DELETE', body: { confirm: 'УДАЛИТЬ' } }); await useStore.getState().logout(); }) },
+    ]) },
+  ]);
   return (
     <>
-      <Group title="Сквозное шифрование" footer="Ключ выводится из сид-фразы и хранится только на устройстве; сервер знает лишь открытый ключ.">
-        <Row icon={Lock} color="#ff9500" title="Секретные сообщения" sub={e2eReady() ? 'Ключ на устройстве — в личных чатах доступен 🔒' : 'Войдите по сид-фразе, чтобы получить ключ'} />
+      <Group title="Код-пароль" footer="Код хранится только на этом устройстве (в защищённом хранилище, в виде хеша). Если забудете — выйдите и войдите снова по сид-фразе.">
+        <Row index={0} icon={Lock} color="#ff9500" title="Код-пароль" right={<Switch on={sec.passcode} onChange={(v) => router.push({ pathname: '/passcode', params: { mode: v ? 'set' : 'off' } })} />} />
+        {sec.passcode && bioOk && <Row index={1} icon={ScanFace} color="#34c759" title="Вход по Face ID / Touch ID" right={<Switch on={sec.bio} onChange={(v) => sec.set({ bio: v })} />} />}
+        {sec.passcode && <Row index={2} icon={Timer} color="#5856d6" title="Автоблокировка" value={LOCKS.find((l) => l[0] === sec.autoLock)?.[1]} onPress={pickLock} />}
+        {sec.passcode && <Row index={3} title="Заблокировать сейчас" onPress={() => sec.lock()} />}
+      </Group>
+      <Group title="Защита экрана" footer="Содержимое чатов скрывается в переключателе приложений; при запрете скриншотов система не даст снять экран или записать видео.">
+        <Row index={0} icon={EyeOff} color="#0a84ff" title="Скрывать в переключателе приложений" right={<Switch on={sec.hideSwitcher} onChange={(v) => sec.set({ hideSwitcher: v })} />} />
+        <Row index={1} icon={Camera} color="#ff453a" title="Запретить скриншоты и запись экрана" right={<Switch on={sec.noScreenshots} onChange={(v) => sec.set({ noScreenshots: v })} />} />
+      </Group>
+      <Group title="Сквозное шифрование" footer="Ключ выводится из сид-фразы и хранится только на устройстве; сервер знает лишь открытый ключ и не может прочитать секретные сообщения.">
+        <Row index={0} icon={KeyRound} color="#30b0c7" title="Секретные сообщения" sub={e2eReady() ? 'Ключ на устройстве — в личных чатах доступен 🔒' : 'Войдите по сид-фразе, чтобы получить ключ'} />
+        <Row index={1} title="Шифровать личные чаты по умолчанию" sub="Если у собеседника тоже есть ключ" right={<Switch on={sec.e2eDefault} onChange={(v) => sec.set({ e2eDefault: v })} />} />
+      </Group>
+      <Group title="Анонимность" footer="Сервер не хранит IP-адреса, убирает геолокацию и данные камеры из фото, а удалённые сообщения стирает вместе с файлами. В чате можно включить автоудаление (⏱).">
+        <Row index={0} icon={Shield} color="#34c759" title="IP-адреса не сохраняются" />
+        <Row index={1} icon={MapPinOff} color="#34c759" title="Метаданные фото удаляются" sub="GPS, модель камеры, дата съёмки" />
+        <Row index={2} icon={Network} color="#5856d6" title="Прокси" onPress={() => router.push('/settings/proxy')} />
       </Group>
       <Group title="Сид-фраза">
         <View style={st.warn}>
           <ShieldCheck size={18} color="#ffcc00" />
           <T size={13} style={{ flex: 1, lineHeight: 18 }}>Аккаунт защищён сид-фразой из 12 слов. Сервер хранит только хеш ключа — восстановить фразу невозможно. Храните её офлайн и никому не показывайте.</T>
         </View>
+      </Group>
+      <Group>
+        <Row icon={Trash2} color="#ff453a" title="Удалить аккаунт навсегда" danger onPress={deleteAccount} />
       </Group>
     </>
   );

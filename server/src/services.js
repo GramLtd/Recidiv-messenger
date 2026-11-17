@@ -152,16 +152,17 @@ export function serializeMessage(m) {
     views: m.views,
     reactions,
     createdAt: m.created_at,
+    expiresAt: m.expires_at || undefined,
   };
 }
 
 export function createMessage({ chatId, senderId, type = 'text', text = '', media = null, replyTo = null, forwardFrom = null, userGiftId = null }) {
   const r = db
     .prepare(
-      `INSERT INTO messages (chat_id, sender_id, type, text, media, reply_to, forward_from, user_gift_id, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO messages (chat_id, sender_id, type, text, media, reply_to, forward_from, user_gift_id, created_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(chatId, senderId, type, text, media ? JSON.stringify(media) : null, replyTo, forwardFrom, userGiftId, now());
+    .run(chatId, senderId, type, text, media ? JSON.stringify(media) : null, replyTo, forwardFrom, userGiftId, now(), expiryFor(chatId, type));
   const id = Number(r.lastInsertRowid);
   if (senderId) db.prepare('UPDATE chat_members SET last_read_id = ? WHERE chat_id = ? AND user_id = ?').run(id, chatId, senderId);
   const msg = serializeMessage(db.prepare('SELECT * FROM messages WHERE id = ?').get(id));
@@ -169,6 +170,13 @@ export function createMessage({ chatId, senderId, type = 'text', text = '', medi
     emitToUser(uid, 'message:new', { message: msg, chat: serializeChat(chatId, uid) });
   }
   return msg;
+}
+
+/** Disappearing messages: expiry time for a new message in a chat with auto-delete on (gifts and system notes stay). */
+function expiryFor(chatId, type) {
+  if (type === 'gift' || type === 'system' || type === 'transfer') return null;
+  const s = db.prepare('SELECT auto_delete s FROM chats WHERE id = ?').get(chatId)?.s || 0;
+  return s ? now() + s * 1000 : null;
 }
 
 export function messagePreview(m) {
@@ -258,6 +266,7 @@ export function serializeChat(chatOrId, viewerId) {
     lastMessage: last
       ? { id: last.id, text: messagePreview(last), senderId: last.sender_id, senderName: lastSender?.display_name, createdAt: last.created_at, type: last.type }
       : null,
+    autoDelete: c.auto_delete || 0,
     createdAt: c.created_at,
   };
 }

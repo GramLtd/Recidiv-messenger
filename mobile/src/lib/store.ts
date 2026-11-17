@@ -173,6 +173,8 @@ function afterLogin() {
     if (list) useStore.setState({ messages: { ...st().messages, [chatId]: list.map((m) => (m.id === messageId ? { ...m, deleted: true, text: '', media: null } : m)) } });
     if (st().chats.find((c) => c.id === chatId)?.lastMessage?.id === messageId) st().refreshChats().catch(() => {});
   });
+  on('chat:update', ({ chat }) => st().upsertChat(chat));
+  on('chat:removed', ({ chatId }) => useStore.setState({ chats: st().chats.filter((c) => c.id !== chatId) }));
   on('typing', ({ chatId }) => useStore.setState({ typing: { ...st().typing, [chatId]: Date.now() + 4000 } }));
   on('balance', ({ balance }) => st().setMe({ balance }));
 }

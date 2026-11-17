@@ -66,6 +66,7 @@ export const config = {
   auth: {
     get registration() { return flag('registration', true); },
     get emailVerification() { return flag('email_verification', true); },
+    get anonRegistration() { return flag('anon_registration', true); },
   },
   music: {
     jamendoClientId: env.JAMENDO_CLIENT_ID || '',

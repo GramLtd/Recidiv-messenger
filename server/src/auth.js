@@ -25,7 +25,7 @@ export function signToken(userId, req) {
   const sid = crypto.randomBytes(16).toString('hex');
   const ts = Date.now();
   db.prepare('INSERT INTO sessions (id, user_id, device, ip, created_at, last_active) VALUES (?, ?, ?, ?, ?, ?)').run(
-    sid, userId, appDevice(req) || deviceName(req?.headers?.['user-agent'] || ''), String(req?.ip || '').slice(0, 64), ts, ts,
+    sid, userId, appDevice(req) || deviceName(req?.headers?.['user-agent'] || ''), null, ts, ts, // no IP addresses are stored
   );
   return jwt.sign({ uid: userId, sid }, config.jwtSecret, { expiresIn: '90d' });
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, FlatList, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActionSheetIOS, Alert, Dimensions, FlatList, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -12,9 +12,10 @@ import { useAudioRecorder, RecordingPresets, requestRecordingPermissionsAsync, s
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { playSend } from '../../lib/sound';
+import { useLock } from '../../lib/lock';
 import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withSpring, withTiming, withDelay } from 'react-native-reanimated';
 import {
-  BellOff, Camera, Check, CheckCheck, ChevronLeft, Copy, Eye, FileText, Forward, Gift as GiftIcon, Mic, Paperclip, Pause, Pencil, Play, Reply, Search, Send, Smile, Trash2, X, Lock,
+  BellOff, Camera, Check, Timer, CheckCheck, ChevronLeft, Copy, Eye, FileText, Forward, Gift as GiftIcon, Mic, Paperclip, Pause, Pencil, Play, Reply, Search, Send, Smile, Trash2, X, Lock,
 } from 'lucide-react-native';
 import { useStore, sendTyping } from '../../lib/store';
 import { api, upload } from '../../lib/api';
@@ -269,7 +270,7 @@ export default function ChatScreen() {
   const [, force] = useState(0);
 
   useEffect(() => { ensureChat(chatId).catch(() => {}); openChat(chatId); loadMessages(chatId).catch(() => {}); return () => openChat(null); }, [chatId]);
-  useEffect(() => { if (chat?.type === 'private' && chat.peer && chat.peer.id !== me?.id) canEncryptTo(chat.peer.id).then(setCanSecret); }, [chat?.peer?.id]);
+  useEffect(() => { if (chat?.type === 'private' && chat.peer && chat.peer.id !== me?.id) canEncryptTo(chat.peer.id).then((ok) => { setCanSecret(ok); if (ok && useLock.getState().e2eDefault) setSecret(true); }); }, [chat?.peer?.id]);
   useEffect(() => { if (!rec) return undefined; const t = setInterval(() => force((x) => x + 1), 500); return () => clearInterval(t); }, [rec]);
   useEffect(() => {
     if (!search || search.trim().length < 2) { setResults([]); return undefined; }
@@ -375,6 +376,14 @@ export default function ChatScreen() {
   const typing = typingUntil > Date.now();
   const online = chat.type === 'private' && chat.peer?.online;
   const status = typing ? 'печатает…' : chat.type === 'private' ? lastSeen(chat.peer) : chat.type === 'saved' ? 'облако' : chat.memberCount ? membersLabel(chat) : '';
+  const TTL: [number, string][] = [[0, 'Выключено'], [3600, '1 час'], [86400, '1 день'], [604800, '1 неделя'], [2592000, '1 месяц']];
+  const timerMenu = () => {
+    const set = async (v: number) => { try { useStore.getState().upsertChat((await api(`/chats/${chat.id}/auto-delete`, { body: { seconds: v } })).chat); } catch (e: any) { alert(e.message); } };
+    const opts = TTL.map(([v, l]) => ((chat.autoDelete || 0) === v ? `✓ ${l}` : l));
+    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ title: 'Автоудаление сообщений', message: 'Новые сообщения исчезнут у всех через выбранное время', options: [...opts, 'Отмена'], cancelButtonIndex: opts.length }, (i) => TTL[i] && set(TTL[i][0]));
+    else Alert.alert('Автоудаление сообщений', '', TTL.map(([v, l]) => ({ text: l, onPress: () => set(v) })));
+  };
+  const ttlLabel = TTL.find((t) => t[0] === chat.autoDelete)?.[1];
   const canPost = chat.isMember !== false && (chat.type !== 'channel' || chat.role !== 'member');
   const quote = edit || reply;
   const own = menu && menu.sender?.id === me.id;
@@ -497,11 +506,14 @@ export default function ChatScreen() {
                 {chat.peer?.wornGift && <WornGift gift={chat.peer.wornGift} size={18} />}
                 {chat.muted && <BellOff size={13} color={C.text2} />}
               </View>
-              {!!status && <T size={11.7} color={typing || online ? C.accent : C.text2} numberOfLines={1}>{status}</T>}
+              {!!(status || chat.autoDelete) && <T size={11.7} color={typing || online ? C.accent : C.text2} numberOfLines={1}>{status}{chat.autoDelete ? `${status ? ' · ' : ''}⏱ ${ttlLabel}` : ''}</T>}
             </Glass>
           </Press>
         )}
-        {search === null && <Press onPress={() => setSearch('')} scale={0.92}><Glass radius={23} style={st.round}><Search size={19} color={C.text} /></Glass></Press>}
+        {search === null && (chat.type === 'private' || chat.type === 'saved' || chat.role === 'owner' || chat.role === 'admin') && (
+          <Press onPress={timerMenu} scale={0.92}><Glass radius={21} style={st.round}><Timer size={19} color={chat.autoDelete ? C.accent : C.text} /></Glass></Press>
+        )}
+        {search === null && <Press onPress={() => setSearch('')} scale={0.92}><Glass radius={21} style={st.round}><Search size={19} color={C.text} /></Glass></Press>}
         <Press onPress={() => (chat.peer ? router.push(`/user/${chat.peer.id}`) : undefined)} scale={0.92}>
           <View style={st.avaRing}><Avatar uri={chat.avatar} name={chat.title} id={chat.peer?.id || chat.id} size={44} /></View>
         </Press>
@@ -584,12 +596,12 @@ function ReactBtn({ e, i, onPress }: { e: string; i: number; onPress: () => void
 
 const st = StyleSheet.create({
   headGrad: { position: 'absolute', top: 0, left: 0, right: 0 },
-  head: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingBottom: 8 },
+  head: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingBottom: 8 },
   back: { flexDirection: 'row', alignItems: 'center', gap: 2, height: 46, paddingLeft: 8, paddingRight: 12 },
   backCount: { minWidth: 26, height: 24, paddingHorizontal: 7, borderRadius: 12, backgroundColor: C.text, alignItems: 'center', justifyContent: 'center' },
   title: { height: 46, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   searchPill: { flex: 1, height: 46, flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 14, paddingRight: 8 },
-  round: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center' },
+  round: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   avaRing: { width: 48, height: 48, borderRadius: 24, padding: 2, backgroundColor: 'rgba(255,255,255,0.09)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.25)' },
   results: { position: 'absolute', left: 10, right: 10, maxHeight: 260, borderRadius: 18, backgroundColor: 'rgba(11,11,11,0.96)', borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
   resRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderBottomWidth: 1, borderBottomColor: C.border },

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowLeft, Search, MoreVertical, Paperclip, Smile, Send, Mic, X, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck,
+  ArrowLeft, Timer, Search, MoreVertical, Paperclip, Smile, Send, Mic, X, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck,
   FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square, ChevronLeft,
 } from 'lucide-react';
 import { useStore } from '../store.js';
@@ -388,6 +388,7 @@ export default function ChatView() {
   const chatId = useStore((s) => s.activeChatId);
   const chat = useStore((s) => s.chats.find((c) => c.id === s.activeChatId));
   const messages = useStore((s) => s.messages[s.activeChatId]);
+  const [timerMenu, setTimerMenu] = useState(false);
   const shown = useMemo(() => messages?.filter((m) => !m.deleted), [messages]);
   const hasMore = useStore((s) => s.hasMore[s.activeChatId]);
   const me = useStore((s) => s.me);
@@ -543,6 +544,24 @@ export default function ChatView() {
             </span>
             {status || <span className="status">{chat.type === 'saved' ? 'облако' : ''}</span>}
           </button>
+        )}
+        {!searchOpen && (chat.type === 'private' || chat.type === 'saved' || chat.role === 'owner' || chat.role === 'admin') && (
+          <div style={{ position: 'relative' }}>
+            <button className={`lg tg-round ${chat.autoDelete ? 'on' : ''}`} onClick={() => setTimerMenu(!timerMenu)} aria-label="Автоудаление" title="Автоудаление сообщений" style={chat.autoDelete ? { color: 'var(--accent)' } : undefined}><Timer size={19} /></button>
+            {timerMenu && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 9 }} onClick={() => setTimerMenu(false)} />
+                <div className="ctx-menu" style={{ position: 'absolute', right: 0, top: 52, left: 'auto', zIndex: 10, minWidth: 220, '--origin': 'top right' }}>
+                  <div className="small muted" style={{ padding: '6px 12px' }}>Автоудаление сообщений</div>
+                  {[[0, 'Выключено'], [3600, '1 час'], [86400, '1 день'], [604800, '1 неделя'], [2592000, '1 месяц']].map(([v, l]) => (
+                    <button key={v} className="menu-item" onClick={async () => { setTimerMenu(false); try { upsertChat((await api(`/chats/${chat.id}/auto-delete`, { body: { seconds: v } })).chat); } catch (e) { useStore.getState().toast(e.message, 'error'); } }}>
+                      {l}{(chat.autoDelete || 0) === v && <Check size={16} className="accent" style={{ marginLeft: 'auto' }} />}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         )}
         {!searchOpen && <button className="lg tg-round" onClick={() => setSearchOpen(true)} aria-label="Поиск"><Search size={19} /></button>}
         <button className="tg-avatar" onClick={() => setRightPanel(!rightPanel)} aria-label="Профиль">

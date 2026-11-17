@@ -1,3 +1,4 @@
+import { stripImageMetadata } from '../security.js';
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'node:path';
@@ -22,6 +23,7 @@ const upload = multer({ storage, limits: { fileSize: config.maxUploadMb * 1024 *
 r.post('/upload', upload.single('file'), (req, res) => {
   if (!req.file) fail(400, 'Файл не получен');
   const mime = req.file.mimetype || '';
+  if (/^image\/(jpeg|png|webp)$/.test(mime)) stripImageMetadata(req.file.path); // remove EXIF / GPS / XMP
   let kind = 'file';
   if (mime.startsWith('image/') && mime !== 'image/svg+xml') kind = 'image';
   else if (mime.startsWith('video/')) kind = 'video';

@@ -1,3 +1,4 @@
+import { deleteMessageFiles, AUTO_DELETE, autoDeleteLabel } from '../security.js';
 import { Router } from 'express';
 import crypto from 'node:crypto';
 import { db, tx } from '../db.js';
@@ -337,9 +338,25 @@ r.patch('/messages/:id', (req, res) => {
 
 r.delete('/messages/:id', (req, res) => {
   const msg = loadOwnMessage(req.params.id, req.user.id, true);
-  db.prepare("UPDATE messages SET deleted = 1, text = '', media = NULL WHERE id = ?").run(msg.id);
+  db.prepare('DELETE FROM reactions WHERE message_id = ?').run(msg.id);
+  db.prepare("UPDATE messages SET deleted = 1, text = '', media = NULL, edited_at = NULL WHERE id = ?").run(msg.id);
+  deleteMessageFiles(msg.media); // the photo / video / voice file is removed from the server too
   emitToChat(msg.chat_id, 'message:delete', { chatId: msg.chat_id, messageId: msg.id });
   res.json({ ok: true });
+});
+
+/** Disappearing messages: 0 (off), 1 hour, 1 day, 1 week, 1 month. Private chats — either side; groups/channels — admins. */
+r.post('/chats/:id/auto-delete', (req, res) => {
+  const c = loadChat(req.params.id);
+  const m = getMember(c.id, req.user.id);
+  if (!m) fail(403, 'Нет доступа');
+  if (c.type !== 'private' && c.type !== 'saved' && m.role === 'member') fail(403, 'Только администраторы могут менять автоудаление');
+  const seconds = Number(req.body.seconds) || 0;
+  if (!AUTO_DELETE.includes(seconds)) fail(400, 'Недопустимый срок');
+  db.prepare('UPDATE chats SET auto_delete = ? WHERE id = ?').run(seconds, c.id);
+  systemMessage(c.id, seconds ? `${req.user.display_name} включил(а) автоудаление сообщений: ${autoDeleteLabel(seconds)}` : `${req.user.display_name} выключил(а) автоудаление сообщений`);
+  for (const uid of chatMemberIds(c.id)) emitToUser(uid, 'chat:update', { chat: serializeChat(c.id, uid) });
+  res.json({ chat: serializeChat(c.id, req.user.id) });
 });
 
 r.post('/messages/:id/react', (req, res) => {

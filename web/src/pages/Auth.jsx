@@ -109,6 +109,7 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [emailToken, setEmailToken] = useState('');
+  const [anon, setAnon] = useState(false);
   const [mnemonic, setMnemonic] = useState('');
   const [revealed, setRevealed] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -170,7 +171,7 @@ export default function Auth() {
   const register = () =>
     run(async () => {
       const authKey = await deriveAuthKey(mnemonic);
-      const r = await api('/auth/register', { body: { emailToken, authKey, displayName: name, username: username || undefined } });
+      const r = await api('/auth/register', { body: anon ? { anonymous: true, authKey, displayName: name, username: username || undefined } : { emailToken, authKey, displayName: name, username: username || undefined } });
       login(r.token, r.user);
     });
   const doLogin = () =>
@@ -251,6 +252,11 @@ export default function Auth() {
             <button className="btn block" disabled={busy || !email} onClick={sendCode}>
               <Mail size={18} /> {busy ? 'Отправляем…' : 'Получить код'}
             </button>
+            {authCfg.anonRegistration !== false && (
+              <button className="btn secondary block" style={{ marginTop: 8 }} onClick={() => { setAnon(true); setEmailToken(''); setMnemonic(newMnemonic()); setStep('seed'); }}>
+                Без почты — полностью анонимно
+              </button>
+            )}
           </>
         )}
 
