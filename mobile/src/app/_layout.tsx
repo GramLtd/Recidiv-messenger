@@ -38,6 +38,7 @@ export default function Root() {
         ) : (
           // native stack: real iOS push transitions + full-screen swipe-back
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg }, fullScreenGestureEnabled: true, animation: 'default' }}>
+            <Stack.Screen name="index" options={{ animation: 'none' }} />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="login" options={{ animation: 'fade' }} />
             <Stack.Screen name="chat/[id]" />
