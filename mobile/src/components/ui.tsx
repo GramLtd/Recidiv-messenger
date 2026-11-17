@@ -211,12 +211,12 @@ export function Spark({ amount, size = BASE, color = C.accent, amountColor }: { 
 }
 
 /** Radial gradient box (CSS radial-gradient(circle, a, b)). */
-export function Radial({ inner, outer, style, cx = '50%', cy = '50%', stop = 0.78, radius }: { inner: string; outer: string; style?: StyleProp<ViewStyle>; cx?: string; cy?: string; stop?: number; radius?: number }) {
+export function Radial({ inner, outer, style, cx = '50%', cy = '50%', stop = 0.78, radius, mid, midStop = 0.38, r = '70%' }: { inner: string; outer: string; style?: StyleProp<ViewStyle>; cx?: string; cy?: string; stop?: number; radius?: number; mid?: string; midStop?: number; r?: string }) {
   const gid = `rg${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (
     <View style={[{ overflow: 'hidden', borderRadius: radius }, style]} pointerEvents="none">
       <Svg width="100%" height="100%">
-        <Defs><RadialGradient id={gid} cx={cx} cy={cy} r="70%"><Stop offset="0" stopColor={inner} /><Stop offset={String(stop)} stopColor={outer} /><Stop offset="1" stopColor={outer} /></RadialGradient></Defs>
+        <Defs><RadialGradient id={gid} cx={cx} cy={cy} r={r}>{[<Stop key="a" offset="0" stopColor={inner} />, ...(mid ? [<Stop key="m" offset={String(midStop)} stopColor={mid} />] : []), <Stop key="b" offset={String(stop)} stopColor={outer} />, <Stop key="c" offset="1" stopColor={outer} />]}</RadialGradient></Defs>
         <Rect width="100%" height="100%" fill={`url(#${gid})`} />
       </Svg>
     </View>

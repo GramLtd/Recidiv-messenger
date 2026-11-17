@@ -28,6 +28,11 @@ import { CollectibleArt, GiftArt, GiftModel } from './GiftArt';
 import { PostCard } from './Post';
 
 const W = Dimensions.get('window').width;
+/** #rrggbb + alpha → rgba() */
+function hexA(hex: string, a: number) {
+  const n = parseInt((hex || '#ffffff').replace('#', '').slice(0, 6), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
 /** color-mix(in srgb, c k, #fff) */
 function mixWhite(hex: string, k: number) {
   const n = parseInt(hex.replace('#', '').slice(0, 6), 16);
@@ -125,12 +130,11 @@ function ScatterGift({ ug, i, x, y, size, rot, delay, low, onPress }: any) {
   return (
     <Animated.View style={[{ position: 'absolute', left: x - size / 2, top: y - size / 2, width: size, height: size }, a]}>
       <Press onPress={onPress} scale={0.85} style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        {!low && <Radial inner={'rgba(255,255,255,0.22)'} outer="rgba(0,0,0,0)" stop={0.68} style={{ position: 'absolute', width: size * 1.9, height: size * 1.9, borderRadius: size }} />}
-        {!low && <Radial inner={`${gc}66`} outer="rgba(0,0,0,0)" stop={0.62} style={{ position: 'absolute', width: size * 1.9, height: size * 1.9, borderRadius: size }} />}
+        {!low && <Radial inner="rgba(255,255,255,0.26)" mid={hexA(gc, 0.38)} midStop={0.38} outer={hexA(gc, 0)} stop={1} r="50%" style={{ position: 'absolute', left: (size - size * 2.1) / 2, top: (size - size * 2.1) / 2, width: size * 2.1, height: size * 2.1 }} />}
         {!low && Array.from({ length: 5 }, (_, k) => (
           <Twinkle key={k} kind="cross" x={50 + Math.cos(k * 1.3 + i) * 62} y={50 + Math.sin(k * 1.3 + i) * 62} s={9 * (0.6 + (k % 3) * 0.25)} d={((k * 0.55 + delay / 1000) % 2.8) * 1000} color="#fff" />
         ))}
-        <Animated.View style={[{ shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 4, shadowOffset: { width: 0, height: 4 } }, b]}>
+        <Animated.View style={b}>
           <GiftModel gift={ug.gift} model={m} size={size} />
         </Animated.View>
       </Press>
