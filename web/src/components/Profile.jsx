@@ -37,12 +37,6 @@ function GroupInfo({ chat }) {
   };
   return (
     <>
-      <div className="pv-blurbg chan-blur" aria-hidden>
-        <div className="pv-blur-inner">
-          {chat.avatar ? <img src={mediaUrl(chat.avatar)} alt="" /> : <div style={{ width: '100%', height: '100%', background: `radial-gradient(circle at 50% 30%, ${colorFor(chat.id)}, #000 75%)` }} />}
-        </div>
-        <i className="pv-blur-shade" />
-      </div>
       <div className="profile-hero chan-hero">
         <div className="pv-avatar"><span className="pv-ring" /><Avatar src={chat.avatar} name={chat.title} id={chat.id} size={110} /></div>
         <h2>{chat.title}</h2>
@@ -124,8 +118,16 @@ export function RightPanel() {
   }
   return (
     <aside className="right-panel chan-panel" key={chat.id}>
-      <div className="chat-header" style={{ borderBottom: 0 }}>
-        <button className="icon-btn" onClick={() => setRightPanel(false)}><X size={22} /></button>
+      {chat.type !== 'saved' && (
+        <div className="pv-blurbg chan-blur" aria-hidden>
+        <div className="pv-blur-inner">
+          {chat.avatar ? <img src={mediaUrl(chat.avatar)} alt="" /> : <div style={{ width: '100%', height: '100%', background: `radial-gradient(circle at 50% 30%, ${colorFor(chat.id)}, #000 75%)` }} />}
+        </div>
+        <i className="pv-blur-shade" />
+      </div>
+      )}
+      <div className="chat-header chan-head">
+        <button className="lg chan-close" onClick={() => setRightPanel(false)} aria-label="Закрыть"><X size={20} /></button>
         <div className="bold grow">{chat.type === 'private' ? 'Информация' : chat.type === 'channel' ? 'Канал' : chat.type === 'saved' ? 'Избранное' : 'Группа'}</div>
         {chat.isMember && chat.type !== 'saved' && <LeaveLink chat={chat} />}
       </div>
