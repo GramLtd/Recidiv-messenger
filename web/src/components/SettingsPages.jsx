@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Check, Star, Crown, Eye, Sparkles, Smartphone, Monitor, Trash2, ArrowDownLeft, ArrowUpRight, Plus, Send, KeyRound, ShieldCheck, Lock, HardDrive } from 'lucide-react';
+import { Check, Crown, Eye, Sparkles, Smartphone, Monitor, Trash2, ArrowDownLeft, ArrowUpRight, Plus, Send, KeyRound, ShieldCheck, Lock, HardDrive } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api } from '../api.js';
-import { Avatar, Spark, Spinner, Switch, useAsync, useAction, PremiumStar, nameStyleCss, StyledName } from './common.jsx';
+import { Avatar, Spark, Spinner, Switch, useAsync, useAction, PremiumStar, nameStyleCss, StyledName, SparkIcon } from './common.jsx';
 import { LANGS, useLang } from '../i18n.js';
 import { FONTS, loadTheme, saveTheme } from '../theme.js';
 import { useLock, PinPad, checkCode } from './Lock.jsx';
@@ -81,7 +81,7 @@ export function FontsPage() {
   const [theme, update] = useThemeState();
   const openPage = useStore((s) => s.openModal);
   return (
-    <Group footer="Шрифты со звездой доступны с Premium.">
+    <Group footer="Шрифты с искрой доступны с Premium.">
       {FONTS.map((f) => {
         const locked = f.premium && !me.premium;
         return (
@@ -315,7 +315,7 @@ export function WalletCard({ amount, owner }) {
 
 // ---------------- premium ----------------
 const PERKS = [
-  ['Звезда Premium', 'Рядом с именем — везде, где вас видят', Star, '#f5a623'],
+  ['Искра Premium', 'Рядом с именем — везде, где вас видят', SparkIcon, '#ff3b5c'],
   ['Своё имя', 'Цвет, перелив, свечение и жирность', Sparkles, '#ff2d55'],
   ['Фон профиля', 'Перелив или золото вверху профиля', Crown, '#af52de'],
   ['Живая аватарка', 'GIF двигается, а не стоит', Eye, '#30b0c7'],
@@ -343,7 +343,7 @@ export function PremiumPage() {
   return (
     <div className="premium">
       <div className="prem-hero">
-        <div className="prem-star"><Star size={46} fill="#fff" /></div>
+        <div className="prem-star"><SparkIcon size={50} fill="#fff" /></div>
         <h2>Recidivist Premium</h2>
         <p>Заметный профиль, особые шрифты, больше лимитов и полный контроль над тем, кто вам пишет.</p>
         {data && <span className="prem-price">{active ? `активен до ${new Date(data.until).toLocaleDateString('ru-RU')}` : <><Spark amount={data.price} /> / месяц</>}</span>}

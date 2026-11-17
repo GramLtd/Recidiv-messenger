@@ -32,6 +32,13 @@ export function WornGift({ gift, size = 20 }) {
   );
 }
 
+/** Spark icon (currency shape) usable like a lucide icon. */
+export const SparkIcon = ({ size = 20, fill = 'none', color = 'currentColor', strokeWidth = 2, ...rest }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth={fill !== 'none' ? 0 : strokeWidth} strokeLinejoin="round" {...rest}>
+    <path d="M12 2.5c.6 4.6 2.3 7.4 9.5 9.5-7.2 2.1-8.9 4.9-9.5 9.5-.6-4.6-2.3-7.4-9.5-9.5 7.2-2.1 8.9-4.9 9.5-9.5z" fill={fill === 'none' ? 'none' : fill} />
+  </svg>
+);
+
 /** Premium badge: a spark — the same shape as our currency ✦. */
 export const PremiumStar = ({ size = 15 }) => (
   <svg className="premium-star" width={size} height={size} viewBox="0 0 24 24" aria-label="Premium">

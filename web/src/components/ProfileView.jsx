@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   X, Pencil, Shield, MessageCircle, Gift, Send, Pin, Eye, CalendarDays, Hash, Filter, Play, Pause, ChevronRight, Music2, Megaphone, Check, Phone,
-  MoreHorizontal, UserPlus, UserMinus, UserCheck, Star, Ban, Link2, MapPin, Coins, AtSign, Copy, Store,
+  MoreHorizontal, UserPlus, UserMinus, UserCheck, Ban, Link2, MapPin, Coins, AtSign, Copy, Store,
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, mediaUrl } from '../api.js';
-import { Avatar, Verified, Modal, useAsync, Spinner, WornGift, Spark, PremiumStar, nameStyleCss, useAction, StyledName } from './common.jsx';
+import { Avatar, Verified, Modal, useAsync, Spinner, WornGift, Spark, PremiumStar, nameStyleCss, useAction, StyledName, SparkIcon } from './common.jsx';
 import { PostList } from './Feed.jsx';
 import { Popover } from './Popover.jsx';
 import { WalletCard } from './SettingsPages.jsx';
@@ -404,7 +404,7 @@ export function ProfileView({ userId, onClose }) {
                     <button className="menu-item" onClick={act(toggleContact)}>{u.isContact ? <UserMinus size={18} /> : <UserPlus size={18} />} {u.isContact ? t('Удалить из контактов') : t('Добавить в контакты')}</button>
                     <button className="menu-item" onClick={act(() => openModal('transfer', { toUser: u }))}><Coins size={18} /> {t('Отправить искры')}</button>
                     <button className="menu-item" onClick={act(() => openModal('giftShop', { toUser: u }))}><Gift size={18} /> {t('Отправить подарок')}</button>
-                    <button className="menu-item" onClick={act(() => openModal('giftPremium', { toUser: u }))}><Star size={18} /> {t('Подарить Premium')}</button>
+                    <button className="menu-item" onClick={act(() => openModal('giftPremium', { toUser: u }))}><SparkIcon size={18} /> {t('Подарить Premium')}</button>
                     <button className="menu-item" onClick={act(() => { navigator.clipboard?.writeText(`${location.origin}/${u.username ? `@${u.username}` : ''}`); useStore.getState().toast('Ссылка скопирована'); })}><Link2 size={18} /> {t('Скопировать ссылку')}</button>
                     <button className="menu-item danger" onClick={act(toggleBlock)}><Ban size={18} className="danger" /> {u.isBlocked ? t('Разблокировать') : t('Заблокировать')}</button>
                   </div>
@@ -524,9 +524,9 @@ export function GiftPremiumModal({ toUser }) {
   return (
     <Modal title="Подарить Premium" footer={<button className="btn block prem-btn" disabled={busy || !data} onClick={() => run(async () => { setMe((await api('/premium/buy', { body: { months, toUserId: toUser.id } })).user); closeAll(); }, `Premium подарен ${toUser.displayName} ⭐`)}>Подарить за <Spark amount={price} /></button>}>
       <div className="col" style={{ alignItems: 'center', gap: 12 }}>
-        <div className="prem-star" style={{ background: 'linear-gradient(135deg,#5b2bff,#ff4f7b)' }}><Star size={40} fill="#fff" color="#fff" /></div>
+        <div className="prem-star" style={{ background: 'linear-gradient(135deg,#5b2bff,#ff4f7b)' }}><SparkIcon size={44} fill="#fff" /></div>
         <div className="bold">{toUser.displayName}</div>
-        <div className="small muted center" style={{ textAlign: 'center' }}>Получатель получит звезду, своё оформление имени и профиля, особые шрифты и расширенные лимиты.</div>
+        <div className="small muted center" style={{ textAlign: 'center' }}>Получатель получит искру у имени, своё оформление имени и профиля, особые шрифты и расширенные лимиты.</div>
         <div className="seg" style={{ width: '100%' }}>
           <span className="seg-ind" style={{ transform: `translateX(${[1, 3, 12].indexOf(months) * 100}%)` }} />
           {[1, 3, 12].map((m) => <button key={m} className={months === m ? 'on' : ''} onClick={() => setMonths(m)}>{m} мес.</button>)}

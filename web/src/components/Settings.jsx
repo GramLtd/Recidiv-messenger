@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone, User as UserIcon, AtSign, Bookmark, Gift, Star, CreditCard, Wallet as WalletIcon,
+  Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone, User as UserIcon, AtSign, Bookmark, Gift, CreditCard, Wallet as WalletIcon,
   Globe, Hand, MonitorSmartphone, Contrast, Type, HardDrive, Shield, MapPin,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +8,7 @@ import { Group, Row, NotificationsPage, PremiumPage, WalletCardPage, LanguagePag
 import { useT, useLang, LANGS } from '../i18n.js';
 import { useStore } from '../store.js';
 import { api, upload } from '../api.js';
-import { Avatar, Modal, Spark, Switch, useAsync, useAction, PremiumStar, nameStyleCss, StyledName } from './common.jsx';
+import { Avatar, Modal, Spark, Switch, useAsync, useAction, PremiumStar, nameStyleCss, StyledName, SparkIcon } from './common.jsx';
 import { AvatarCropper, BannerEditor, LinksEditor, WallpaperPicker, BlurBgEditor } from './ProfileExtras.jsx';
 import { WalletsSection } from './Wallets.jsx';
 import { ACCENTS, BACKGROUNDS, FONTS, loadTheme, saveTheme } from '../theme.js';
@@ -250,7 +250,7 @@ function SettingsHome({ open }) {
         <Row icon={Bell} color="#ff453a" title={t('Уведомления')} onClick={() => open('notifications')} />
         <Row icon={Gift} color="#af52de" title={t('Магазин')} onClick={() => openModal('giftShop')} />
         <Row icon={Tag} color="#0a84ff" title={t('Маркет')} onClick={() => openModal('market')} />
-        <Row icon={Star} color="#f5a623" title="Recidivist Premium" value={me.premium ? 'активен' : ''} onClick={() => open('premium')} />
+        <Row icon={SparkIcon} color="#ff3b5c" title="Recidivist Premium" value={me.premium ? 'активен' : ''} onClick={() => open('premium')} />
         <Row icon={CreditCard} color="linear-gradient(135deg, #2c2c2e, #ff2d3d)" title={t('Кошелёк')} value={<Spark amount={me.balance} />} onClick={() => open('wallet')} />
         <Row icon={WalletIcon} color="#0098ea" title={t('TON-кошельки')} onClick={() => open('wallets')} />
       </Group>
