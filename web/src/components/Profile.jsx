@@ -53,7 +53,6 @@ function GroupInfo({ chat }) {
         {isAdmin && <button onClick={() => openModal('editChat', { chat })}><Pencil size={22} />Изменить</button>}
         {isAdmin && <button onClick={() => openModal('newChat', { type: 'addMembers', chat })}><UserPlus size={22} />Добавить</button>}
         {chat.type === 'channel' && <button onClick={() => openModal('giftShop', { toChat: chat })}><Gift size={22} />Подарить</button>}
-        {chat.isMember && <button onClick={leave} style={{ color: '#ff4d4f' }}><LogOut size={22} />Покинуть</button>}
       </div>
       {chat.description && <div className="info-row"><Info size={22} /><div className="grow"><div style={{ whiteSpace: 'pre-wrap' }}>{chat.description}</div><div className="label">Описание</div></div></div>}
       {link && (
@@ -91,6 +90,16 @@ function GroupInfo({ chat }) {
   );
 }
 
+function LeaveLink({ chat }) {
+  const removeChat = useStore((s) => s.removeChat);
+  const leave = async () => {
+    if (!confirm(chat.type === 'channel' ? 'Покинуть канал?' : 'Покинуть группу?')) return;
+    await api(`/chats/${chat.id}/leave`, { body: {} });
+    removeChat(chat.id);
+  };
+  return <button className="leave-link" onClick={leave}><LogOut size={15} /> Покинуть</button>;
+}
+
 function ChannelGifts({ chat }) {
   const { data } = useAsync(() => api(`/chats/${chat.id}/gifts`), [chat.id]);
   if (!data?.gifts?.length) return null;
@@ -117,7 +126,8 @@ export function RightPanel() {
     <aside className="right-panel chan-panel" key={chat.id}>
       <div className="chat-header" style={{ borderBottom: 0 }}>
         <button className="icon-btn" onClick={() => setRightPanel(false)}><X size={22} /></button>
-        <div className="bold">{chat.type === 'private' ? 'Информация' : chat.type === 'channel' ? 'Канал' : chat.type === 'saved' ? 'Избранное' : 'Группа'}</div>
+        <div className="bold grow">{chat.type === 'private' ? 'Информация' : chat.type === 'channel' ? 'Канал' : chat.type === 'saved' ? 'Избранное' : 'Группа'}</div>
+        {chat.isMember && chat.type !== 'saved' && <LeaveLink chat={chat} />}
       </div>
       {chat.type === 'saved' ? (
         <div className="muted center" style={{ padding: 30, textAlign: 'center' }}>Ваше личное облачное хранилище: пересылайте сюда сообщения и файлы.</div>
