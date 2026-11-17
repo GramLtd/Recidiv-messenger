@@ -208,12 +208,12 @@ function CountUp({ value }: { value: number }) {
 }
 
 /* ---------------------------------------------------------------- music + channel cards */
-function TrackCard({ track }: { track: any }) {
+function TrackCard({ track, onOpen }: { track: any; onOpen?: () => void }) {
   const cur = usePlayer((s) => s.current); const playing = usePlayer((s) => s.playing); const time = usePlayer((s) => s.time); const play = usePlayer((s) => s.playTrack);
   const active = cur?.url === track.url;
   return (
     <Rise delay={220}>
-      <Press onPress={() => play(track)} scale={0.97}>
+      <Press onPress={() => play(track)} onLongPress={onOpen} scale={0.97}>
         <Glass radius={18} fill="rgba(255,255,255,0.08)" edge={active ? `rgba(${C.accentRgb},0.45)` : 'rgba(255,255,255,0.1)'} style={st.track}>
           {track.cover ? <Image source={{ uri: mediaUrl(track.cover) }} style={{ width: 44, height: 44, borderRadius: 10 }} /> : <View style={st.cover}><Music2 size={20} color="#fff" /></View>}
           <View style={{ flex: 1, minWidth: 0 }}>
@@ -427,8 +427,8 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
               ))}
             </View>
           )}
-          {u.profileTrack ? <TrackCard track={u.profileTrack} /> : isMe ? (
-            <Rise delay={220}><Glass radius={18} fill="rgba(255,255,255,0.08)" edge="rgba(255,255,255,0.1)" style={[st.track, { padding: 14 }]}><Music2 size={18} color={C.text2} /><T w={600} dim style={{ flex: 1 }}>Добавить музыку в профиль</T><ChevronRight size={16} color={C.text2} /></Glass></Rise>
+          {u.profileTrack ? <TrackCard track={u.profileTrack} onOpen={isMe ? () => router.push('/music') : undefined} /> : isMe ? (
+            <Rise delay={220}><Press scale={0.97} onPress={() => router.push('/music')}><Glass radius={18} fill="rgba(255,255,255,0.08)" edge="rgba(255,255,255,0.1)" style={[st.track, { padding: 14 }]}><Music2 size={18} color={C.text2} /><T w={600} dim style={{ flex: 1 }}>Добавить музыку в профиль</T><ChevronRight size={16} color={C.text2} /></Glass></Press></Rise>
           ) : null}
           {u.personalChannel && <ChannelCard chat={u.personalChannel} />}
         </View>

@@ -11,6 +11,7 @@ import * as Haptics from 'expo-haptics';
 import { AccentFill, Avatar, Glass, Press, T } from '../../components/ui';
 import { Icon } from '../../components/Icon';
 import { useStore } from '../../lib/store';
+import { MiniPlayer } from '../../components/Music';
 import { C } from '../../lib/theme';
 
 /*
@@ -76,6 +77,7 @@ function TabBar() {
   const focus = (i: number) => { x.value = withSpring(i, { damping: 17, stiffness: 190, mass: 0.8 }); };
   return (
     <View pointerEvents="box-none" style={[s.wrap, { bottom: Math.max(12, insets.bottom - 4) }]}>
+      <View style={{ marginBottom: 8, marginHorizontal: 2 }}><MiniPlayer onOpen={() => router.push('/music')} /></View>
       <View style={s.shadow}>
         <Glass radius={33} intensity={34} fill="rgba(255,255,255,0.08)" edge="rgba(255,255,255,0.14)" hi="rgba(255,255,255,0.18)" shadow={false} style={s.bar}>
           <View style={s.row} onLayout={(e) => setW(e.nativeEvent.layout.width)}>

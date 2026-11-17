@@ -69,6 +69,13 @@
         {
           "faceIDPermission": "Face ID защищает вход в Recidivist"
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Микрофон нужен для голосовых сообщений и распознавания музыки",
+          "enableBackgroundPlayback": true
+        }
       ]
     ],
     "scheme": "recidivist",

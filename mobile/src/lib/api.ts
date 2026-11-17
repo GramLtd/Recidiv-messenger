@@ -31,10 +31,15 @@ api.patch = <T = any>(p: string, body: unknown) => api<T>(p, { method: 'PATCH', 
 api.del = <T = any>(p: string) => api<T>(p, { method: 'DELETE' });
 
 export async function upload(uri: string, name: string, type: string) {
+  return postFile<{ url: string; kind: string }>('/upload', uri, name, type);
+}
+
+/** multipart POST of one local file (uri) to an API path */
+export async function postFile<T = any>(path: string, uri: string, name: string, type: string): Promise<T> {
   const form = new FormData();
   form.append('file', { uri, name, type } as any);
-  const res = await fetch(`${API_URL}/api/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-Device': DEVICE }, body: form });
+  const res = await fetch(`${API_URL}/api${path}`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-Device': DEVICE }, body: form });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Ошибка загрузки');
-  return data as { url: string; kind: string };
+  return data as T;
 }

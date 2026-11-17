@@ -51,6 +51,7 @@ export default function Root() {
             <Stack.Screen name="settings/proxy" />
             <Stack.Screen name="settings/[page]" />
             <Stack.Screen name="post/[id]" />
+            <Stack.Screen name="music" />
             <Stack.Screen name="u/[name]" options={{ animation: 'none' }} />
             <Stack.Screen name="shop" options={{ presentation: 'formSheet', sheetAllowedDetents: [1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
             <Stack.Screen name="market" options={{ presentation: 'formSheet', sheetAllowedDetents: [1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />

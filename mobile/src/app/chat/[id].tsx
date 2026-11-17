@@ -23,6 +23,7 @@ import { decryptFrom, canEncryptTo } from '../../lib/e2e';
 import { mediaUrl } from '../../lib/config';
 import { usePerf } from '../../lib/perf';
 import { usePlayer, fmtTime } from '../../lib/player';
+import { AudioMsg } from '../../components/Music';
 import { useFont, fontStyle } from '../../lib/fonts';
 import { colorFor, dayLabel, fileSize, lastSeen, membersLabel, timeHM } from '../../lib/util';
 import { C, webSpring } from '../../lib/theme';
@@ -112,7 +113,7 @@ function Content({ m, chat, out }: { m: any; chat: any; out: boolean }) {
     ) : null;
     case 'video': return md ? (md.round ? <RoundVideo url={md.url} /> : <VideoThumb md={md} />) : null;
     case 'voice': return md ? <VoiceMsg media={md} out={out} /> : null;
-    case 'audio': return md ? <VoiceMsg media={md} out={out} /> : null;
+    case 'audio': return md ? <AudioMsg media={md} out={out} /> : null;
     case 'file': return md ? (
       <Pressable onPress={() => Linking.openURL(mediaUrl(md.url) || '')} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 200 }}>
         <View style={st.fileIcon}><FileText size={22} color="#fff" /></View>

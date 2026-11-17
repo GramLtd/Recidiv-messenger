@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AtSign, Bell, Bookmark, Contrast, CreditCard, Gift, Globe, Hand, HardDrive, LogOut, MonitorSmartphone, Network, Shield, ShieldCheck, Tag, Type,
-  User, Wallet,
+  User, Wallet, Music2,
 } from 'lucide-react-native';
 import { useStore } from '../../lib/store';
 import { useFont, FONTS } from '../../lib/fonts';
@@ -41,7 +41,8 @@ export default function Settings() {
       <Group delay={60}>
         <Row index={0} icon={User} color="#ff3b30" title="Мой профиль" onPress={() => router.push('/profile')} />
         <Row index={1} icon={AtSign} color="#0a84ff" title="Юзернеймы" value={me.username ? `@${me.username}` : ''} onPress={() => go('usernames')} />
-        {saved && <Row index={2} icon={Bookmark} color="#5ac8fa" title="Избранное" onPress={() => router.push(`/chat/${saved.id}`)} />}
+        <Row index={2} icon={Music2} color="#ff2d55" title="Музыка" onPress={() => router.push('/music')} />
+        {saved && <Row index={3} icon={Bookmark} color="#5ac8fa" title="Избранное" onPress={() => router.push(`/chat/${saved.id}`)} />}
       </Group>
       <Group delay={90}>
         <Row index={0} icon={Bell} color="#ff453a" title="Уведомления" onPress={() => go('notifications')} />
