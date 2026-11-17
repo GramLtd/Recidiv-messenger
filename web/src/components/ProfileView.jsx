@@ -133,34 +133,58 @@ function Sparkles() {
   );
 }
 
-/** Pinned gifts scattered around the avatar: a calm bob, a glow and sparks in the gift's colour. */
-const SPOTS = [
-  [16, 22, -4], [84, 20, 4], [6, 54, 3], [94, 52, -3], [20, 84, 4], [80, 86, -4],
-  [36, 6, 2], [64, 7, -2], [32, 98, -3], [68, 98, 3], [2, 30, 0], [98, 74, 0],
-];
+/**
+ * Pinned gifts scattered around the avatar at random spots (new layout every visit, like Telegram):
+ * left / right of the avatar, different distances, no overlaps; soft halo and twinkling sparkles.
+ */
+const STAGE_W = 340;
+const STAGE_H = 236;
+const AVATAR_R = 70; // keep-out circle around the avatar (px)
+function randomLayout(n) {
+  const out = [];
+  const cx = STAGE_W / 2;
+  const cy = STAGE_H / 2;
+  for (let i = 0; i < n; i++) {
+    const size = i < 6 ? 44 + Math.round(Math.random() * 8) : 34 + Math.round(Math.random() * 6);
+    const side = i % 2 === 0 ? -1 : 1; // alternate left / right
+    let best = null;
+    for (let tries = 0; tries < 60; tries++) {
+      const x = cx + side * (AVATAR_R + size / 2 + Math.random() * (cx - AVATAR_R - size / 2 - 4));
+      const y = size / 2 + 4 + Math.random() * (STAGE_H - size - 8);
+      if (Math.hypot(x - cx, y - cy) < AVATAR_R + size / 2) continue;
+      const clash = out.some((o) => Math.hypot(o.x - x, o.y - y) < (o.size + size) / 2 + 8);
+      if (!clash) { best = { x, y, size }; break; }
+      if (!best) best = { x, y, size };
+    }
+    out.push({ ...best, rot: Math.round((Math.random() - 0.5) * 16), delay: Math.random() * 3, dur: 6 + Math.random() * 3 });
+  }
+  return out;
+}
+
 const SPARKS_PER = 5;
 function Orbit({ gifts, onOpen }) {
-  const items = gifts.slice(0, SPOTS.length);
+  const items = gifts.slice(0, 12);
+  const key = items.map((g) => g.id).join(',');
+  const layout = useMemo(() => randomLayout(items.length), [key]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!items.length) return null;
   return (
     <div className="pv-scatter">
       {items.map((ug, i) => {
-        const [x, y, rot] = SPOTS[i];
+        const { x, y, size, rot, delay, dur } = layout[i];
         const m = ug.collectible?.model;
-        const color = ug.collectible?.backdrop?.center || 'var(--accent)';
-        const size = i < 6 ? 44 : 34;
+        const color = ug.collectible?.backdrop?.center || '#ffffff';
         return (
           <button
             key={ug.id}
             className="pv-scatter-item"
-            style={{ left: `${x}%`, top: `${y}%`, '--fx': `${(50 - x) * 2.9}px`, '--fy': `${(50 - y) * 2.4}px`, '--rot': `${rot}deg`, '--gc': color, animationDelay: `${0.25 + i * 0.08}s` }}
+            style={{ left: `${(x / STAGE_W) * 100}%`, top: `${(y / STAGE_H) * 100}%`, width: size, height: size, margin: `-${size / 2}px 0 0 -${size / 2}px`, '--fx': `${(STAGE_W / 2 - x) * 0.9}px`, '--fy': `${(STAGE_H / 2 - y) * 0.9}px`, '--rot': `${rot}deg`, '--gc': color, animationDelay: `${0.2 + i * 0.06}s` }}
             onClick={() => onOpen(ug, items)}
           >
             <i className="pv-gift-glow" />
             {Array.from({ length: SPARKS_PER }, (_, k) => (
-              <i key={k} className="pv-gift-spark" style={{ '--a': `${(k / SPARKS_PER) * 360 + i * 23}deg`, animationDelay: `${(k * 0.7 + i * 0.3) % 3.5}s` }} />
+              <i key={k} className="pv-twinkle" style={{ left: `${50 + Math.cos(k * 1.3 + i) * 62}%`, top: `${50 + Math.sin(k * 1.3 + i) * 62}%`, animationDelay: `${(k * 0.55 + delay) % 2.8}s`, transform: `scale(${0.6 + (k % 3) * 0.25})` }} />
             ))}
-            <span style={{ animationDelay: `${i * 0.6}s`, animationDuration: `${7 + (i % 3)}s` }}>
+            <span style={{ animationDelay: `${delay}s`, animationDuration: `${dur}s` }}>
               <GiftModel emoji={m?.emoji || ug.gift.emoji} image={m?.image || ug.gift.image} animation={m?.animation} animated loop={false} filter={m?.filter} size={size} />
             </span>
           </button>
