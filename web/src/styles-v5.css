@@ -1033,3 +1033,17 @@ html.perf .modal-body > *, html.perf .page-body > *, html.perf .post, html.perf 
 .chat-main .messages { padding-bottom: calc(var(--composer-h) + 8px); }
 .chat-main .scroll-down { bottom: calc(var(--composer-h) + 12px); }
 .tg-head > * { flex-shrink: 0; } .tg-head > .tg-title, .tg-head > .tg-search { flex-shrink: 1; }
+
+/* chat open/close on phones: one clean iOS push (no second fade/blur inside, no filter on the list) */
+@media (max-width: 768px) {
+  .app .chat-main { animation: none; }
+  .app .chat-pane, .app .sidebar { will-change: transform; backface-visibility: hidden; }
+  .app .sidebar { position: relative; }
+  .app.has-chat .sidebar, .app.chat-dragging .sidebar { filter: none; }
+  .app .sidebar::after { content: ''; position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 50; transition: opacity var(--ios-dur) var(--ios); }
+  .app.has-chat .sidebar::after { opacity: .35; }
+  .app.chat-closing .sidebar::after { opacity: 0; }
+  .app.chat-dragging .sidebar::after { transition: none; opacity: calc(var(--chat) * .35); }
+}
+/* desktop: switching chats fades in without the expensive blur */
+@keyframes chatIn { from { opacity: 0; transform: translateX(18px); } }
