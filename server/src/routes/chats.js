@@ -277,12 +277,20 @@ r.post('/chats/:id/messages', (req, res) => {
   }
   const text = String(req.body.text || '').slice(0, 4096);
   const media = sanitizeMedia(req.body.media);
-  if (!text.trim() && !media) fail(400, 'Пустое сообщение');
+  if (!text.trim() && !media && !req.body.e2e) fail(400, 'Пустое сообщение');
   let type = 'text';
   if (media) type = ['image', 'video', 'voice', 'audio', 'file', 'sticker', 'gif'].includes(media.kind) ? media.kind : 'file';
+  if (req.body.e2e && c.type === 'private') {
+    // end-to-end encrypted: server stores only {n: nonce, c: ciphertext}; text is opaque
+    const e = req.body.e2e;
+    if (typeof e.n !== 'string' || typeof e.c !== 'string' || e.n.length > 64 || e.c.length > 12000) fail(400, 'Некорректное зашифрованное сообщение');
+    type = 'secret';
+    req.body.text = '';
+    req.body._media = { kind: 'secret', n: e.n, c: e.c, k: String(e.k || '').slice(0, 64) };
+  }
   let replyTo = req.body.replyTo ? Number(req.body.replyTo) : null;
   if (replyTo && !db.prepare('SELECT 1 FROM messages WHERE id = ? AND chat_id = ?').get(replyTo, c.id)) replyTo = null;
-  const msg = createMessage({ chatId: c.id, senderId: req.user.id, type, text, media, replyTo });
+  const msg = createMessage({ chatId: c.id, senderId: req.user.id, type, text: type === 'secret' ? '' : text, media: type === 'secret' ? req.body._media : media, replyTo });
   res.json({ message: msg });
   if (c.type === 'private') {
     const peerId = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').get(c.id, req.user.id)?.user_id;

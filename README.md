@@ -175,3 +175,20 @@ desktop/                    Electron: Windows (установщик + portable),
 
 - Анимации обычных подарков (`web/public/gifts/regular`) — [Noto Animated Emoji](https://googlefonts.github.io/noto-emoji-animation/), Google, CC BY 4.0.
 - 3D-эмодзи (`web/public/emoji3d`) — Fluent Emoji, Microsoft, MIT.
+
+## Нативное приложение (React Native) — `mobile/`
+
+Полноценный нативный клиент на **Expo + React Native** (не веб-страница в оболочке):
+
+| Слой | Что используется |
+|---|---|
+| UI | нативные экраны React Native, `expo-router` (нативный стек iOS: переходы и свайп назад), Reanimated 4 (анимации на UI-потоке), `expo-blur` (жидкое стекло), `expo-image` (кэш картинок) |
+| Локальное хранилище | **SQLite** (`expo-sqlite`): чаты, сообщения, кэш экранов; ключи и токен — в Keychain / Keystore (`expo-secure-store`) |
+| Сеть | REST (`/api`) + socket.io (WebSocket, при прокси — long-polling) — модули `src/lib/api.ts`, `src/lib/socket.ts` |
+| Прокси | нативный модуль `modules/recidivist-proxy`: HTTP / SOCKS5 для всего трафика (iOS — NSURLSession, Android — OkHttp) |
+| Шифрование | сквозное (E2E) для личных чатов: X25519 из сид-фразы + XSalsa20-Poly1305, сервер видит только шифротекст (`src/lib/e2e.ts`) |
+| Уведомления | `expo-notifications` (уведомления ОС, открытие чата по нажатию) |
+| Производительность | режим производительности: без размытия, частиц и бесконечных анимаций |
+
+Сборка: GitHub → **Actions → Mobile (React Native)** — артефакты `Recidivist-native-ios` (неподписанный IPA) и `Recidivist-native-android` (APK).
+Локально: `cd mobile && npm ci && npx expo prebuild && npx expo run:ios` (нужен Xcode) или `run:android`.

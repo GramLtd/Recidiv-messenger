@@ -1,0 +1,66 @@
+name: Mobile (React Native)
+
+# Native iOS / Android app from mobile/ (Expo + React Native). Native projects are generated with `expo prebuild`.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**', 'main']
+    paths: ['mobile/**', '.github/workflows/mobile.yml']
+  pull_request:
+    paths: ['mobile/**']
+
+env:
+  EXPO_NO_TELEMETRY: 1
+  CI: 1
+
+jobs:
+  ios:
+    name: iOS unsigned IPA (native)
+    runs-on: macos-latest
+    timeout-minutes: 60
+    defaults: { run: { working-directory: mobile } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: mobile/package-lock.json }
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Generate iOS project
+        run: npx expo prebuild --platform ios --clean
+      - name: Archive without code signing
+        run: |
+          xcodebuild -workspace ios/Recidivist.xcworkspace -scheme Recidivist -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Recidivist.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" archive | tail -40
+      - name: Package IPA
+        run: |
+          mkdir -p "$RUNNER_TEMP/out/Payload"
+          cp -R "$RUNNER_TEMP/Recidivist.xcarchive/Products/Applications/Recidivist.app" "$RUNNER_TEMP/out/Payload/"
+          cd "$RUNNER_TEMP/out" && zip -qry Recidivist-native-unsigned.ipa Payload && ls -la
+      - uses: actions/upload-artifact@v4
+        with: { name: Recidivist-native-ios, path: '${{ runner.temp }}/out/*.ipa', if-no-files-found: error }
+
+  android:
+    name: Android APK (native)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults: { run: { working-directory: mobile } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: mobile/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21, cache: gradle }
+      - run: npm ci
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --clean
+      - name: Build APK (release, debug-signed so it installs)
+        working-directory: mobile/android
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+          mkdir -p ../out && cp app/build/outputs/apk/release/app-release.apk ../out/Recidivist-native.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: Recidivist-native-android, path: mobile/out/*.apk, if-no-files-found: error }

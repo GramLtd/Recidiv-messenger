@@ -174,7 +174,7 @@ export function createMessage({ chatId, senderId, type = 'text', text = '', medi
 export function messagePreview(m) {
   if (!m) return null;
   if (m.deleted) return 'Сообщение удалено';
-  const labels = { gif: 'GIF', post: '📰 Пост', audio: '🎵 Музыка', transfer: '💸 Перевод', image: '🖼 Фото', video: '🎬 Видео', file: '📎 Файл', voice: '🎤 Голосовое', gift: '🎁 Подарок', sticker: 'Стикер' };
+  const labels = { secret: '🔒 Зашифрованное сообщение', gif: 'GIF', post: '📰 Пост', audio: '🎵 Музыка', transfer: '💸 Перевод', image: '🖼 Фото', video: '🎬 Видео', file: '📎 Файл', voice: '🎤 Голосовое', gift: '🎁 Подарок', sticker: 'Стикер' };
   if (m.type === 'text' || m.type === 'system') return m.text;
   if (m.type === 'gift') return m.text ? (/^\p{Extended_Pictographic}/u.test(m.text) ? m.text : `🎁 ${m.text}`) : labels.gift;
   return m.text ? `${labels[m.type] || ''} ${m.text}` : labels[m.type] || m.type;

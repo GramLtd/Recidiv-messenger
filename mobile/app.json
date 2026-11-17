@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "Recidivist",
+    "slug": "recidivist",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "lol.recidivist.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "\u041a\u0430\u043c\u0435\u0440\u0430 \u043d\u0443\u0436\u043d\u0430, \u0447\u0442\u043e\u0431\u044b \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u044f\u0442\u044c \u0444\u043e\u0442\u043e \u0438 \u043c\u0435\u043d\u044f\u0442\u044c \u0430\u0432\u0430\u0442\u0430\u0440\u043a\u0443",
+        "NSPhotoLibraryUsageDescription": "\u0414\u043e\u0441\u0442\u0443\u043f \u043a \u0444\u043e\u0442\u043e \u043d\u0443\u0436\u0435\u043d, \u0447\u0442\u043e\u0431\u044b \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u044f\u0442\u044c \u043a\u0430\u0440\u0442\u0438\u043d\u043a\u0438",
+        "NSMicrophoneUsageDescription": "\u041c\u0438\u043a\u0440\u043e\u0444\u043e\u043d \u043d\u0443\u0436\u0435\u043d \u0434\u043b\u044f \u0433\u043e\u043b\u043e\u0441\u043e\u0432\u044b\u0445 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439",
+        "UIBackgroundModes": [
+          "audio",
+          "remote-notification"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "lol.recidivist.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#000000",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "CAMERA",
+        "RECORD_AUDIO"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-image",
+      [
+        "expo-notifications",
+        {
+          "color": "#ff2d3d"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.4"
+          }
+        }
+      ]
+    ],
+    "scheme": "recidivist",
+    "backgroundColor": "#000000",
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "apiUrl": "https://recidivist.lol"
+    }
+  }
+}

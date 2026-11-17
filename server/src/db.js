@@ -464,6 +464,8 @@ addColumn('users', 'privacy', 'TEXT');
 addColumn('users', 'sessions_after', 'INTEGER');
 addColumn('users', 'blur_bg', 'TEXT');
 addColumn('user_gifts', 'chat_id', 'INTEGER');
+addColumn('posts', 'edited_at', 'INTEGER');
+addColumn('users', 'e2e_key', 'TEXT');
 db.exec(`
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,

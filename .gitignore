@@ -22,3 +22,10 @@ desktop/web-dist/
 *.AppImage
 *.dmg
 builds/
+
+# React Native app: native projects are generated (expo prebuild) in CI
+mobile/ios/
+mobile/android/
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/

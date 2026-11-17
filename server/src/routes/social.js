@@ -29,6 +29,7 @@ function serializePost(p, viewerId, depth = 0) {
     comments: db.prepare('SELECT COUNT(*) c FROM post_comments WHERE post_id = ?').get(p.id).c,
     reposts: db.prepare('SELECT COUNT(*) c FROM posts WHERE repost_of = ? AND deleted = 0').get(p.id).c,
     views: p.views,
+    edited: !!p.edited_at,
     createdAt: p.created_at,
     mine: p.user_id === viewerId,
   };
@@ -120,6 +121,33 @@ r.post('/posts', (req, res) => {
     return pid;
   });
   res.json({ post: serializePost(db.prepare('SELECT * FROM posts WHERE id = ?').get(id), req.user.id) });
+});
+
+r.patch('/posts/:id', (req, res) => {
+  const p = db.prepare('SELECT * FROM posts WHERE id = ? AND deleted = 0').get(Number(req.params.id));
+  if (!p || p.user_id !== req.user.id) fail(404, 'Пост не найден');
+  const text = String(req.body.text ?? p.text).trim().slice(0, 2000);
+  if (!text && !p.media && !p.repost_of) fail(400, 'Пустой пост');
+  tx(() => {
+    db.prepare('UPDATE posts SET text = ?, edited_at = ? WHERE id = ?').run(text, now(), p.id);
+    db.prepare('DELETE FROM post_tags WHERE post_id = ?').run(p.id);
+    for (const t of tagsOf(text)) db.prepare('INSERT OR IGNORE INTO post_tags (post_id, tag, created_at) VALUES (?, ?, ?)').run(p.id, t, now());
+  });
+  res.json({ post: serializePost(db.prepare('SELECT * FROM posts WHERE id = ?').get(p.id), req.user.id) });
+});
+
+// ---------------- end-to-end encryption keys ----------------
+// Clients derive an X25519 key pair from the seed phrase; the server only stores public keys.
+r.put('/me/e2e-key', (req, res) => {
+  const k = String(req.body?.publicKey || '');
+  if (!/^[A-Za-z0-9+/]{43}=$/.test(k)) fail(400, 'Некорректный ключ');
+  db.prepare('UPDATE users SET e2e_key = ? WHERE id = ?').run(k, req.user.id);
+  res.json({ ok: true });
+});
+r.get('/users/:id/e2e-key', (req, res) => {
+  const u = getUser(Number(req.params.id));
+  if (!u) fail(404, 'Не найден');
+  res.json({ publicKey: u.e2e_key || null });
 });
 
 r.delete('/posts/:id', (req, res) => {
