@@ -9,7 +9,7 @@ import { api } from '../../lib/api';
 import { cache } from '../../lib/db';
 import { mediaUrl } from '../../lib/config';
 import { useStore } from '../../lib/store';
-import { Avatar, Press, T, TopFade } from '../../components/ui';
+import { Avatar, Press, T } from '../../components/ui';
 import { Icon } from '../../components/Icon';
 import { C } from '../../lib/theme';
 import { chatTime } from './chats';
@@ -84,19 +84,17 @@ export default function Feed() {
         data={posts}
         keyExtractor={(p) => String(p.id)}
         renderItem={({ item, index }) => <Animated.View entering={index < 8 ? FadeInDown.delay(index * 40).springify().damping(18) : undefined}><Post p={item} onChange={change} onRemove={remove} /></Animated.View>}
-        contentContainerStyle={{ paddingTop: insets.top + 64, paddingBottom: 130 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load().catch(() => {}); setRefreshing(false); }} tintColor={C.text2} progressViewOffset={insets.top + 60} />}
+        ListHeaderComponent={<T bold size={32} style={{ paddingHorizontal: 16, paddingBottom: 6 }}>Лента</T>}
+        contentContainerStyle={{ paddingTop: insets.top + 6, paddingBottom: 130 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load().catch(() => {}); setRefreshing(false); }} tintColor={C.text2} />}
         removeClippedSubviews
         windowSize={7}
       />
-      <TopFade height={insets.top + 72} />
-      <View style={[s.top, { paddingTop: insets.top + 6 }]} pointerEvents="none"><T bold size={30}>Лента</T></View>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  top: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: 8 },
   post: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 22, marginTop: 10 },

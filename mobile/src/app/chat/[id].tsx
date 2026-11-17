@@ -11,7 +11,7 @@ import { useStore, sendTyping } from '../../lib/store';
 import { api } from '../../lib/api';
 import { decryptFrom, canEncryptTo } from '../../lib/e2e';
 import { mediaUrl } from '../../lib/config';
-import { AccentFill, Avatar, BottomFade, Glass, Press, T, TopFade } from '../../components/ui';
+import { AccentFill, Avatar, Glass, Press, T } from '../../components/ui';
 import { Icon } from '../../components/Icon';
 import { C } from '../../lib/theme';
 import { usePerf } from '../../lib/perf';
@@ -152,8 +152,7 @@ export default function ChatScreen() {
         windowSize={11}
         maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
       />
-      {/* floating glass header, like Telegram: content fades + blurs under it */}
-      <TopFade height={insets.top + 78} />
+      {/* floating liquid-glass header, like Telegram: messages scroll under the glass pills */}
       <View style={[s.header, { paddingTop: insets.top + 6 }]} pointerEvents="box-none">
         <Press onPress={() => router.back()}><Glass radius={23} style={s.round}><Icon name="back" size={26} stroke={2.4} /></Glass></Press>
         <Press onPress={() => chat.peer && router.push(`/user/${chat.peer.id}`)} style={{ flex: 1 }} scale={0.97}>
@@ -167,7 +166,6 @@ export default function ChatScreen() {
 
       {canPost && (
         <Animated.View onLayout={(e) => setComposerH(e.nativeEvent.layout.height)} style={[s.composer, { paddingBottom: Math.max(8, insets.bottom) }, composerSt]}>
-          <BottomFade height={composerH + 40} />
           {(reply || edit) && (
             <Animated.View entering={SlideInDown.springify().damping(20)} style={s.replyBar}>
               <T size={13} bold style={{ color: C.accent, flex: 1 }} numberOfLines={1}>{edit ? 'Редактирование' : `Ответ ${reply.sender?.displayName || ''}`}: <T size={13} dim>{(edit || reply).text}</T></T>
