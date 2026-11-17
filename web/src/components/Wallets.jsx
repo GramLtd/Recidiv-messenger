@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { Wallet, Plus, Trash2, Copy, ShieldCheck } from 'lucide-react';
 import { useStore } from '../store.js';
+import { TonProvider } from './TonProvider.jsx';
 import { api } from '../api.js';
 import { Spinner, useAsync } from './common.jsx';
 
 const short = (a) => (a ? `${a.slice(0, 6)}…${a.slice(-6)}` : '');
 
 /** Link TON wallets to the account: Tonkeeper, MyTonWallet, Tonhub, Telegram Wallet… (via TonConnect + ton_proof). */
-export function WalletsSection() {
+function WalletsSectionInner() {
   const toast = useStore((s) => s.toast);
   const [tonConnectUI] = useTonConnectUI();
   const { data, setData } = useAsync(() => api('/wallets'), []);
@@ -91,4 +92,8 @@ export function WalletsSection() {
       <div className="warn-box"><ShieldCheck size={18} /><span>Никогда не вводите сид-фразу кошелька на сайтах. Привязка идёт только через приложение кошелька.</span></div>
     </div>
   );
+}
+
+export function WalletsSection(props) {
+  return <TonProvider><WalletsSectionInner {...props} /></TonProvider>;
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { Wallet as WalletIcon, Rocket, FlaskConical, ExternalLink, RefreshCw, Store, Gift } from 'lucide-react';
 import { useStore } from '../store.js';
+import { TonProvider } from './TonProvider.jsx';
 import { api } from '../api.js';
 import { Modal, Spark, Spinner, useAsync, useAction } from './common.jsx';
 import { commentPayload } from '../ton.js';
@@ -108,7 +109,7 @@ function TopUp({ data, onPaid }) {
   );
 }
 
-export function WalletModal() {
+function WalletModalInner() {
   const me = useStore((s) => s.me);
   const openModal = useStore((s) => s.openModal);
   const { data, loading, reload } = useAsync(() => api('/wallet'), []);
@@ -147,4 +148,8 @@ export function WalletModal() {
       )}
     </Modal>
   );
+}
+
+export function WalletModal(props) {
+  return <TonProvider><WalletModalInner {...props} /></TonProvider>;
 }

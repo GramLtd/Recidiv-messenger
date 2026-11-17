@@ -10,7 +10,7 @@ import { useStore } from '../store.js';
 import { api, upload } from '../api.js';
 import { Avatar, Modal, Spark, Switch, useAsync, useAction, PremiumStar, nameStyleCss, StyledName, SparkIcon } from './common.jsx';
 import { AvatarCropper, BannerEditor, LinksEditor, WallpaperPicker, BlurBgEditor } from './ProfileExtras.jsx';
-import { WalletsSection } from './Wallets.jsx';
+import { WalletsSection } from './LazyTon.jsx';
 import { ACCENTS, BACKGROUNDS, FONTS, loadTheme, saveTheme } from '../theme.js';
 
 

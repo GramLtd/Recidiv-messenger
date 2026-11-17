@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { siTiktok, siSpotify, siSoundcloud, siTelegram, siDiscord } from 'simple-icons';
+import { siTiktok, siSpotify, siSoundcloud, siTelegram, siDiscord } from '../brand-icons.js';
 import { ImagePlus, Trash2, Upload, ZoomIn } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, upload, mediaUrl } from '../api.js';

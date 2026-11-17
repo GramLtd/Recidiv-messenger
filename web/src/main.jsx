@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { TonConnectUIProvider } from '@tonconnect/ui-react';
 import App from './App.jsx';
 import { applyTheme, loadTheme } from './theme.js';
 import './styles.css';
@@ -76,21 +75,24 @@ const moveGlass = (e) => {
   el.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
   el.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
 };
-document.addEventListener('pointermove', moveGlass, { passive: true });
+// at most one update per frame
+let glassEvt = null;
+document.addEventListener('pointermove', (e) => {
+  if (glassEvt) { glassEvt = e; return; }
+  glassEvt = e;
+  requestAnimationFrame(() => { moveGlass(glassEvt); glassEvt = null; });
+}, { passive: true });
 // Remember where the user tapped: menus and modals grow out of that point.
 document.addEventListener('pointerdown', (e) => {
   moveGlass(e);
   window.__tap = { x: e.clientX, y: e.clientY, t: Date.now() };
 }, { passive: true, capture: true });
 
-const manifestUrl = import.meta.env.VITE_TONCONNECT_MANIFEST || `${location.origin}/tonconnect-manifest.json`;
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <TonConnectUIProvider manifestUrl={manifestUrl}>
       <BrowserRouter>
         <App />
       </BrowserRouter>
-    </TonConnectUIProvider>
   </React.StrictMode>,
 );

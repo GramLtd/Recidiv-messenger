@@ -9,6 +9,19 @@ fs.mkdirSync(config.uploadDir, { recursive: true });
 export const db = new Database(config.dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
+db.pragma('synchronous = NORMAL'); // safe with WAL, much faster writes
+db.pragma('cache_size = -20000'); // ~20 MB page cache
+db.pragma('temp_store = MEMORY');
+// Statements are compiled once and reused (the code calls db.prepare() inline everywhere).
+{
+  const cache = new Map();
+  const prepare = db.prepare.bind(db);
+  db.prepare = (sql) => {
+    let st = cache.get(sql);
+    if (!st) { st = prepare(sql); cache.set(sql, st); }
+    return st;
+  };
+}
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
@@ -609,6 +622,24 @@ function catalogRow(slug, emoji, legacy) {
 function tx0(fn) {
   return db.transaction(fn)();
 }
+
+// ---------- indexes for hot queries ----------
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_user_gifts_gift ON user_gifts(gift_id, upgraded_at);
+CREATE INDEX IF NOT EXISTS idx_user_gifts_chat ON user_gifts(chat_id);
+CREATE INDEX IF NOT EXISTS idx_listings_gift ON listings(user_gift_id, status);
+CREATE INDEX IF NOT EXISTS idx_listings_username ON listings(kind, status, username);
+CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at);
+CREATE INDEX IF NOT EXISTS idx_posts_repost ON posts(repost_of);
+CREATE INDEX IF NOT EXISTS idx_post_likes_post ON post_likes(post_id);
+CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(user_id, id);
+CREATE INDEX IF NOT EXISTS idx_stories_user ON stories(user_id, expires_at);
+CREATE INDEX IF NOT EXISTS idx_usernames_user ON usernames(user_id);
+CREATE INDEX IF NOT EXISTS idx_reactions_msg ON reactions(message_id);
+`);
+db.pragma('optimize');
 
 export function tx(fn) {
   return db.transaction(fn)();

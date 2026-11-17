@@ -8,7 +8,7 @@ import ChatView from '../components/ChatView.jsx';
 import { RightPanel, UserProfileModal, EditChatModal } from '../components/Profile.jsx';
 import { NewChatModal, ForwardModal, TransferModal } from '../components/NewChat.jsx';
 import { GiftShopModal, GiftDetailsModal, TransferGiftModal, SellModal } from '../components/Gifts.jsx';
-import { WalletModal } from '../components/Wallet.jsx';
+import { WalletModal } from '../components/LazyTon.jsx';
 import { MarketModal } from '../components/Market.jsx';
 import { SettingsModal } from '../components/Settings.jsx';
 import { StoryCreateModal, StoryViewer } from '../components/Stories.jsx';

@@ -3,6 +3,7 @@ import http from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
 import cors from 'cors';
+import compression from 'compression';
 import { config, ROOT } from './config.js';
 import './db.js';
 import { requireAuth, requireAdmin } from './auth.js';
@@ -22,6 +23,7 @@ import socialRoutes from './routes/social.js';
 const app = express();
 app.set('trust proxy', true);
 app.use(cors());
+app.use(compression({ threshold: 1024 }));
 app.use(express.json({ limit: '2mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
@@ -48,8 +50,13 @@ app.use('/uploads', express.static(config.uploadDir, {
 // Serve the built web client (web/dist) in production.
 const webDist = path.resolve(ROOT, '..', 'web', 'dist');
 if (fs.existsSync(webDist)) {
-  app.use(express.static(webDist));
-  app.get(/^(?!\/(api|uploads|socket\.io)\/).*/, (_req, res) => res.sendFile(path.join(webDist, 'index.html')));
+  // hashed build assets never change; gift art / icons are cached for a week; index.html always fresh
+  app.use('/assets', express.static(path.join(webDist, 'assets'), { maxAge: '1y', immutable: true }));
+  app.use(express.static(webDist, {
+    maxAge: '7d',
+    setHeaders: (res, filePath) => { if (filePath.endsWith('.html') || filePath.endsWith('.webmanifest')) res.setHeader('Cache-Control', 'no-cache'); },
+  }));
+  app.get(/^(?!\/(api|uploads|socket\.io)\/).*/, (_req, res) => { res.setHeader('Cache-Control', 'no-cache'); res.sendFile(path.join(webDist, 'index.html')); });
 }
 
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
