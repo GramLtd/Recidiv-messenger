@@ -95,7 +95,7 @@ export function Btn({ title, icon, onPress, secondary, style, disabled, height =
   const inner = (
     <View style={[st.btnInner, { height }]}>
       {icon}
-      {title ? <T w={700} size={13.5} color={color ?? (secondary ? C.text : '#fff')} numberOfLines={1}>{title}</T> : null}
+      {title ? <T w={700} size={13.5} color={color ?? (secondary ? C.text : '#fff')} numberOfLines={1} fit style={{ flexShrink: 1 }}>{title}</T> : null}
     </View>
   );
   return (

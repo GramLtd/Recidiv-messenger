@@ -210,7 +210,7 @@ export function serializeChat(chatOrId, viewerId) {
   const c = typeof chatOrId === 'object' ? chatOrId : db.prepare('SELECT * FROM chats WHERE id = ?').get(chatOrId);
   if (!c) return null;
   const member = getMember(c.id, viewerId);
-  const last = db.prepare('SELECT * FROM messages WHERE chat_id = ? ORDER BY id DESC LIMIT 1').get(c.id);
+  const last = db.prepare('SELECT * FROM messages WHERE chat_id = ? AND deleted = 0 ORDER BY id DESC LIMIT 1').get(c.id);
   const memberCount = db.prepare('SELECT COUNT(*) c FROM chat_members WHERE chat_id = ?').get(c.id).c;
   const unread = member
     ? db.prepare('SELECT COUNT(*) c FROM messages WHERE chat_id = ? AND id > ? AND (sender_id IS NULL OR sender_id != ?) AND deleted = 0').get(c.id, member.last_read_id, viewerId).c

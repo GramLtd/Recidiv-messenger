@@ -1,14 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActionSheetIOS, Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { Crown, Ellipsis, Gem, Pin, Tag, X } from 'lucide-react-native';
+import { ArrowUpCircle, Crown, Ellipsis, Eye, EyeOff, Gem, Pin, Repeat, Tag, X } from 'lucide-react-native';
+import * as Clipboard from 'expo-clipboard';
 import { api } from '../../lib/api';
 import { cache } from '../../lib/db';
 import { useStore } from '../../lib/store';
 import { fmtNum } from '../../lib/util';
 import { C, webSpring } from '../../lib/theme';
-import { Avatar, Glass, Press, Rise, Spark, T } from '../../components/ui';
+import { Avatar, Btn, Glass, Press, Rise, Spark, T } from '../../components/ui';
 import { CollectibleArt, GiftModel } from '../../components/GiftArt';
 
 /** Gift details sheet — web `.gift-sheet`: collectible backdrop hero, model, title, actions, attribute table. */
@@ -18,6 +19,8 @@ export default function GiftSheet() {
   const [ug, setUgRaw] = useState<any>(() => cache.get<any>(`api:/user-gifts/${id}`)?.userGift || null);
   const setUg = (v: any) => { setUgRaw(v); cache.set(`api:/user-gifts/${id}`, { userGift: v }); };
   useEffect(() => { api(`/user-gifts/${id}`).then((r) => setUg(r.userGift)).catch((e) => { if (!ug) { Alert.alert(e.message); router.back(); } }); }, [id]);
+  // refresh after returning from «продать» / «передать»
+  useFocusEffect(useCallback(() => { api(`/user-gifts/${id}`).then((r) => setUg(r.userGift)).catch(() => {}); }, [id]));
   const m = useSharedValue(0.3);
   useEffect(() => { if (ug) m.value = withSpring(1, webSpring); }, [!!ug]);
   const ms = useAnimatedStyle(() => ({ opacity: Math.min(1, m.value * 1.5), transform: [{ scale: m.value }, { translateY: (1 - m.value) * 30 }] }));
@@ -25,9 +28,26 @@ export default function GiftSheet() {
   const col = ug.collectible;
   const mine = ug.owner?.id === meId;
   const act = async (path: string, body: any) => { try { const r = await api(path, { body }); if (r.userGift) setUg(r.userGift); } catch (e: any) { Alert.alert(e.message); } };
-  const transfer = () => Alert.prompt?.('Передать подарок', 'Юзернейм получателя', async (name) => {
-    try { const r = await api(`/resolve/${encodeURIComponent((name || '').replace('@', ''))}`); if (!r.user) throw new Error('Пользователь не найден'); await api(`/user-gifts/${ug.id}/transfer`, { body: { toUserId: r.user.id } }); Alert.alert('Подарок передан'); router.back(); } catch (e: any) { Alert.alert(e.message); }
-  });
+  const transfer = () => router.push({ pathname: '/gift-transfer', params: { id: String(ug.id), title: `${ug.gift.name}${col ? ` #${col.number}` : ''}` } });
+  const unlist = async () => { try { await api.del(`/market/listings/${ug.listing.id}`); setUg({ ...ug, listing: null }); } catch (e: any) { Alert.alert(e.message); } };
+  const upgrade = async () => {
+    Alert.alert('Улучшить подарок?', `Подарок станет коллекционным за ${fmtNum(ug.gift.upgradePrice)} ✦: уникальный номер, случайные модель, фон и узор.`, [{ text: 'Отмена' }, { text: 'Улучшить', onPress: async () => {
+      try { const r = await api(`/user-gifts/${ug.id}/upgrade`, { body: {} }); m.value = 0.3; setUg(r.userGift); m.value = withSpring(1, webSpring); } catch (e: any) { Alert.alert(e.message); }
+    } }]);
+  };
+  const convert = () => Alert.alert('Конвертировать подарок?', `Вы получите ${fmtNum(ug.gift.convertValue)} ✦. Подарок исчезнет из профиля.`, [{ text: 'Отмена' }, { text: 'Конвертировать', style: 'destructive', onPress: async () => {
+    try { await api(`/user-gifts/${ug.id}/convert`, { body: {} }); Alert.alert('Подарок конвертирован'); router.back(); } catch (e: any) { Alert.alert(e.message); }
+  } }]);
+  const menu = () => {
+    const items: [string, () => void][] = [];
+    if (col) items.push(['Скопировать ссылку', () => Clipboard.setStringAsync(`https://recidivist.lol/gift/${col.slug || ug.id}`)]);
+    if (mine) items.push([ug.pinned ? 'Открепить' : 'Закрепить в профиле', () => act(`/user-gifts/${ug.id}/visibility`, { pinned: !ug.pinned })]);
+    if (mine) items.push([ug.hidden ? 'Показать в профиле' : 'Скрыть из профиля', () => act(`/user-gifts/${ug.id}/visibility`, { hidden: !ug.hidden })]);
+    if (!items.length) return;
+    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ options: [...items.map((i) => i[0]), 'Отмена'], cancelButtonIndex: items.length }, (i) => items[i]?.[1]());
+    else Alert.alert(ug.gift.name, '', [...items.map(([t, f]) => ({ text: t, onPress: f })), { text: 'Отмена', style: 'cancel' as const }]);
+  };
+  const sub = ug.listing ? `В продаже за ${fmtNum(ug.listing.price)} ✦` : col ? 'Коллекционный подарок' : ug.gift.limited ? `Лимитированный · тираж ${fmtNum(ug.gift.supply)}` : 'Подарок';
   const supply = ug.gift?.supply;
   return (
     <ScrollView contentInsetAdjustmentBehavior="never" style={{ flex: 1, backgroundColor: C.bg2 }} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -36,20 +56,27 @@ export default function GiftSheet() {
         <View style={st.top}>
           <Press onPress={() => router.back()} scale={0.9}><Glass radius={21} fill="rgba(255,255,255,0.18)" edge="rgba(255,255,255,0.3)" style={st.topBtn}><X size={20} color="#fff" /></Glass></Press>
           <View style={{ flex: 1 }} />
-          <Glass radius={21} fill="rgba(255,255,255,0.18)" edge="rgba(255,255,255,0.3)" style={st.topBtn}><Ellipsis size={20} color="#fff" /></Glass>
+          {(col || mine) && <Press onPress={menu} scale={0.9}><Glass radius={21} fill="rgba(255,255,255,0.18)" edge="rgba(255,255,255,0.3)" style={st.topBtn}><Ellipsis size={20} color="#fff" /></Glass></Press>}
         </View>
         <Animated.View style={[st.model, ms]}><GiftModel gift={ug.gift} model={col?.model} size={170} /></Animated.View>
         <Rise delay={120}><T w={800} size={25} color="#fff" center style={st.shadow}>{ug.gift.name}{col ? <T w={700} size={15.5} color="rgba(255,255,255,0.7)"> #{col.number}</T> : null}</T></Rise>
         <Rise delay={180} style={{ alignItems: 'center', marginTop: 8 }}>
-          <View style={st.sub}><T w={600} size={13.5} color="#fff">{col ? 'Коллекционный подарок' : 'Подарок'}</T></View>
+          <View style={st.sub}><T w={600} size={13.5} color="#fff">{sub}</T></View>
         </Rise>
-        {mine && (
+        {mine && col && (
           <Rise delay={240} style={st.actions}>
-            <Act icon={<Gem size={22} color="#fff" />} label="передать" onPress={transfer} />
-            {col
-              ? <Act icon={<Crown size={22} color="#fff" />} label={ug.worn ? 'снять' : 'надеть'} on={ug.worn} onPress={() => act(`/user-gifts/${ug.id}/wear`, { wear: !ug.worn })} />
-              : <Act icon={<Pin size={22} color="#fff" />} label={ug.pinned ? 'открепить' : 'закрепить'} on={ug.pinned} onPress={() => act(`/user-gifts/${ug.id}/visibility`, { pinned: !ug.pinned })} />}
-            <Act icon={<Tag size={22} color="#fff" />} label="продать" onPress={() => Alert.alert('Маркет', 'Продажа на маркете скоро появится в приложении.')} />
+            <Act icon={<Gem size={22} color="#fff" />} label="передать" disabled={!!ug.listing} onPress={transfer} />
+            <Act icon={<Crown size={22} color="#fff" />} label={ug.worn ? 'снять' : 'носить'} on={ug.worn} onPress={async () => { await act(`/user-gifts/${ug.id}/wear`, { wear: !ug.worn }); api('/auth/me').then((r) => useStore.getState().setMe(r.user)).catch(() => {}); }} />
+            {ug.listing
+              ? <Act icon={<Tag size={22} color="#fff" />} label="не продавать" onPress={unlist} />
+              : <Act icon={<Tag size={22} color="#fff" />} label="продать" onPress={() => router.push({ pathname: '/sell', params: { userGiftId: String(ug.id) } })} />}
+          </Rise>
+        )}
+        {mine && !col && (
+          <Rise delay={240} style={st.actions}>
+            <Act icon={<ArrowUpCircle size={22} color="#fff" />} label="улучшить" disabled={!ug.gift.upgradable} onPress={upgrade} />
+            <Act icon={<Repeat size={22} color="#fff" />} label="в ✦" onPress={convert} />
+            <Act icon={ug.hidden ? <Eye size={22} color="#fff" /> : <EyeOff size={22} color="#fff" />} label={ug.hidden ? 'показать' : 'скрыть'} onPress={() => act(`/user-gifts/${ug.id}/visibility`, { hidden: !ug.hidden })} />
           </Rise>
         )}
       </View>
@@ -74,13 +101,17 @@ export default function GiftSheet() {
           <T size={13} w={600} color={C.accent} onPress={() => act(`/user-gifts/${ug.id}/visibility`, { hidden: !ug.hidden })}>{ug.hidden ? 'Показать ›' : 'Скрыть ›'}</T>
         </T>
       )}
+      <View style={{ paddingHorizontal: 14, paddingTop: 14, gap: 10 }}>
+        {!mine && ug.listing && <Btn height={50} title={`Купить на маркете за ✦ ${fmtNum(ug.listing.price)}`} onPress={() => router.push({ pathname: '/market', params: { kind: 'gift', q: String(col?.number || '') } })} />}
+        <Btn height={50} title="OK" onPress={() => router.back()} />
+      </View>
     </ScrollView>
   );
 }
 const Chip = ({ children }: { children: React.ReactNode }) => <View style={st.chip}><T size={11.5} w={600} dim>{children}</T></View>;
-function Act({ icon, label, onPress, on }: any) {
+function Act({ icon, label, onPress, on, disabled }: any) {
   return (
-    <Press onPress={onPress} scale={0.92} style={{ flex: 1 }}>
+    <Press onPress={onPress} scale={0.92} disabled={disabled} style={{ flex: 1 }}>
       <Glass radius={18} fill={on ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.16)'} edge="rgba(255,255,255,0.3)" hi="rgba(255,255,255,0.4)" style={st.act}>{icon}<T w={700} size={12.5} color="#fff">{label}</T></Glass>
     </Press>
   );

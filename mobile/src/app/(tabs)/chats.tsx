@@ -118,6 +118,17 @@ export default function Chats() {
     } catch (e: any) { Alert.alert(e.message); }
   };
   const openUser = async (u: any) => { const r = await api('/chats/private', { body: { userId: u.id } }); useStore.getState().upsertChat(r.chat); setQ(''); setSearching(false); router.push(`/chat/${r.chat.id}`); };
+  const newMenu = () => {
+    const saved = chats.find((c) => c.type === 'saved');
+    const items: [string, () => void][] = [
+      ['Новое сообщение', () => router.push({ pathname: '/newchat', params: { type: 'private' } })],
+      ['Новая группа', () => router.push({ pathname: '/newchat', params: { type: 'group' } })],
+      ['Новый канал', () => router.push({ pathname: '/newchat', params: { type: 'channel' } })],
+      ...(saved ? [['Избранное', () => router.push(`/chat/${saved.id}`)] as [string, () => void]] : []),
+    ];
+    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ options: [...items.map((i) => i[0]), 'Отмена'], cancelButtonIndex: items.length }, (i) => items[i]?.[1]());
+    else Alert.alert('Создать', '', [...items.map(([t, f]) => ({ text: t, onPress: f })), { text: 'Отмена', style: 'cancel' as const }]);
+  };
   const local = q ? chats.filter((c) => c.title?.toLowerCase().includes(q.toLowerCase())) : chats;
   if (!me) return null;
   const header = (
@@ -125,7 +136,7 @@ export default function Chats() {
       <View style={st.head}>
         <Press scale={0.94} onPress={() => setEditing(!editing)}><Glass radius={20} style={st.pill}><T w={700} size={14.3} color={editing ? C.accent : C.text}>{editing ? 'Готово' : 'Изм.'}</T></Glass></Press>
         <View style={st.title}><Avatar uri={me.avatar} name={me.displayName} id={me.id} size={30} /><T w={800} size={17.3}>Чаты</T></View>
-        <Press scale={0.92} onPress={() => router.push('/compose')}><Glass radius={21} style={st.round}><SquarePen size={20} color={C.text} /></Glass></Press>
+        <Press scale={0.92} onPress={newMenu}><Glass radius={21} style={st.round}><SquarePen size={20} color={C.text} /></Glass></Press>
         <Press scale={0.92} onPress={() => { if (searching) { setSearching(false); setQ(''); } else setSearching(true); }}><Glass radius={21} style={st.round}>{searching ? <X size={20} color={C.accent} /> : <Search size={20} color={C.text} />}</Glass></Press>
       </View>
       {searching && (

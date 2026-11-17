@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Linking, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Dimensions, Linking, StyleSheet, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import {
-  ArrowDownLeft, ArrowUpRight, Camera, Check, Crown, Eye, HardDrive, KeyRound, Lock, MapPin, Monitor, Plus, Send, ShieldCheck, Smartphone, Sparkles, Trash2,
+  ArrowDownLeft, ArrowUpRight, Tag, Camera, Check, Crown, Eye, HardDrive, KeyRound, Lock, MapPin, Monitor, Plus, Send, ShieldCheck, Smartphone, Sparkles, Trash2,
 } from 'lucide-react-native';
 import { api, upload } from '../../lib/api';
 import { useCached } from '../../lib/useCached';
+import { WalletCard } from '../../components/WalletCard';
 import { useStore } from '../../lib/store';
 import { usePerf } from '../../lib/perf';
 import { FONTS, fontStyle, useFont } from '../../lib/fonts';
@@ -103,7 +104,12 @@ function UsernamesPage() {
       <Group>
         {(data?.usernames || []).map((u: any, i: number) => (
           <Row key={u.name} index={i} title={`@${u.name}`} sub={u.active ? 'основной' : u.listed ? 'выставлен на продажу' : 'дополнительный'}
-            right={!u.active && !u.listed ? <Btn secondary height={34} title="Основной" icon={<Check size={15} color={C.text} />} onPress={() => run(async () => { setMe((await api('/me/usernames/active', { body: { name: u.name } })).user); load(); })} /> : undefined} />
+            right={!u.listed ? (
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                {!u.active && <Btn secondary height={34} title="Основной" icon={<Check size={15} color={C.text} />} onPress={() => run(async () => { setMe((await api('/me/usernames/active', { body: { name: u.name } })).user); load(); })} />}
+                <Btn secondary height={34} title="Продать" icon={<Tag size={15} color={C.text} />} onPress={() => router.push({ pathname: '/sell', params: { username: u.name } })} />
+              </View>
+            ) : undefined} />
         ))}
       </Group>
       <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -297,8 +303,8 @@ function WalletPage() {
     <>
       <WalletCard amount={me.balance} owner={me.username ? `@${me.username}` : me.displayName} />
       <View style={{ flexDirection: 'row', gap: 10, marginVertical: 14 }}>
-        <Btn secondary title="Пополнить" icon={<Plus size={18} color={C.text} />} style={{ flex: 1 }} onPress={() => Linking.openURL('https://recidivist.lol')} />
-        <Btn secondary title="Отправить" icon={<Send size={18} color={C.text} />} style={{ flex: 1 }} onPress={() => Alert.alert('Перевод', 'Откройте профиль получателя → «•••» → «Отправить искры».')} />
+        <Btn secondary title="Пополнить" icon={<Plus size={18} color={C.text} />} style={{ flex: 1 }} onPress={() => router.push('/topup')} />
+        <Btn secondary title="Отправить" icon={<Send size={18} color={C.text} />} style={{ flex: 1 }} onPress={() => router.push('/transfer')} />
       </View>
       <Group footer="Под именем в профиле появится плашка с балансом — её увидит каждый.">
         <Row title="Показывать баланс в профиле" right={<Switch on={!!me.showBalance} onChange={(v) => run(async () => setMe((await api('/me/profile-extra', { body: { showBalance: v } })).user))} />} />
@@ -322,30 +328,7 @@ function WalletPage() {
     </>
   );
 }
-export function WalletCard({ amount, owner }: { amount: number; owner: string }) {
-  return (
-    <Rise>
-      <View style={st.wcard}>
-        <LinearGradient colors={['#1a1a1d', '#050505']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-        <Radial inner={`rgba(${C.accentRgb},0.55)`} outer="rgba(0,0,0,0)" cx="80%" cy="120%" stop={0.55} style={StyleSheet.absoluteFill} />
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-          <Image source={require('../../../assets/brand-icon.png')} style={{ width: 46, height: 46, borderRadius: 14 }} />
-          <View style={{ flex: 1 }}>
-            <T w={900} size={24} color="#ffe3e6" style={{ letterSpacing: -0.5 }}>Recidivist</T>
-            <View style={st.wtag}><T w={800} size={9.3} color="#111" style={{ letterSpacing: 2 }}>CARD</T></View>
-          </View>
-          <LinearGradient colors={['#e8e8e8', '#9a9a9a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.wchip} />
-        </View>
-        <View style={{ flex: 1 }} />
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
-          <T w={900} size={39} color="#fff" style={{ letterSpacing: -0.8 }}>{fmtNum(amount || 0)}</T>
-          <T w={800} size={13} color={C.accent}>✦ Искры</T>
-        </View>
-        <T w={700} color="rgba(255,255,255,0.85)" style={{ marginTop: 2 }}>{owner}</T>
-      </View>
-    </Rise>
-  );
-}
+export { WalletCard };
 
 /* ---------------- premium ---------------- */
 const PERKS: [string, string, any, string][] = [
@@ -409,7 +392,52 @@ function Soon() {
   );
 }
 
+/* ---------------- appearance: chat wallpaper (same presets as the web) ---------------- */
+const WPS: [string, string, string[]][] = [
+  ['noir', 'Нуар', ['#2a0a0e', '#000']], ['blood', 'Кровь', ['#3d0008', '#120003', '#000']], ['ember', 'Угли', ['#5a1a00', '#1a0500', '#000']],
+  ['aurora', 'Сияние', ['#021b1a', '#0a2a4a', '#2a0a3a']], ['neon', 'Неон', ['#1a0033', '#33001a', '#001a33']], ['ocean', 'Океан', ['#06345a', '#020c1a']],
+  ['forest', 'Тайга', ['#0e3a22', '#03120a']], ['gold', 'Золото', ['#4a3500', '#140e00', '#000']], ['steel', 'Сталь', ['#23272e', '#0b0d10']], ['bars', 'Решётка', ['#2a2a2a', '#050505']],
+];
+function ThemePage() {
+  const me = useMe();
+  const cur = me.wallpaper?.preset || (me.wallpaper ? 'custom' : null);
+  const set = (body: any) => run(async () => setMe((await api('/me/wallpaper', { body })).user));
+  const pick = async () => {
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 });
+    if (r.canceled) return;
+    const a = r.assets[0];
+    run(async () => { const up = await upload(a.uri, a.fileName || 'wallpaper.jpg', a.mimeType || 'image/jpeg'); setMe((await api('/me/wallpaper', { body: { url: up.url } })).user); }, 'Обои установлены');
+  };
+  const tw = Math.floor((Dimensions.get('window').width - 28 - 2 - 20 - 16) / 3);
+  return (
+    <>
+      <Group title="Обои чата" footer="Обои синхронизируются между устройствами.">
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 10 }}>
+          <Press scale={0.94} onPress={() => set({})}>
+            <View style={[st.wp, { width: tw, backgroundColor: C.bg }, !cur && st.wpOn]}><T size={12} w={600} dim>Без обоев</T></View>
+          </Press>
+          {WPS.map(([id, name, cols]) => (
+            <Press key={id} scale={0.94} onPress={() => set({ preset: id })}>
+              <LinearGradient colors={cols as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[st.wp, { width: tw }, cur === id && st.wpOn]}><T size={12} w={700} color="#fff">{name}</T></LinearGradient>
+            </Press>
+          ))}
+          <Press scale={0.94} onPress={pick}>
+            <View style={[st.wp, { width: tw, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.2)' }, cur === 'custom' && st.wpOn]}><Plus size={22} color={C.text2} /><T size={12} dim>Своё фото</T></View>
+          </Press>
+        </View>
+      </Group>
+      <Group title="Предпросмотр">
+        <View style={{ padding: 14, gap: 6 }}>
+          <View style={[st.bub, { alignSelf: 'flex-start', backgroundColor: C.bubbleIn, borderBottomLeftRadius: 6 }]}><T>Как тебе новая тема? 🔥</T></View>
+          <View style={[st.bub, { alignSelf: 'flex-end', backgroundColor: C.bubbleOut, borderBottomRightRadius: 6 }]}><T>Чёрный OLED с красным — топ</T></View>
+        </View>
+      </Group>
+    </>
+  );
+}
+
 const PAGES: Record<string, React.ComponentType> = {
+  theme: ThemePage,
   profile: ProfilePage, usernames: UsernamesPage, notifications: NotificationsPage, fonts: FontsPage, privacy: PrivacyPage, devices: DevicesPage,
   security: SecurityPage, storage: StoragePage, language: LanguagePage, wallet: WalletPage, premium: PremiumPage,
 };
@@ -428,6 +456,9 @@ const st = StyleSheet.create({
   wtag: { alignSelf: 'flex-start', marginTop: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.85)' },
   wchip: { width: 44, height: 34, borderRadius: 8 },
   premHero: { marginHorizontal: -14, marginTop: -6, marginBottom: 14, paddingTop: 26, paddingHorizontal: 20, paddingBottom: 30, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
+  wp: { aspectRatio: 3 / 4, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 4, borderWidth: 2, borderColor: 'transparent', overflow: 'hidden' },
+  wpOn: { borderColor: C.accent },
+  bub: { maxWidth: '78%', paddingVertical: 6, paddingHorizontal: 11, borderRadius: 16 },
   premStar: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.22)', borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.5)', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 15, shadowOffset: { width: 0, height: 10 } },
   premPrice: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 18, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' },
   seg: { flexDirection: 'row', padding: 4, borderRadius: 999, backgroundColor: C.glass, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)', marginBottom: 10 },

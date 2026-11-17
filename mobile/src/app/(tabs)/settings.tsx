@@ -45,8 +45,8 @@ export default function Settings() {
       </Group>
       <Group delay={90}>
         <Row index={0} icon={Bell} color="#ff453a" title="Уведомления" onPress={() => go('notifications')} />
-        <Row index={1} icon={Gift} color="#af52de" title="Магазин" onPress={() => go('shop')} />
-        <Row index={2} icon={Tag} color="#0a84ff" title="Маркет" onPress={() => go('market')} />
+        <Row index={1} icon={Gift} color="#af52de" title="Магазин" onPress={() => router.push('/shop')} />
+        <Row index={2} icon={Tag} color="#0a84ff" title="Маркет" onPress={() => router.push('/market')} />
         <Row index={3} icon={(p: any) => <SparkIcon size={18} color="#fff" />} color="#ff3b5c" title="Recidivist Premium" value={me.premium ? 'активен' : ''} onPress={() => go('premium')} />
         <Row index={4} icon={CreditCard} color={['#2c2c2e', '#ff2d3d']} title="Кошелёк" value={<Spark amount={me.balance} size={14.3} />} onPress={() => go('wallet')} />
         <Row index={5} icon={Wallet} color="#0098ea" title="TON-кошельки" onPress={() => go('wallets')} />

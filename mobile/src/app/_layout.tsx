@@ -50,6 +50,14 @@ export default function Root() {
             <Stack.Screen name="settings/[page]" />
             <Stack.Screen name="post/[id]" />
             <Stack.Screen name="u/[name]" options={{ animation: 'none' }} />
+            <Stack.Screen name="shop" options={{ presentation: 'formSheet', sheetAllowedDetents: [1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
+            <Stack.Screen name="market" options={{ presentation: 'formSheet', sheetAllowedDetents: [1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
+            <Stack.Screen name="transfer" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.75, 1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
+            <Stack.Screen name="sell" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.65, 1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
+            <Stack.Screen name="gift-premium" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.6], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
+            <Stack.Screen name="gift-transfer" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
+            <Stack.Screen name="newchat" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.9, 1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
+            <Stack.Screen name="topup" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.8, 1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
             <Stack.Screen name="media" options={{ presentation: 'transparentModal', animation: 'fade', contentStyle: { backgroundColor: 'transparent' } }} />
             <Stack.Screen name="story/[userId]" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: true }} />
             <Stack.Screen name="gift/[id]" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, sheetCornerRadius: 30, contentStyle: { backgroundColor: C.bg2 } }} />

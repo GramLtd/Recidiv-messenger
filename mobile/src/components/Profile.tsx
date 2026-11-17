@@ -26,6 +26,7 @@ import { C, webSpring } from '../lib/theme';
 import { Avatar, Btn, Glass, GlassIcon, MaskedView, Pill, PremiumStar, Press, Radial, Rise, Spark, T, Verified, WornGift } from './ui';
 import { CollectibleArt, GiftArt, GiftModel } from './GiftArt';
 import { PostCard } from './Post';
+import { ProfilePopup, Pop } from './ProfilePopup';
 
 const W = Dimensions.get('window').width;
 /** #rrggbb + alpha → rgba() */
@@ -287,6 +288,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
   const [posts, setPosts] = useState<any[] | null>(null);
   const [stories, setStories] = useState<any[] | null>(null);
   const [shown, setShown] = useState(18);
+  const [pop, setPop] = useState<Pop>(null);
   useEffect(() => {
     api(`/users/${userId}`).then((r) => { setData(r.user); cache.set(`user:${userId}`, r.user); }).catch(() => {});
     api(`/users/${userId}/gifts`).then((r) => { setGifts(r.gifts); cache.set(`gifts:${userId}`, r.gifts); }).catch(() => setGifts([]));
@@ -323,9 +325,13 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
   const patch = (p: any) => setData({ ...data, ...p });
   const follow = async () => { const r = await api(`/users/${u.id}/follow`, { body: {} }); patch({ isFollowing: r.following, followers: r.followers }); };
   const write = async () => { const r = await api('/chats/private', { body: { userId: u.id } }); useStore.getState().refreshChats().catch(() => {}); router.push(`/chat/${r.chat.id}`); };
+  const target = { toUserId: String(u.id), toName: u.displayName, toAvatar: u.avatar || '' };
   const more = () => {
     const items: [string, () => void][] = [
       [u.isContact ? 'Удалить из контактов' : 'Добавить в контакты', async () => { const r = await api(`/contacts/${u.id}`, { body: {} }); patch({ isContact: r.contact }); }],
+      ['Отправить искры', () => router.push({ pathname: '/transfer', params: target })],
+      ['Отправить подарок', () => router.push({ pathname: '/shop', params: target })],
+      ['Подарить Premium', () => router.push({ pathname: '/gift-premium', params: target })],
       ['Скопировать ссылку', () => Clipboard.setStringAsync(`https://recidivist.lol/${u.username ? `@${u.username}` : ''}`)],
       [u.isBlocked ? 'Разблокировать' : 'Заблокировать', async () => { const r = await api(`/users/${u.id}/block`, { body: {} }); patch({ isBlocked: r.blocked }); }],
     ];
@@ -393,7 +399,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
           <Rise delay={160} style={st.pills}>
             <Pill on={!!u.online || isMe}>{isMe ? 'в сети' : lastSeen(u)}</Pill>
             {(isMe || u.publicBalance != null) && (
-              <Pill onPress={() => isMe && router.push('/settings/wallet')}>
+              <Pill onPress={() => setPop({ type: 'wallet' })}>
                 <T w={700} size={12.3}>Баланс:</T>
                 <Spark size={12.3} />
                 {isMe ? <CountUp value={me.balance} /> : <T w={800} size={12.3}>{fmtNum(u.publicBalance)}</T>}
@@ -432,23 +438,34 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
             <Btn title="Написать" icon={<MessageCircle size={18} color="#fff" />} onPress={write} style={{ flex: 1.15 }} />
             <Btn secondary title={u.isFollowing ? 'Вы подписаны' : 'Подписаться'} color={u.isFollowing ? C.accent : C.text}
               onPress={follow} style={{ flex: 1 }} />
-            <GlassIcon size={44} onPress={() => Alert.alert('Подарки', 'Магазин подарков скоро появится в приложении.')}><Gift size={19} color={C.text} /></GlassIcon>
+            <GlassIcon size={44} onPress={() => router.push({ pathname: '/shop', params: target })}><Gift size={19} color={C.text} /></GlassIcon>
             <GlassIcon size={44} onPress={more}><Ellipsis size={19} color={C.text} /></GlassIcon>
           </Rise>
         )}
 
         <Animated.View style={contentSt}>
           <Glass radius={24} fill="rgba(255,255,255,0.07)" edge="rgba(255,255,255,0.12)" hi="rgba(255,255,255,0.14)" shadow={false} style={st.info}>
+            {!u.anonNumber && isMe ? (
+              <InfoRow first inline>
+                <Phone size={18} color={C.text2} />
+                <T w={600} dim style={{ flex: 1 }} onPress={() => router.push('/u/numbers' as any)}>Получить анонимный номер +888</T>
+                <ChevronRight size={16} color={C.text2} />
+              </InfoRow>
+            ) : null}
             {u.anonNumber ? (
               <InfoRow first>
-                <T w={800} size={17.3} color={C.accent} style={{ letterSpacing: 0.3 }} onPress={() => Clipboard.setStringAsync(u.anonNumber.replace(/\s/g, ''))}>{u.anonNumber}</T>
+                <T w={800} size={17.3} color={C.accent} style={{ letterSpacing: 0.3 }} onPress={() => setPop({ type: 'number' })}>{u.anonNumber}</T>
                 <T size={11.7} dim>Анонимный номер</T>
               </InfoRow>
             ) : null}
             {u.username ? (
               <InfoRow first={!u.anonNumber}>
-                <T w={600} size={15.3} color={C.accent}>@{u.username}</T>
-                {u.otherUsernames?.length > 0 && <T size={13.2} dim>а также <T size={13.2} w={600} color={C.accent}>{u.otherUsernames.map((n: string) => `@${n}`).join(', ')}</T></T>}
+                <T w={600} size={15.3} color={C.accent} onPress={() => setPop({ type: 'username', name: u.username })}>@{u.username}</T>
+                {u.otherUsernames?.length > 0 && (
+                  <T size={13.2} dim>а также {u.otherUsernames.map((n: string, k: number) => (
+                    <T key={n} size={13.2} w={600} color={C.accent} onPress={() => setPop({ type: 'username', name: n })}>@{n}{k < u.otherUsernames.length - 1 ? <T size={13.2} dim>, </T> : null}</T>
+                  ))}</T>
+                )}
                 <T size={11.7} dim>Имя пользователя</T>
               </InfoRow>
             ) : null}
@@ -499,6 +516,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
         </Animated.View>
       </Animated.ScrollView>
 
+      <ProfilePopup pop={pop} u={u} isMe={isMe} onClose={() => setPop(null)} />
       {/* mini header (appears when collapsed) */}
       <Animated.View pointerEvents="none" style={[st.mini, { top: insets.top + 6 }, miniSt]}>
         <Glass radius={22} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 5, paddingRight: 14, height: 42 }}>

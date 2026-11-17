@@ -171,6 +171,7 @@ function afterLogin() {
   on('message:delete', ({ chatId, messageId }) => {
     const list = st().messages[chatId];
     if (list) useStore.setState({ messages: { ...st().messages, [chatId]: list.map((m) => (m.id === messageId ? { ...m, deleted: true, text: '', media: null } : m)) } });
+    if (st().chats.find((c) => c.id === chatId)?.lastMessage?.id === messageId) st().refreshChats().catch(() => {});
   });
   on('typing', ({ chatId }) => useStore.setState({ typing: { ...st().typing, [chatId]: Date.now() + 4000 } }));
   on('balance', ({ balance }) => st().setMe({ balance }));
