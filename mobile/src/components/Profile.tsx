@@ -245,7 +245,7 @@ function ChannelCard({ chat }: { chat: any }) {
 }
 
 /* ---------------------------------------------------------------- gift tile (web .gift-card + cardIn) */
-export function GiftTile({ ug, index, onPress, size }: { ug: any; index: number; onPress: () => void; size: number }) {
+export const GiftTile = React.memo(function GiftTile({ ug, index, onPress, size }: { ug: any; index: number; onPress: (g: any) => void; size: number }) {
   const low = usePerf((s) => s.low);
   const e = useSharedValue(low ? 1 : 0);
   useEffect(() => { if (!low) e.value = withDelay(Math.min(index, 20) * 45, withSpring(1, webSpring)); }, []);
@@ -253,8 +253,8 @@ export function GiftTile({ ug, index, onPress, size }: { ug: any; index: number;
   const col = ug.collectible;
   return (
     <Animated.View style={[{ width: size, height: col ? size : size * 1.0 }, a]}>
-      <Press onPress={onPress} scale={0.95} style={[st.card, !col && st.cardPlain, ug.hidden && { opacity: 0.45 }]}>
-        {col ? <CollectibleArt col={col} style={StyleSheet.absoluteFill} pattern={!low} /> : (
+      <Press onPress={() => onPress(ug)} scale={0.95} style={[st.card, !col && st.cardPlain, ug.hidden && { opacity: 0.45 }]}>
+        {col ? <CollectibleArt col={col} style={StyleSheet.absoluteFill} pattern={!low} light /> : (
           <>
             <GiftArt ug={ug} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: '26%' }} />
             <T w={700} size={12.3} numberOfLines={1} style={{ position: 'absolute', bottom: 10, left: 6, right: 6, textAlign: 'center' }}>{ug.gift?.name}</T>
@@ -266,7 +266,7 @@ export function GiftTile({ ug, index, onPress, size }: { ug: any; index: number;
       </Press>
     </Animated.View>
   );
-}
+});
 
 function BannerVideo({ url }: { url: string }) {
   const player = useVideoPlayer(mediaUrl(url) || null, (p) => { p.loop = true; p.muted = true; p.play(); });
@@ -286,6 +286,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
   const [filter, setFilter] = useState('all');
   const [posts, setPosts] = useState<any[] | null>(null);
   const [stories, setStories] = useState<any[] | null>(null);
+  const [shown, setShown] = useState(18);
   useEffect(() => {
     api(`/users/${userId}`).then((r) => { setData(r.user); cache.set(`user:${userId}`, r.user); }).catch(() => {});
     api(`/users/${userId}/gifts`).then((r) => { setGifts(r.gifts); cache.set(`gifts:${userId}`, r.gifts); }).catch(() => setGifts([]));
@@ -333,24 +334,26 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
   };
   const list = (gifts || []).filter((g) => filter === 'all' || (filter === 'collectible' ? g.collectible : filter === 'pinned' ? g.pinned : !g.collectible));
   const tabs: [typeof tab, string][] = [['gifts', `Подарки${u.giftsCount ? ` · ${u.giftsCount}` : ''}`], ['posts', `Посты${u.postsCount ? ` · ${u.postsCount}` : ''}`], ['stories', `Истории${u.storiesCount ? ` · ${u.storiesCount}` : ''}`]];
-  const tileW = (W - 24 - 20) / 3;
+  const tileW = Math.floor((W - 24 - 20) / 3) - 0.5;
   const openGift = (g: any) => router.push({ pathname: '/gift/[id]', params: { id: String(g.id) } });
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       {blur.mode !== 'off' && <BlurBg uri={blurUri} color={'#e53935'} />}
-      <Animated.ScrollView contentInsetAdjustmentBehavior="never" onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 170 }}>
+      <Animated.ScrollView contentInsetAdjustmentBehavior="never" onScroll={onScroll}
+        onMomentumScrollEnd={(e: any) => { const n = e.nativeEvent; if (n.contentOffset.y + n.layoutMeasurement.height > n.contentSize.height - 600) setShown((v) => v + 18); }}
+        onScrollEndDrag={(e: any) => { const n = e.nativeEvent; if (n.contentOffset.y + n.layoutMeasurement.height > n.contentSize.height - 600) setShown((v) => v + 18); }} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 170 }}>
         {/* banner */}
         {u.banner?.url && (
           <View style={[st.banner, { height: 260 + insets.top }]} pointerEvents="none">
             {Platform.OS === 'web' ? (
               <View style={[StyleSheet.absoluteFill, { maskImage: 'linear-gradient(180deg, #000 45%, transparent 100%)', WebkitMaskImage: 'linear-gradient(180deg, #000 45%, transparent 100%)' } as any]}>
-                {u.banner.type === 'video' ? <BannerVideo url={u.banner.url} /> : <Image source={{ uri: mediaUrl(u.banner.url) }} style={StyleSheet.absoluteFill} contentFit="cover" />}
+                {u.banner.type === 'video' ? <BannerVideo url={u.banner.url} /> : <Image source={{ uri: mediaUrl(u.banner.url) }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" priority="high" transition={200} />}
                 <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
               </View>
             ) : (
               <MaskedView style={StyleSheet.absoluteFill} maskElement={<LinearGradient colors={['#000', '#000', 'transparent']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />}>
-                {u.banner.type === 'video' ? <BannerVideo url={u.banner.url} /> : <Image source={{ uri: mediaUrl(u.banner.url) }} style={StyleSheet.absoluteFill} contentFit="cover" />}
+                {u.banner.type === 'video' ? <BannerVideo url={u.banner.url} /> : <Image source={{ uri: mediaUrl(u.banner.url) }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" priority="high" transition={200} />}
                 <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
               </MaskedView>
             )}
@@ -462,7 +465,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
           {/* tabs */}
           <View style={st.tabs}>
             {tabs.map(([k, l]) => (
-              <Press key={k} scale={0.96} onPress={() => setTab(k)} style={st.tabBtn}><T w={800} size={13.5} color={tab === k ? C.text : C.text2} numberOfLines={1}>{l}</T></Press>
+              <Press key={k} scale={0.96} onPress={() => setTab(k)} style={st.tabBtn}><T w={800} size={13.5} color={tab === k ? C.text : C.text2} numberOfLines={1} fit>{l}</T></Press>
             ))}
             <TabLine index={tabs.findIndex((t) => t[0] === tab)} width={(W - 56) / 3} />
             {tab === 'gifts' ? (
@@ -477,7 +480,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
           <View style={{ paddingHorizontal: 12 }} key={tab}>
             {tab === 'gifts' && (
               gifts === null ? null : !list.length ? <T dim center size={13} style={{ padding: 30 }}>{filter === 'all' ? 'Подарков пока нет' : 'Здесь пусто'}</T> : (
-                <View style={st.grid}>{list.map((g, i) => <GiftTile key={g.id} ug={g} index={i} size={tileW} onPress={() => openGift(g)} />)}</View>
+                <View style={st.grid}>{list.slice(0, shown).map((g, i) => <GiftTile key={g.id} ug={g} index={i % 18} size={tileW} onPress={openGift} />)}</View>
               )
             )}
             {tab === 'posts' && (posts === null ? null : !posts.length

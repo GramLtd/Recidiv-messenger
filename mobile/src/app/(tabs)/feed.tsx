@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Eye, Hash } from 'lucide-react-native';
 import { api } from '../../lib/api';
-import { cache } from '../../lib/db';
 import { useStore } from '../../lib/store';
 import { C } from '../../lib/theme';
 import { Avatar, Glass, Press, Rise, T } from '../../components/ui';
@@ -74,15 +73,14 @@ export default function Feed() {
   const [tab, setTab] = useState('all');
   const [tag, setTag] = useState<string | null>(null);
   const [tags, setTags] = useState<any[] | null>(null);
-  const [posts, setPosts] = useState<any[] | null>(() => cache.get('feed') || null);
+  const [posts, setPosts] = useState<any[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const source = tab === 'following' ? '/feed?tab=following' : tag ? `/feed?tab=tag&tag=${encodeURIComponent(tag)}` : '/feed';
   const load = useCallback(async () => {
     const r = await api(source);
     setPosts(r.posts);
-    if (source === '/feed') cache.set('feed', r.posts);
   }, [source]);
-  useEffect(() => { if (tab !== 'tags' || tag) { setPosts(source === '/feed' ? cache.get('feed') || null : null); load().catch(() => setPosts([])); } }, [source, tab]);
+  useEffect(() => { if (tab !== 'tags' || tag) { setPosts(null); load().catch(() => setPosts([])); } }, [source, tab]);
   useEffect(() => { if (tab === 'tags' && !tags) api('/tags/trending').then((r) => setTags(r.tags)).catch(() => setTags([])); }, [tab]);
   const change = (np: any) => setPosts((l) => (l || []).map((x) => (x.id === np.id ? np : x)));
   const remove = (op: any) => setPosts((l) => (l || []).filter((x) => x.id !== op.id));

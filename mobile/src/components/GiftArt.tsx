@@ -11,6 +11,9 @@ const PATTERN = RINGS.flatMap((ring, ri) => Array.from({ length: ring.n }, (_, i
   return { x: 50 + Math.cos(a) * ring.r, y: 50 + Math.sin(a) * ring.r, s: ring.s, o: ring.o };
 }));
 
+/** Grid tiles: the three inner rings only (30 symbols instead of 48) — keeps long gift lists smooth. */
+const PATTERN_LIGHT = PATTERN.slice(0, 30);
+
 const hexMix = (hex: string, k: number) => (hex?.startsWith('#') ? shade(hex, k) : '#000');
 
 export function GiftModel({ gift, model, size }: { gift?: any; model?: any; size: number | string }) {
@@ -20,14 +23,14 @@ export function GiftModel({ gift, model, size }: { gift?: any; model?: any; size
 }
 
 /** Collectible: radial backdrop + symbol pattern + model. */
-export function CollectibleArt({ col, style, pattern = true, modelScale = 0.6 }: { col: any; style?: StyleProp<ViewStyle>; pattern?: boolean; modelScale?: number }) {
+export function CollectibleArt({ col, style, pattern = true, modelScale = 0.6, light }: { col: any; style?: StyleProp<ViewStyle>; pattern?: boolean; modelScale?: number; light?: boolean }) {
   const { backdrop, symbol, model } = col || {};
   const tint = backdrop?.pattern ? hexMix(backdrop.edge, 0.55) : '#000';
   return (
     <View style={[{ overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }, style]}>
       <Radial inner={backdrop?.center || '#444'} outer={backdrop?.edge || '#000'} cy="46%" style={StyleSheet.absoluteFill} />
-      {pattern && symbol?.emoji && PATTERN.map((p, i) => (
-        <Image key={i} source={{ uri: mediaUrl(emoji3d(symbol.emoji)) }} tintColor={tint} contentFit="contain" cachePolicy="memory-disk"
+      {pattern && symbol?.emoji && (light ? PATTERN_LIGHT : PATTERN).map((p, i) => (
+        <Image key={i} source={{ uri: mediaUrl(emoji3d(symbol.emoji)) }} tintColor={tint} contentFit="contain" cachePolicy="memory-disk" recyclingKey={symbol.emoji}
           style={{ position: 'absolute', left: `${p.x - p.s / 2}%`, top: `${p.y - p.s / 2}%`, width: `${p.s}%`, aspectRatio: 1, opacity: p.o }} />
       ))}
       <GiftModel model={model} size={`${modelScale * 100}%`} />

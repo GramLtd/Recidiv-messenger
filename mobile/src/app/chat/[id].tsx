@@ -9,9 +9,12 @@ import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useAudioRecorder, RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { playSend } from '../../lib/sound';
 import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withSpring, withTiming, withDelay } from 'react-native-reanimated';
 import {
-  BellOff, Check, CheckCheck, ChevronLeft, Copy, Eye, FileText, Forward, Gift as GiftIcon, Mic, Paperclip, Pause, Pencil, Play, Reply, Search, Send, Smile, Trash2, X, Lock,
+  BellOff, Camera, Check, CheckCheck, ChevronLeft, Copy, Eye, FileText, Forward, Gift as GiftIcon, Mic, Paperclip, Pause, Pencil, Play, Reply, Search, Send, Smile, Trash2, X, Lock,
 } from 'lucide-react-native';
 import { useStore, sendTyping } from '../../lib/store';
 import { api, upload } from '../../lib/api';
@@ -93,7 +96,11 @@ function Content({ m, chat, out }: { m: any; chat: any; out: boolean }) {
   const md = m.media;
   if (m.deleted) return <T dim style={{ fontStyle: 'italic' }}>Сообщение удалено</T>;
   switch (m.type) {
-    case 'image': return md ? <Image source={{ uri: mediaUrl(md.url) }} style={{ width: Math.min(W * 0.66, 280), height: Math.min(W * 0.66, 280) * (md.height && md.width ? Math.min(1.4, md.height / md.width) : 1), borderRadius: 12 }} contentFit="cover" cachePolicy="memory-disk" /> : null;
+    case 'image': return md ? (
+      <Pressable onPress={() => router.push({ pathname: '/media', params: { url: md.url, kind: 'image' } })}>
+        <Image source={{ uri: mediaUrl(md.url) }} style={{ width: Math.min(W * 0.66, 280), height: Math.min(W * 0.66, 280) * (md.height && md.width ? Math.min(1.4, md.height / md.width) : 1), borderRadius: 12, backgroundColor: '#111' }} contentFit="cover" cachePolicy="memory-disk" transition={120} />
+      </Pressable>
+    ) : null;
     case 'sticker': return md ? <Image source={{ uri: mediaUrl(md.url) }} style={{ width: 170, height: 170 }} contentFit="contain" /> : null;
     case 'gif': return md ? (
       <View style={{ width: 220, aspectRatio: md.width && md.height ? md.width / md.height : 1.3, borderRadius: 12, overflow: 'hidden', backgroundColor: '#111' }}>
@@ -101,7 +108,7 @@ function Content({ m, chat, out }: { m: any; chat: any; out: boolean }) {
         <View style={st.gifTag}><T w={800} size={10} color="#fff">GIF</T></View>
       </View>
     ) : null;
-    case 'video': return md ? <Pressable onPress={() => Linking.openURL(mediaUrl(md.url) || '')} style={st.videoBox}><Play size={34} color="#fff" fill="#fff" /><T size={12} color="#fff">Видео</T></Pressable> : null;
+    case 'video': return md ? (md.round ? <RoundVideo url={md.url} /> : <VideoThumb md={md} />) : null;
     case 'voice': return md ? <VoiceMsg media={md} out={out} /> : null;
     case 'audio': return md ? <VoiceMsg media={md} out={out} /> : null;
     case 'file': return md ? (
@@ -134,6 +141,31 @@ function Content({ m, chat, out }: { m: any; chat: any; out: boolean }) {
   }
 }
 
+/** Video in a bubble: first frame + play badge; tap opens the full-screen player. */
+function VideoThumb({ md }: { md: any }) {
+  const player = useVideoPlayer(mediaUrl(md.url) || null, (p) => { p.muted = true; });
+  const w = Math.min(W * 0.66, 280);
+  const h = w * (md.height && md.width ? Math.min(1.4, md.height / md.width) : 0.6);
+  return (
+    <Pressable onPress={() => router.push({ pathname: '/media', params: { url: md.url, kind: 'video' } })} style={{ width: w, height: h, borderRadius: 12, overflow: 'hidden', backgroundColor: '#111' }}>
+      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} pointerEvents="none" />
+      <View style={st.playBadge}><Play size={26} color="#fff" fill="#fff" style={{ marginLeft: 3 }} /></View>
+      {!!md.duration && <View style={st.dur}><T size={11} w={600} color="#fff">{fmtTime(md.duration)}</T></View>}
+    </Pressable>
+  );
+}
+/** Telegram-style round video: plays muted in a loop; tap toggles sound. */
+function RoundVideo({ url }: { url: string }) {
+  const [sound, setSound] = useState(false);
+  const player = useVideoPlayer(mediaUrl(url) || null, (p) => { p.loop = true; p.muted = true; p.play(); });
+  return (
+    <Pressable onPress={() => { const v = !sound; setSound(v); player.muted = !v; if (v) { player.currentTime = 0; player.play(); } }} style={st.roundVid}>
+      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} pointerEvents="none" />
+      {!sound && <View style={st.roundMute}><T size={11} w={700} color="#fff">🔇</T></View>}
+    </Pressable>
+  );
+}
+
 const Bubble = React.memo(function Bubble({ m, chat, meId, grouped, groupedNext, onLong, onReact, fresh }: any) {
   const out = m.sender?.id === meId && chat.type !== 'channel';
   const low = usePerf((s) => s.low);
@@ -144,7 +176,7 @@ const Bubble = React.memo(function Bubble({ m, chat, meId, grouped, groupedNext,
   if (m.type === 'system') return <View style={st.sysWrap}><View style={st.sys}><T size={12.8} color="#fff" center>{m.text}</T></View></View>;
   const isChannel = chat.type === 'channel';
   const group = chat.type === 'group';
-  const sticker = m.type === 'sticker' && !m.deleted;
+  const sticker = (m.type === 'sticker' || (m.type === 'video' && m.media?.round)) && !m.deleted;
   const mediaOnly = ['image', 'gif'].includes(m.type) && !m.text && !m.replyTo && !m.deleted;
   const read = out && chat.peerReadId >= m.id;
   const showTicks = out && chat.type !== 'saved';
@@ -225,6 +257,15 @@ export default function ChatScreen() {
   const sentAt = useRef(0);
   const lastTyping = useRef(0);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const listRef = useRef<FlatList>(null);
+  const [recMode, setRecMode] = useState<'voice' | 'video'>('voice');
+  const [round, setRound] = useState(false);
+  const roundRef = useRef<any>(null);
+  const [camPerm, reqCam] = useCameraPermissions();
+  const [micPerm, reqMic] = useMicrophonePermissions();
+  // scroll down when my own message lands (also from another device)
+  const lastMine = (messages || []).filter((m: any) => m.sender?.id === me?.id).slice(-1)[0]?.id;
+  useEffect(() => { if (lastMine) listRef.current?.scrollToOffset({ offset: 0, animated: true }); }, [lastMine]);
   const [, force] = useState(0);
 
   useEffect(() => { ensureChat(chatId).catch(() => {}); openChat(chatId); loadMessages(chatId).catch(() => {}); return () => openChat(null); }, [chatId]);
@@ -238,7 +279,7 @@ export default function ChatScreen() {
 
   // inverted list: newest first; date pills between days; grouping like the web (same sender, < 5 min, same day)
   const items = useMemo(() => {
-    const list = messages || [];
+    const list = (messages || []).filter((m: any) => !m.deleted);
     const same = (a: any, b: any) => a && b && a.type !== 'system' && b.type !== 'system' && a.sender?.id === b.sender?.id && Math.abs(b.createdAt - a.createdAt) < 300000 && new Date(a.createdAt).toDateString() === new Date(b.createdAt).toDateString();
     const out: any[] = [];
     for (let i = list.length - 1; i >= 0; i--) {
@@ -249,20 +290,23 @@ export default function ChatScreen() {
     return out;
   }, [messages]);
 
+  const toBottom = () => requestAnimationFrame(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }));
   const submit = async () => {
     const t = text.trim();
     if (!t || !chat) return;
     setText('');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    playSend();
     sentAt.current = Date.now();
+    toBottom();
     try {
       if (edit) { const r = await api.patch(`/messages/${edit.id}`, { text: t }); upsertMessage(r.message); setEdit(null); }
-      else { await send(chat, { text: t, replyTo: reply?.id, secret }); setReply(null); }
+      else { await send(chat, { text: t, replyTo: reply?.id, secret }); setReply(null); toBottom(); }
     } catch (e: any) { setText(t); alert(e.message); }
   };
   const sendMedia = async (media: any) => {
     sentAt.current = Date.now();
-    try { await send(chat, { media, replyTo: reply?.id }); setReply(null); } catch (e: any) { alert(e.message); }
+    try { await send(chat, { media, replyTo: reply?.id }); playSend(); setReply(null); toBottom(); } catch (e: any) { alert(e.message); }
   };
   const attach = async () => {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], quality: 0.85, allowsMultipleSelection: true, selectionLimit: 10 });
@@ -288,6 +332,29 @@ export default function ChatScreen() {
     await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
     if (cancel || !recorder.uri || !started) return;
     try { const up = await upload(recorder.uri, `voice-${Date.now()}.m4a`, 'audio/mp4'); await sendMedia({ ...up, duration: Math.round((Date.now() - started) / 1000) }); } catch (e: any) { alert(e.message); }
+  };
+  const startRound = async () => {
+    if (!camPerm?.granted && !(await reqCam()).granted) return alert('Нет доступа к камере');
+    if (!micPerm?.granted && !(await reqMic()).granted) return alert('Нет доступа к микрофону');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setRound(true);
+    setRec(Date.now());
+  };
+  const onCamReady = async () => {
+    const started = Date.now();
+    try {
+      const v = await roundRef.current?.recordAsync({ maxDuration: 60 });
+      if (!v?.uri || roundCancel.current) return;
+      const up = await upload(v.uri, `round-${Date.now()}.mp4`, 'video/mp4');
+      await sendMedia({ ...up, kind: 'video', round: true, width: 1, height: 1, duration: Math.round((Date.now() - started) / 1000) });
+    } catch (e: any) { alert(e.message); } finally { roundCancel.current = false; }
+  };
+  const roundCancel = useRef(false);
+  const stopRound = (cancel: boolean) => {
+    roundCancel.current = cancel;
+    setRec(null);
+    try { roundRef.current?.stopRecording(); } catch {}
+    setTimeout(() => setRound(false), 50);
   };
   const react = async (m: any, e: string) => {
     setMenu(null);
@@ -317,6 +384,7 @@ export default function ChatScreen() {
       <Wallpaper wp={me.wallpaper} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <FlatList contentInsetAdjustmentBehavior="never"
+          ref={listRef}
           inverted
           data={items}
           keyExtractor={(it) => it.k}
@@ -363,7 +431,7 @@ export default function ChatScreen() {
                     <View style={st.recDot} />
                     <T>{Math.floor((Date.now() - rec) / 1000)} c</T>
                     <View style={{ flex: 1 }} />
-                    <Press onPress={() => stopRec(true)}><T w={700} dim>Отмена</T></Press>
+                    <T size={13} dim>{round ? 'Отпустите, чтобы отправить кружок' : 'Отпустите, чтобы отправить'}</T>
                   </View>
                 ) : (
                   <View style={st.composerRow}>
@@ -382,11 +450,22 @@ export default function ChatScreen() {
                   </View>
                 )}
               </Glass>
-              <Press scale={0.9} onPress={text.trim() || edit ? submit : rec ? () => stopRec(false) : startRec}>
-                <AccentFill radius={25} style={st.send}>
-                  {edit ? <Check size={24} color="#fff" /> : text.trim() || rec ? <Send size={22} color="#fff" style={{ marginLeft: 2 }} /> : <Mic size={22} color="#fff" />}
-                </AccentFill>
-              </Press>
+              {text.trim() || edit ? (
+                <Press scale={0.9} onPress={submit}>
+                  <AccentFill radius={25} style={st.send}>{edit ? <Check size={24} color="#fff" /> : <Send size={22} color="#fff" style={{ marginLeft: 2 }} />}</AccentFill>
+                </Press>
+              ) : (
+                <Pressable
+                  onPress={() => { if (!rec && !round) { Haptics.selectionAsync(); setRecMode(recMode === 'voice' ? 'video' : 'voice'); } }}
+                  onLongPress={() => (recMode === 'voice' ? startRec() : startRound())}
+                  delayLongPress={220}
+                  onPressOut={() => { if (rec) stopRec(false); if (round) stopRound(false); }}
+                >
+                  <AccentFill radius={25} style={[st.send, rec || round ? { transform: [{ scale: 1.25 }] } : null]}>
+                    {recMode === 'voice' ? <Mic size={22} color="#fff" /> : <Camera size={22} color="#fff" />}
+                  </AccentFill>
+                </Pressable>
+              )}
             </View>
             <View style={{ height: Math.max(12, insets.bottom) - 4 }} />
           </View>
@@ -440,6 +519,15 @@ export default function ChatScreen() {
         </View>
       )}
 
+      {round && (
+        <Animated.View entering={FadeIn.duration(200)} style={st.roundOverlay} pointerEvents="none">
+          <View style={st.roundCam}>
+            <CameraView ref={roundRef} style={StyleSheet.absoluteFill} facing="front" mode="video" mute={false} onCameraReady={onCamReady} />
+          </View>
+          <View style={st.roundTimer}><View style={st.recDot} /><T w={700} color="#fff">{rec ? `${Math.floor((Date.now() - rec) / 1000)} c` : ''}</T></View>
+        </Animated.View>
+      )}
+
       {/* long-press menu: reaction strip + actions (web .ctx-menu), over a blurred chat */}
       <Modal visible={!!menu} transparent animationType="fade" onRequestClose={() => setMenu(null)}>
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenu(null)}>
@@ -452,9 +540,9 @@ export default function ChatScreen() {
 }
 
 function MenuSheet({ m, own, chat, onReact, onAct }: any) {
-  const s = useSharedValue(0.85);
-  useEffect(() => { s.value = withSpring(1, webSpring); }, []);
-  const a = useAnimatedStyle(() => ({ opacity: Math.min(1, s.value), transform: [{ scale: s.value }] }));
+  const s = useSharedValue(0);
+  useEffect(() => { s.value = withTiming(1, { duration: 240, easing: Easing.bezier(0.2, 0.8, 0.2, 1) }); }, []);
+  const a = useAnimatedStyle(() => ({ opacity: s.value, transform: [{ translateY: (1 - s.value) * 10 }, { scale: 0.97 + 0.03 * s.value }] }));
   const canDelete = own || chat.role === 'owner' || chat.role === 'admin';
   const canReply = chat.type !== 'channel' || chat.role !== 'member';
   const items = [
@@ -489,9 +577,9 @@ function MenuSheet({ m, own, chat, onReact, onAct }: any) {
 }
 function ReactBtn({ e, i, onPress }: { e: string; i: number; onPress: () => void }) {
   const s = useSharedValue(0);
-  useEffect(() => { s.value = withDelay(i * 25, withSpring(1, webSpring)); }, []);
-  const a = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
-  return <Animated.View style={a}><Press scale={1.25} onPress={onPress} style={st.reactBtn}><T size={20}>{e}</T></Press></Animated.View>;
+  useEffect(() => { s.value = withDelay(60 + i * 18, withTiming(1, { duration: 260, easing: Easing.bezier(0.2, 0.8, 0.2, 1) })); }, []);
+  const a = useAnimatedStyle(() => ({ opacity: s.value, transform: [{ translateY: (1 - s.value) * 6 }] }));
+  return <Animated.View style={a}><Press scale={0.85} onPress={onPress} style={st.reactBtn}><T size={20}>{e}</T></Press></Animated.View>;
 }
 
 const st = StyleSheet.create({
@@ -542,5 +630,12 @@ const st = StyleSheet.create({
   emojiCell: { width: (W - 24 - 16) / 8, height: 44, alignItems: 'center', justifyContent: 'center' },
   strip: { flexDirection: 'row', gap: 2, padding: 4, borderBottomWidth: 1, borderBottomColor: C.border, marginBottom: 4 },
   reactBtn: { width: 30, height: 36, alignItems: 'center', justifyContent: 'center' },
+  playBadge: { position: 'absolute', left: '50%', top: '50%', width: 52, height: 52, marginLeft: -26, marginTop: -26, borderRadius: 26, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
+  dur: { position: 'absolute', left: 8, top: 8, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.5)' },
+  roundVid: { width: 220, height: 220, borderRadius: 110, overflow: 'hidden', backgroundColor: '#111' },
+  roundMute: { position: 'absolute', bottom: 14, alignSelf: 'center', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.5)' },
+  roundOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', gap: 16 },
+  roundCam: { width: W * 0.72, height: W * 0.72, borderRadius: W * 0.36, overflow: 'hidden', borderWidth: 3, borderColor: C.accent, backgroundColor: '#000' },
+  roundTimer: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.5)' },
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 10 },
 });

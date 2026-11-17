@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft, Search, MoreVertical, Paperclip, Smile, Send, Mic, X, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck,
   FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square, ChevronLeft,
@@ -19,6 +19,15 @@ import { playSend, playIncoming } from '../sound.js';
 const QUICK_REACTIONS = ['❤️', '🔥', '👍', '😂', '😮', '😢', '💀', '🤡'];
 const EMOJIS = '😀😃😄😁😆😅🤣😂🙂😉😊😇🥰😍🤩😘😋😛😜🤪😝🤑🤗🤭🤫🤔🤐🤨😐😑😶😏😒🙄😬😮‍💨🤥😌😔😪🤤😴😷🤒🤕🤢🤮🥵🥶🥴😵🤯🤠🥳😎🤓🧐😕😟🙁😮😯😲😳🥺😦😧😨😰😥😢😭😱😖😣😞😓😩😫🥱😤😡😠🤬😈👿💀☠️💩🤡👹👺👻👽👾🤖😺😸😹😻😼😽🙀😿😾🙈🙉🙊💋💌💘💝💖💗💓💞💕💟❣️💔❤️‍🔥❤️🧡💛💚💙💜🤎🖤🤍💯💢💥💫💦💨🕳️💬💭💤👋🤚🖐️✋🖖👌🤌🤏✌️🤞🤟🤘🤙👈👉👆🖕👇☝️👍👎✊👊🤛🤜👏🙌👐🤲🤝🙏💪🦾🔥⭐🌟✨⚡🎉🎊🎁🏆👑💎🔪🗝️⛓️🚬🍾🥂🍻🎲🎯🎮'.match(/\p{Extended_Pictographic}(?:️)?(?:‍\p{Extended_Pictographic}(?:️)?)*/gu);
 
+/** Telegram-style round video message: muted loop, tap for sound. */
+function RoundVideo({ url }) {
+  const [sound, setSound] = useState(false);
+  return (
+    <video className="round-video" src={mediaUrl(url)} autoPlay loop playsInline muted={!sound}
+      onClick={(e) => { const v = e.currentTarget; if (!sound) v.currentTime = 0; setSound(!sound); }} />
+  );
+}
+
 function MessageContent({ m, chat, onOpenMedia }) {
   const openModal = useStore((s) => s.openModal);
   if (m.deleted) return <span className="deleted-text">Сообщение удалено</span>;
@@ -26,7 +35,9 @@ function MessageContent({ m, chat, onOpenMedia }) {
   return (
     <>
       {m.type === 'image' && media && <img className="media-img" src={mediaUrl(media.url)} alt="" onClick={() => onOpenMedia(media)} loading="lazy" />}
-      {m.type === 'video' && media && <video src={mediaUrl(media.url)} controls preload="metadata" playsInline />}
+      {m.type === 'video' && media && (media.round
+        ? <RoundVideo url={media.url} />
+        : <video src={mediaUrl(media.url)} controls preload="metadata" playsInline />)}
       {m.type === 'voice' && media && <audio src={mediaUrl(media.url)} controls preload="metadata" />}
       {m.type === 'audio' && media && <AudioMessage media={media} />}
       {m.type === 'post' && media && <PostPreview media={media} />}
@@ -100,6 +111,7 @@ function Message({ m, chat, me, grouped, groupedNext, onContext, onOpenMedia, hi
   const showAvatar = chat.type === 'group' && !out && !groupedNext;
   const sticker = m.type === 'sticker' && !m.deleted;
   const mediaOnly = (m.type === 'image' || m.type === 'video' || m.type === 'gif') && !m.text && !m.replyTo && !m.deleted;
+  const roundVid = m.type === 'video' && m.media?.round && !m.deleted;
   const read = out && chat.peerReadId >= m.id;
   const react = (emoji) => api(`/messages/${m.id}/react`, { body: { emoji } }).then((r) => useStore.getState().patchMessage(r.message));
   return (
@@ -114,7 +126,7 @@ function Message({ m, chat, me, grouped, groupedNext, onContext, onOpenMedia, hi
           {showAvatar && <Avatar src={m.sender?.avatar} name={m.sender?.displayName} id={m.sender?.id} size={34} onClick={() => openModal('userProfile', { userId: m.sender.id })} />}
         </div>
       )}
-      <div className={`bubble ${mediaOnly ? 'media-only' : ''} ${sticker ? 'sticker-bubble' : ''}`}>
+      <div className={`bubble ${mediaOnly && !roundVid ? 'media-only' : ''} ${sticker || roundVid ? 'sticker-bubble' : ''}`}>
         {isChannel && !grouped && <div className="sender" style={{ color: 'var(--accent)' }}>{chat.title}</div>}
         {showSender && m.sender && (
           <div className="sender" style={{ color: colorFor(m.sender.id) }} onClick={() => openModal('userProfile', { userId: m.sender.id })}>
@@ -376,6 +388,7 @@ export default function ChatView() {
   const chatId = useStore((s) => s.activeChatId);
   const chat = useStore((s) => s.chats.find((c) => c.id === s.activeChatId));
   const messages = useStore((s) => s.messages[s.activeChatId]);
+  const shown = useMemo(() => messages?.filter((m) => !m.deleted), [messages]);
   const hasMore = useStore((s) => s.hasMore[s.activeChatId]);
   const me = useStore((s) => s.me);
   const typing = useStore((s) => s.typing[s.activeChatId]);
@@ -555,14 +568,14 @@ export default function ChatView() {
         <div className="chat-bg-pattern" />
         <div className="messages-inner">
           {!messages && <div className="center" style={{ padding: 40 }}><div className="spinner" /></div>}
-          {messages?.length === 0 && (
+          {shown?.length === 0 && (
             <div className="empty-chat" style={{ paddingTop: 80 }}>
               <span className="pill">{chat.type === 'saved' ? 'Пересылайте сюда сообщения и сохраняйте файлы' : 'Сообщений пока нет — напишите первым!'}</span>
             </div>
           )}
-          {messages?.map((m, i) => {
-            const prev = messages[i - 1];
-            const next = messages[i + 1];
+          {shown?.map((m, i) => {
+            const prev = shown[i - 1];
+            const next = shown[i + 1];
             const newDay = !prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString();
             const same = (a, b) => a && b && a.type !== 'system' && b.type !== 'system' && a.sender?.id === b.sender?.id && Math.abs(b.createdAt - a.createdAt) < 5 * 60_000 && new Date(a.createdAt).toDateString() === new Date(b.createdAt).toDateString();
             return (

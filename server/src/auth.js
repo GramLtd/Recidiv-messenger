@@ -14,12 +14,18 @@ function deviceName(ua = '') {
   return `${br}, ${os}`;
 }
 
+/** The native app sends its real model / OS in X-Device (e.g. "iPhone 15 Pro · iOS 18.1"). */
+function appDevice(req) {
+  const d = String(req?.headers?.['x-device'] || '').replace(/[^\p{L}\p{N} .,·()_+-]/gu, '').trim().slice(0, 64);
+  return d ? `Recidivist · ${d}` : '';
+}
+
 /** Every login is a session the user can see and terminate in «Устройства». */
 export function signToken(userId, req) {
   const sid = crypto.randomBytes(16).toString('hex');
   const ts = Date.now();
   db.prepare('INSERT INTO sessions (id, user_id, device, ip, created_at, last_active) VALUES (?, ?, ?, ?, ?, ?)').run(
-    sid, userId, deviceName(req?.headers?.['user-agent'] || ''), String(req?.ip || '').slice(0, 64), ts, ts,
+    sid, userId, appDevice(req) || deviceName(req?.headers?.['user-agent'] || ''), String(req?.ip || '').slice(0, 64), ts, ts,
   );
   return jwt.sign({ uid: userId, sid }, config.jwtSecret, { expiresIn: '90d' });
 }
@@ -66,6 +72,12 @@ export function requireAuth(req, _res, next) {
   if (!v) return next(new HttpError(401, 'Требуется авторизация'));
   req.user = v.user;
   req.sid = v.sid;
+  // older app sessions were recorded with a generic name — correct it once the app reports its device
+  const dev = v.sid && appDevice(req);
+  if (dev && !touched.has(`d:${v.sid}`)) {
+    touched.set(`d:${v.sid}`, 1);
+    db.prepare('UPDATE sessions SET device = ? WHERE id = ? AND device != ?').run(dev, v.sid, dev);
+  }
   requestContext.run({ user: v.user }, next);
 }
 

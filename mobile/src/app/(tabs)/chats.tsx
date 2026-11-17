@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Bookmark, Check, CheckCheck, Megaphone, Pin, Plus, Search, SquarePen, Users, VolumeX, X } from 'lucide-react-native';
 import { useStore } from '../../lib/store';
 import { api } from '../../lib/api';
+import { useCached } from '../../lib/useCached';
 import { useFont, fontStyle } from '../../lib/fonts';
 import { chatTime } from '../../lib/util';
 import { C } from '../../lib/theme';
@@ -23,8 +24,8 @@ function Ring({ seen, children, size }: { seen?: boolean; children: React.ReactN
 
 function StoriesBar() {
   const me = useStore((s) => s.me);
-  const [feed, setFeed] = useState<any[]>([]);
-  useEffect(() => { api('/stories').then((r) => setFeed(r.feed || [])).catch(() => {}); }, []);
+  const [data] = useCached<any>('/stories');
+  const feed: any[] = data?.feed || [];
   const mine = feed.find((f) => f.isMe);
   const others = feed.filter((f) => !f.isMe);
   return (

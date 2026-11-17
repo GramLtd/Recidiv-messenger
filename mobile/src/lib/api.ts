@@ -1,5 +1,10 @@
 import { API_URL } from './config';
 import { secret } from './kv';
+import * as Device from 'expo-device';
+import { Platform } from 'react-native';
+
+/** Real model + OS for «Устройства» (e.g. "iPhone 15 Pro · iOS 18.1"). */
+const DEVICE = `${Device.modelName || (Platform.OS === 'ios' ? 'iPhone' : 'Android')}, ${Device.osName || Platform.OS} ${Device.osVersion || ''}`.replace(/[^\x20-\x7e]/g, '').trim();
 
 let token: string | null = null;
 let onUnauthorized: () => void = () => {};
@@ -12,7 +17,7 @@ export const getToken = () => token;
 export async function api<T = any>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
   const res = await fetch(`${API_URL}/api${path}`, {
     method: opts.method || (opts.body !== undefined ? 'POST' : 'GET'),
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { 'Content-Type': 'application/json', 'X-Device': DEVICE, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
@@ -28,7 +33,7 @@ api.del = <T = any>(p: string) => api<T>(p, { method: 'DELETE' });
 export async function upload(uri: string, name: string, type: string) {
   const form = new FormData();
   form.append('file', { uri, name, type } as any);
-  const res = await fetch(`${API_URL}/api/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+  const res = await fetch(`${API_URL}/api/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-Device': DEVICE }, body: form });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Ошибка загрузки');
   return data as { url: string; kind: string };

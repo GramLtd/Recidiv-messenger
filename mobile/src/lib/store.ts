@@ -7,6 +7,9 @@ import { initE2E, encryptFor } from './e2e';
 import { deriveKeys } from './seed';
 import { secret } from './kv';
 import { initFont } from './fonts';
+import { Image } from 'expo-image';
+import { cache } from './db';
+import { mediaUrl } from './config';
 
 export type Msg = any;
 export type Chat = any;
@@ -83,6 +86,7 @@ export const useStore = create<State>((set, get) => ({
     const { chats } = await api('/chats');
     saveChats(chats);
     set({ chats: sortChats(chats) });
+    chats.forEach((c: any) => { if (c.avatar) Image.prefetch(mediaUrl(c.avatar)!, 'memory-disk').catch(() => {}); });
   },
   openChat(id) {
     set({ activeChatId: id });
@@ -133,8 +137,20 @@ function mergeById(a: Msg[], b: Msg[]) {
 }
 
 let wired = false;
+/** Warm the on-device image cache: my avatar, banner and gifts load instantly everywhere. */
+function prefetchMine() {
+  const me = useStore.getState().me;
+  if (!me) return;
+  const gifts: any[] = cache.get<any[]>(`gifts:${me.id}`) || [];
+  const urls = [me.avatar, me.banner?.url, ...gifts.slice(0, 40).map((g) => g.collectible?.model?.image || g.gift?.image)]
+    .filter(Boolean).map((u) => mediaUrl(u)!) as string[];
+  if (urls.length) Image.prefetch(urls, 'memory-disk').catch(() => {});
+  useStore.getState().chats.slice(0, 40).forEach((c) => { if (c.avatar) Image.prefetch(mediaUrl(c.avatar)!, 'memory-disk').catch(() => {}); });
+}
+
 function afterLogin() {
   const st = useStore.getState;
+  setTimeout(prefetchMine, 300);
   initE2E().catch(() => {});
   st().refreshChats().catch(() => {});
   connect();

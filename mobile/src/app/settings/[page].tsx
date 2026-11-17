@@ -9,6 +9,7 @@ import {
   ArrowDownLeft, ArrowUpRight, Camera, Check, Crown, Eye, HardDrive, KeyRound, Lock, MapPin, Monitor, Plus, Send, ShieldCheck, Smartphone, Sparkles, Trash2,
 } from 'lucide-react-native';
 import { api, upload } from '../../lib/api';
+import { useCached } from '../../lib/useCached';
 import { useStore } from '../../lib/store';
 import { usePerf } from '../../lib/perf';
 import { FONTS, fontStyle, useFont } from '../../lib/fonts';
@@ -94,10 +95,8 @@ function ProfilePage() {
 
 /* ---------------- usernames ---------------- */
 function UsernamesPage() {
-  const [data, setData] = useState<any>(null);
+  const [data, , load] = useCached<any>('/me/usernames');
   const [name, setName] = useState('');
-  const load = () => api('/me/usernames').then(setData).catch(() => setData({ usernames: [] }));
-  useEffect(() => { load(); }, []);
   return (
     <>
       <T size={13} dim style={{ marginBottom: 12, paddingHorizontal: 4, lineHeight: 18 }}>В Recidivist юзернеймы коллекционные: у вас может быть несколько, один из них — основной. Лишние можно продать на маркете.</T>
@@ -170,10 +169,11 @@ function PrivacyPage() {
   const me = useMe();
   const p = me.privacy || {};
   const [price, setPrice] = useState(String(p.messagePrice || 10));
-  const [blocked, setBlocked] = useState<any[] | null>(null);
-  const [contacts, setContacts] = useState<any[] | null>(null);
-  const load = () => { api('/me/blocked').then((r) => setBlocked(r.users)).catch(() => setBlocked([])); api('/contacts').then((r) => setContacts(r.users)).catch(() => setContacts([])); };
-  useEffect(load, []);
+  const [bl, , reloadBl] = useCached<any>('/me/blocked');
+  const [ct] = useCached<any>('/contacts');
+  const blocked: any[] | null = bl?.users ?? null;
+  const contacts: any[] | null = ct?.users ?? null;
+  const load = () => { reloadBl(); };
   const save = (body: any) => run(async () => setMe((await api('/me/privacy', { body })).user));
   const person = (u: any) => <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><Avatar uri={u.avatar} name={u.displayName} id={u.id} size={32} /><T numberOfLines={1}>{u.displayName}</T></View>;
   return (
@@ -208,9 +208,7 @@ function PrivacyPage() {
 
 /* ---------------- devices ---------------- */
 function DevicesPage() {
-  const [data, setData] = useState<any>(null);
-  const load = () => api('/sessions').then(setData).catch(() => setData({ sessions: [] }));
-  useEffect(() => { load(); }, []);
+  const [data, , load] = useCached<any>('/sessions');
   if (!data) return null;
   const cur = data.sessions.find((s: any) => s.current);
   const others = data.sessions.filter((s: any) => !s.current);
@@ -292,9 +290,8 @@ function LanguagePage() {
 /* ---------------- wallet ---------------- */
 function WalletPage() {
   const me = useMe();
-  const [data, setData] = useState<any>(null);
+  const [data] = useCached<any>('/wallet', [me.balance]);
   const [filter, setFilter] = useState('all');
-  useEffect(() => { api('/wallet').then(setData).catch(() => setData({ transactions: [] })); }, [me.balance]);
   const txs = (data?.transactions || []).filter((x: any) => filter === 'all' || (filter === 'in' ? x.amount > 0 : x.amount < 0));
   return (
     <>
@@ -365,10 +362,8 @@ const PERKS: [string, string, any, string][] = [
 ];
 function PremiumPage() {
   const me = useMe();
-  const [data, setData] = useState<any>(null);
+  const [data, , load] = useCached<any>('/premium');
   const [months, setMonths] = useState(1);
-  const load = () => api('/premium').then(setData).catch(() => {});
-  useEffect(() => { load(); }, []);
   const active = !!data?.active;
   return (
     <>

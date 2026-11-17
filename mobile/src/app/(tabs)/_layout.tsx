@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Tabs, TabList, TabSlot, TabTrigger, useTabTrigger } from 'expo-router/ui';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, Easing } from 'react-native-reanimated';
+import Animated, { useAnimatedProps, useAnimatedStyle, useSharedValue, withSpring, withTiming, Easing } from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
+import { usePerf } from '../../lib/perf';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { AccentFill, Avatar, Glass, Press, T } from '../../components/ui';
@@ -24,14 +26,25 @@ const TABS = [
 ] as const;
 const ROUTES = TABS.filter((t) => t.name !== '+');
 
-/** One tab's scene: kept mounted after first visit, fades/slides in when it becomes active. */
+/** One tab's scene: kept mounted after first visit; enters like the web's tabIn (fade + scale .992) with a short blur that clears. */
+const ABlur = Animated.createAnimatedComponent(BlurView);
 function Scene({ focused, children }: { focused: boolean; children: React.ReactNode }) {
+  const low = usePerf((s) => s.low);
   const o = useSharedValue(focused ? 1 : 0);
-  useEffect(() => { o.value = focused ? withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) }) : 0; }, [focused]);
-  const st = useAnimatedStyle(() => ({ opacity: o.value, transform: [{ translateY: (1 - o.value) * 8 }] }));
+  const b = useSharedValue(0);
+  useEffect(() => {
+    if (focused) {
+      o.value = 0; o.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.quad) });
+      if (!low && Platform.OS === 'ios') { b.value = 18; b.value = withTiming(0, { duration: 260, easing: Easing.out(Easing.quad) }); }
+    }
+  }, [focused]);
+  const st = useAnimatedStyle(() => ({ opacity: o.value, transform: [{ scale: 0.992 + 0.008 * o.value }] }));
+  const blur = useAnimatedProps(() => ({ intensity: b.value }));
+  const blurSt = useAnimatedStyle(() => ({ opacity: b.value > 0.5 ? 1 : 0 }));
   return (
     <Animated.View style={[StyleSheet.absoluteFill, st, !focused && { display: 'none' }]} pointerEvents={focused ? 'auto' : 'none'}>
       {children}
+      {!low && Platform.OS === 'ios' && <ABlur animatedProps={blur} tint="dark" style={[StyleSheet.absoluteFill, blurSt]} pointerEvents="none" />}
     </Animated.View>
   );
 }
@@ -48,7 +61,7 @@ function Item({ tab, index, onFocus }: { tab: (typeof TABS)[number]; index: numb
       {tab.name === 'profile'
         ? <View style={[s.ava, on && s.avaOn]}><Avatar uri={me?.avatar} name={me?.displayName} id={me?.id} size={24} /></View>
         : <Icon name={tab.icon as any} size={23} color={color} stroke={on ? 2.3 : 1.8} />}
-      <T numberOfLines={1} w={600} size={10.5} color={color}>{tab.label}</T>
+      <T numberOfLines={1} fit w={600} size={10.5} color={color}>{tab.label}</T>
       {tab.name === 'chats' && unread > 0 && <View style={s.badge}><T w={700} size={11} color="#fff">{unread > 99 ? '99+' : unread}</T></View>}
     </Press>
   );

@@ -1,46 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
-      <stop offset="0" stop-color="#6a0a18"/>
-      <stop offset=".6" stop-color="#1a0205"/>
+    <radialGradient id="bg" cx="50%" cy="42%" r="78%">
+      <stop offset="0" stop-color="#5a0812"/>
+      <stop offset=".55" stop-color="#160205"/>
       <stop offset="1" stop-color="#000"/>
     </radialGradient>
-    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ff6b78"/>
-      <stop offset=".5" stop-color="#ff2d3d"/>
-      <stop offset="1" stop-color="#9c0a18"/>
-    </linearGradient>
-    <linearGradient id="letter" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset=".55" stop-color="#ffd9dc"/>
-      <stop offset="1" stop-color="#ff5a66"/>
+    <linearGradient id="spark" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#ffb3a0"/>
+      <stop offset=".42" stop-color="#ff2d3d"/>
+      <stop offset="1" stop-color="#b30a1c"/>
     </linearGradient>
     <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fff" stop-opacity=".28"/>
-      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="0" stop-color="#fff" stop-opacity=".55"/>
+      <stop offset=".5" stop-color="#fff" stop-opacity="0"/>
     </linearGradient>
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="10" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity=".6"/>
-    </filter>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="22"/></filter>
   </defs>
-  <rect width="512" height="512" fill="#000"/>
   <rect width="512" height="512" fill="url(#bg)"/>
-  <g filter="url(#glow)">
-    <circle cx="256" cy="262" r="168" fill="none" stroke="url(#ring)" stroke-width="22"/>
-  </g>
-  <!-- barbed wire knots on the ring -->
-  <g stroke="#ffb3ba" stroke-width="6" stroke-linecap="round">
-    <defs><g id="k"><path d="M244 82 l24 24 M268 82 l-24 24"/></g></defs>
-    <use href="#k" transform="rotate(45 256 262)"/><use href="#k" transform="rotate(90 256 262)"/><use href="#k" transform="rotate(135 256 262)"/>
-    <use href="#k" transform="rotate(180 256 262)"/><use href="#k" transform="rotate(225 256 262)"/><use href="#k" transform="rotate(270 256 262)"/><use href="#k" transform="rotate(315 256 262)"/>
-  </g>
-  <!-- R monogram -->
-  <path filter="url(#shadow)" fill="url(#letter)" d="M188 160 h92 c54 0 88 30 88 76 c0 33 -17 57 -47 69 l58 81 h-66 l-50 -73 h-17 v73 h-58 z m58 48 v58 h30 c21 0 33 -11 33 -29 s-12 -29 -33 -29 z"/>
-  <!-- star -->
-  <path fill="#fff" filter="url(#glow)" d="M256 66 l9 20 22 2 -17 14 5 21 -19 -11 -19 11 5 -21 -17 -14 22 -2 z" transform="translate(0 6)"/>
-  <path d="M0 0 H512 V170 C380 120 132 120 0 170 Z" fill="url(#sheen)" opacity=".55"/>
+  <path transform="translate(0 21)" d="M256 56c11 88 43 141 172 179c-129 38-161 91-172 179c-11-88-43-141-172-179c129-38 161-91 172-179z" fill="#ff2d3d" opacity=".75" filter="url(#glow)"/>
+  <path transform="translate(0 21)" d="M256 56c11 88 43 141 172 179c-129 38-161 91-172 179c-11-88-43-141-172-179c129-38 161-91 172-179z" fill="url(#spark)"/>
+  <path transform="translate(0 21)" d="M256 56c11 88 43 141 172 179c-129 38-161 91-172 179c-11-88-43-141-172-179c129-38 161-91 172-179z" fill="url(#sheen)"/>
 </svg>

@@ -18,9 +18,9 @@ import { colorFor, initials } from '../lib/util';
 export const MaskedView = MaskedViewBase as any;
 
 /* ------------------------------------------------------------------ text */
-type TP = { children?: ReactNode; style?: StyleProp<TextStyle>; dim?: boolean; muted?: boolean; bold?: boolean; w?: number; size?: number; color?: string; numberOfLines?: number; center?: boolean; selectable?: boolean; onPress?: () => void };
+type TP = { children?: ReactNode; style?: StyleProp<TextStyle>; dim?: boolean; muted?: boolean; bold?: boolean; w?: number; size?: number; color?: string; numberOfLines?: number; center?: boolean; selectable?: boolean; onPress?: () => void; fit?: boolean };
 /** Text in the user's interface font (Settings → Шрифты), web sizes (base 15). */
-export function T({ children, style, dim, muted, bold, w, size, color, numberOfLines, center, selectable, onPress }: TP) {
+export function T({ children, style, dim, muted, bold, w, size, color, numberOfLines, center, selectable, onPress, fit }: TP) {
   const font = useFont((s) => s.id);
   const weight = w ?? (bold ? 700 : 400);
   return (
@@ -28,6 +28,8 @@ export function T({ children, style, dim, muted, bold, w, size, color, numberOfL
       onPress={onPress}
       selectable={selectable}
       numberOfLines={numberOfLines}
+      adjustsFontSizeToFit={fit}
+      minimumFontScale={fit ? 0.7 : undefined}
       style={[{ color: color ?? (dim ? C.text2 : muted ? C.text3 : C.text), fontSize: size ?? BASE, lineHeight: undefined }, fontStyle(font, weight, size ?? BASE), center && { textAlign: 'center' }, style]}
     >
       {children}
