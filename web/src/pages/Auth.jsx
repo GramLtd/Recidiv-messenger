@@ -19,26 +19,9 @@ const FLOAT = [
   '/gifts/regular/1f48e.webp', '/gifts/regular/2764_fe0f_200d_1f525.webp', '/gifts/pahan-pepe/001.webp', '/gifts/blatnoy-patefon/001.webp',
   '/gifts/regular/1f480.webp', '/gifts/kot-stukach/001.webp', '/gifts/regular/1f3b2.webp', '/gifts/sigara-smotryashchego/001.webp',
 ];
+/** Calm static backdrop: one soft accent glow, nothing moving. */
 function Backdrop() {
-  const items = useMemo(() => FLOAT.map((src, i) => ({
-    src,
-    x: (i * 37 + 7) % 100,
-    s: 46 + ((i * 23) % 40),
-    d: 14 + ((i * 7) % 10),
-    delay: -((i * 2.3) % 14),
-    r: ((i * 53) % 60) - 30,
-  })), []);
-  return (
-    <div className="auth-bg" aria-hidden>
-      <i className="blob b1" /><i className="blob b2" /><i className="blob b3" />
-      <div className="auth-grid" />
-      <div className="auth-floats">
-        {items.map((it, i) => (
-          <img key={i} src={it.src} alt="" className="auth-float" style={{ left: `${it.x}%`, width: it.s, height: it.s, animationDuration: `${it.d}s`, animationDelay: `${it.delay}s`, '--r': `${it.r}deg` }} />
-        ))}
-      </div>
-    </div>
-  );
+  return <div className="auth-bg static" aria-hidden><i className="auth-glow" /></div>;
 }
 
 const FEATURES = [
