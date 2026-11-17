@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ActionSheetIOS, Alert, Dimensions, Linking, Platform, Share, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -9,7 +9,7 @@ import * as Clipboard from 'expo-clipboard';
 import Svg, { Path } from 'react-native-svg';
 import Animated, {
   Easing, Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withDelay, withRepeat,
-  withSequence, withSpring, withTiming, SharedValue,
+  withSequence, withSpring, withTiming, SharedValue, cancelAnimation, runOnJS, useAnimatedReaction,
 } from 'react-native-reanimated';
 import {
   CalendarDays, ChevronLeft, ChevronRight, Eye, Filter, Gift, Hash, Link2, MapPin, Megaphone, MessageCircle, Music2, Pause, Pencil, Phone,
@@ -46,18 +46,15 @@ const STAGE_H = 236;
 const AVATAR_R = 70;
 
 /* ---------------------------------------------------------------- blurred page background (web .pv-blurbg) */
-function BlurBg({ uri, color }: { uri?: string | null; color: string }) {
+function BlurBg({ uri, color, clock }: { uri?: string | null; color: string; clock: SharedValue<number> }) {
   const low = usePerf((s) => s.low);
   const k = useSharedValue(0);
-  const drift = useSharedValue(0);
-  useEffect(() => {
-    k.value = withTiming(1, { duration: 1100, easing: Easing.bezier(0.2, 0.8, 0.2, 1) });
-    if (!low) drift.value = withDelay(1100, withRepeat(withTiming(1, { duration: 22000, easing: Easing.inOut(Easing.ease) }), -1, true));
-  }, [uri, low]);
-  const a = useAnimatedStyle(() => ({
-    opacity: k.value,
-    transform: [{ scale: 1.6 - 0.3 * k.value + 0.12 * drift.value }, { translateX: -W * 0.03 * drift.value }, { translateY: H * 0.02 * drift.value }],
-  }));
+  useEffect(() => { k.value = withTiming(1, { duration: 1100, easing: Easing.bezier(0.2, 0.8, 0.2, 1) }); }, [uri]);
+  const a = useAnimatedStyle(() => {
+    const l = low ? 0 : wave(clock.value, 60, 0);
+    const drift = l * l * (3 - 2 * l);
+    return { opacity: k.value, transform: [{ scale: 1.6 - 0.3 * k.value + 0.12 * drift }, { translateX: -W * 0.03 * drift }, { translateY: H * 0.02 * drift }] };
+  });
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <Animated.View style={[StyleSheet.absoluteFill, a]}>
@@ -70,17 +67,26 @@ function BlurBg({ uri, color }: { uri?: string | null; color: string }) {
   );
 }
 
+/*
+ * One clock drives every decorative loop in the hero (sparkles, crosses, floating gifts) instead of ~80 separate
+ * repeating animations. It runs only while the profile is on screen and the hero is visible; t is seconds 0…60.
+ */
+const ClockCtx = createContext<SharedValue<number> | null>(null);
+const CLOCK_RUN = () => { 'worklet'; return withRepeat(withTiming(60, { duration: 60000, easing: Easing.linear }), -1, false); };
+const wave = (t: number, period: number, offset: number) => { 'worklet'; const ph = (((t + offset) % period) + period) % period / period; return ph < 0.5 ? ph * 2 : (1 - ph) * 2; };
+
 /* ---------------------------------------------------------------- hero sparkles (web .pv-sparks) */
 const SPARKS = Array.from({ length: 18 }, (_, i) => {
   const a = (i * 137.5 * Math.PI) / 180;
   const r = 38 + ((i * 29) % 14);
   return { x: 50 + Math.cos(a) * r, y: 48 + Math.sin(a) * r * 0.85, s: 7 + ((i * 7) % 8), d: ((i * 0.37) % 3) * 1000 };
 });
-function Twinkle({ x, y, s, d, color, kind = 'star' }: { x: number; y: number; s: number; d: number; color: string; kind?: 'star' | 'cross' }) {
-  const t = useSharedValue(0);
-  useEffect(() => { t.value = withDelay(d, withRepeat(withTiming(1, { duration: kind === 'star' ? 3000 : 2800, easing: Easing.inOut(Easing.ease) }), -1, false)); }, []);
+const Twinkle = React.memo(function Twinkle({ x, y, s, d, color, kind = 'star' }: { x: number; y: number; s: number; d: number; color: string; kind?: 'star' | 'cross' }) {
+  const clock = useContext(ClockCtx)!;
+  const off = -d / 1000;
   const a = useAnimatedStyle(() => {
-    const v = t.value < 0.5 ? t.value * 2 : (1 - t.value) * 2; // 0 → 1 → 0
+    const l = wave(clock.value, 3, off);
+    const v = l * l * (3 - 2 * l); // eased 0 → 1 → 0
     return kind === 'star'
       ? { opacity: v * 0.9, transform: [{ scale: 0.4 + 0.6 * v }, { rotate: `${45 * v}deg` }] }
       : { opacity: Math.min(1, v * 1.6) * 0.9 };
@@ -92,7 +98,7 @@ function Twinkle({ x, y, s, d, color, kind = 'star' }: { x: number; y: number; s
         : <Svg width={s} height={s} viewBox="0 0 9 9"><Path d="M4.5 0 V9 M0 4.5 H9" stroke="#fff" strokeWidth={1.5} /></Svg>}
     </Animated.View>
   );
-}
+});
 
 /* ---------------------------------------------------------------- pinned gifts scattered around the avatar (web .pv-scatter) */
 function randomLayout(n: number) {
@@ -113,27 +119,30 @@ function randomLayout(n: number) {
   }
   return out;
 }
-function ScatterGift({ ug, i, x, y, size, rot, delay, low, onPress }: any) {
+const ScatterGift = React.memo(function ScatterGift({ ug, i, x, y, size, rot, delay, low, onPress }: any) {
   const e = useSharedValue(0);
-  const bob = useSharedValue(0);
-  useEffect(() => {
-    e.value = withDelay(200 + i * 60, withSpring(1, webSpring));
-    if (!low) bob.value = withDelay(delay, withRepeat(withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }), -1, true));
-  }, [low]);
+  const clock = useContext(ClockCtx)!;
+  const off = delay / 1000;
+  useEffect(() => { e.value = withDelay(200 + i * 60, withSpring(1, webSpring)); }, []);
   const fx = (STAGE_W / 2 - x) * 0.9; const fy = (STAGE_H / 2 - y) * 0.9;
   const a = useAnimatedStyle(() => ({
     opacity: Math.min(1, e.value * 1.5),
     transform: [{ translateX: (1 - e.value) * fx }, { translateY: (1 - e.value) * fy }, { scale: 0.1 + 0.9 * e.value }, { rotate: `${-40 * (1 - e.value)}deg` }],
   }));
-  const b = useAnimatedStyle(() => ({ transform: [{ translateY: -6 * bob.value }, { rotate: `${rot * (1 - 2 * bob.value)}deg` }] }));
+  const b = useAnimatedStyle(() => {
+    if (low) return { transform: [{ rotate: `${rot}deg` }] };
+    const l = wave(clock.value, 4, off);
+    const v = l * l * (3 - 2 * l);
+    return { transform: [{ translateY: -6 * v }, { rotate: `${rot * (1 - 2 * v)}deg` }] };
+  });
   const m = ug.collectible?.model;
   const gc = ug.collectible?.backdrop?.center || '#ffffff';
   return (
     <Animated.View style={[{ position: 'absolute', left: x - size / 2, top: y - size / 2, width: size, height: size }, a]}>
       <Press onPress={onPress} scale={0.85} style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
         {!low && <Radial inner="rgba(255,255,255,0.26)" mid={hexA(gc, 0.38)} midStop={0.38} outer={hexA(gc, 0)} stop={1} r="50%" style={{ position: 'absolute', left: (size - size * 2.1) / 2, top: (size - size * 2.1) / 2, width: size * 2.1, height: size * 2.1 }} />}
-        {!low && Array.from({ length: 5 }, (_, k) => (
-          <Twinkle key={k} kind="cross" x={50 + Math.cos(k * 1.3 + i) * 62} y={50 + Math.sin(k * 1.3 + i) * 62} s={9 * (0.6 + (k % 3) * 0.25)} d={((k * 0.55 + delay / 1000) % 2.8) * 1000} color="#fff" />
+        {!low && Array.from({ length: 3 }, (_, k) => (
+          <Twinkle key={k} kind="cross" x={50 + Math.cos(k * 2.1 + i) * 62} y={50 + Math.sin(k * 2.1 + i) * 62} s={9 * (0.6 + (k % 3) * 0.25)} d={((k * 0.9 + delay / 1000) % 3) * 1000} color="#fff" />
         ))}
         <Animated.View style={b}>
           <GiftModel gift={ug.gift} model={m} size={size} />
@@ -141,7 +150,7 @@ function ScatterGift({ ug, i, x, y, size, rot, delay, low, onPress }: any) {
       </Press>
     </Animated.View>
   );
-}
+});
 
 /* ---------------------------------------------------------------- avatar (web .pv-avatar + glass ring + avatarIn) */
 function HeroAvatar({ u }: { u: any }) {
@@ -246,15 +255,21 @@ function ChannelCard({ chat }: { chat: any }) {
 }
 
 /* ---------------------------------------------------------------- gift tile (web .gift-card + cardIn) */
+const appeared = new Set<number>();
 export const GiftTile = React.memo(function GiftTile({ ug, index, onPress, size }: { ug: any; index: number; onPress: (g: any) => void; size: number }) {
   const low = usePerf((s) => s.low);
-  const e = useSharedValue(low ? 1 : 0);
-  useEffect(() => { if (!low) e.value = withDelay(Math.min(index, 20) * 45, withSpring(1, webSpring)); }, []);
-  const a = useAnimatedStyle(() => ({ opacity: Math.min(1, e.value * 1.4), transform: [{ perspective: 600 }, { translateY: (1 - e.value) * 18 }, { scale: 0.86 + 0.14 * e.value }, { rotateX: `${18 * (1 - e.value)}deg` }] }));
+  const skip = low || appeared.has(ug.id);
+  const e = useSharedValue(skip ? 1 : 0);
+  useEffect(() => {
+    appeared.add(ug.id);
+    if (!skip) e.value = withDelay(Math.min(index, 17) * 35, withTiming(1, { duration: 380, easing: Easing.bezier(0.2, 0.8, 0.2, 1) }));
+  }, []);
+  const a = useAnimatedStyle(() => (e.value >= 1 ? { opacity: 1, transform: [] } : { opacity: e.value, transform: [{ translateY: (1 - e.value) * 16 }, { scale: 0.9 + 0.1 * e.value }] }));
   const col = ug.collectible;
   return (
-    <Animated.View style={[{ width: size, height: col ? size : size * 1.0 }, a]}>
+    <Animated.View style={[{ width: size, height: size }, a]}>
       <Press onPress={() => onPress(ug)} scale={0.95} style={[st.card, !col && st.cardPlain, ug.hidden && { opacity: 0.45 }]}>
+        <View shouldRasterizeIOS renderToHardwareTextureAndroid style={StyleSheet.absoluteFill}>
         {col ? <CollectibleArt col={col} style={StyleSheet.absoluteFill} pattern={!low} light /> : (
           <>
             <GiftArt ug={ug} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: '26%' }} />
@@ -264,8 +279,28 @@ export const GiftTile = React.memo(function GiftTile({ ug, index, onPress, size 
         {col && <View style={st.ribbon}><T w={800} size={10} color="rgba(255,255,255,0.85)" center>#{col.number}</T></View>}
         {ug.pinned && <View style={[st.pin, !col && { top: 8, bottom: undefined }]}><Pin size={13} color="#fff" /></View>}
         {col && <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }]} />}
+        </View>
       </Press>
     </Animated.View>
+  );
+});
+
+const openGift = (g: any) => router.push({ pathname: '/gift/[id]', params: { id: String(g.id) } });
+
+/** Rows of 3 tiles; rows outside the window render as empty spacers of the same height. */
+const GiftGrid = React.memo(function GiftGrid({ list, tileW, rowH, win, onPress }: { list: any[]; tileW: number; rowH: number; win: [number, number]; onPress: (g: any) => void }) {
+  const rows: any[][] = [];
+  for (let i = 0; i < list.length; i += 3) rows.push(list.slice(i, i + 3));
+  return (
+    <View>
+      {rows.map((r, ri) => (ri < win[0] || ri > win[1]
+        ? <View key={ri} style={{ height: rowH }} />
+        : (
+          <View key={ri} style={{ flexDirection: 'row', gap: 10, height: rowH, paddingBottom: 10 }}>
+            {r.map((g, k) => <GiftTile key={g.id} ug={g} index={(ri * 3 + k) % 18} size={tileW} onPress={onPress} />)}
+          </View>
+        )))}
+    </View>
   );
 });
 
@@ -303,6 +338,34 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
   // Telegram-like collapse driven by scroll progress p = scrollY / 190 (same numbers as the web)
   const y = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((e) => { y.value = e.contentOffset.y; });
+
+  // decorative clock: runs only while this screen is focused and the hero is on screen
+  const clock = useSharedValue(0);
+  const focused = useSharedValue(0);
+  useFocusEffect(useCallback(() => {
+    focused.value = 1;
+    if (!low) { clock.value = 0; clock.value = CLOCK_RUN(); }
+    return () => { focused.value = 0; cancelAnimation(clock); };
+  }, [low]));
+  useAnimatedReaction(() => focused.value === 1 && y.value < 300, (run, prev) => {
+    if (run === prev || low) return;
+    if (run) { clock.value = 0; clock.value = CLOCK_RUN(); } else cancelAnimation(clock);
+  }, [low]);
+
+  // gift grid windowing: only rows near the viewport are mounted (the rest keep their height)
+  const gridTop = useSharedValue(0);
+  const contentY = useRef(0); const innerY = useRef(0);
+  const syncTop = () => { gridTop.value = contentY.current + innerY.current; };
+  const [win, setWin] = useState<[number, number]>([0, 8]);
+  const rowH = Math.floor((W - 24 - 20) / 3) - 0.5 + 10;
+  const SCREEN_H = Dimensions.get('window').height;
+  const setWinJS = (a: number, b: number) => setWin((w) => (w[0] === a && w[1] === b ? w : [a, b]));
+  useAnimatedReaction(() => {
+    const top = y.value - gridTop.value;
+    const first = Math.max(0, Math.floor((top - SCREEN_H) / rowH / 4) * 4);
+    const last = Math.floor((top + SCREEN_H * 2) / rowH / 4) * 4 + 4;
+    return first * 10000 + last;
+  }, (k, prev) => { if (k !== prev) runOnJS(setWinJS)(Math.floor(k / 10000), k % 10000); });
   const P = (v: number) => { 'worklet'; return Math.max(0, Math.min(1, v / 190)); };
   const stageSt = useAnimatedStyle(() => ({ transform: [{ translateY: -36 * P(y.value) }] }));
   const avaSt = useAnimatedStyle(() => { const p = P(y.value); return { opacity: Math.max(0, 1 - p * 1.15), transform: [{ translateY: -46 * p }, { scale: 1 - p * 0.72 }] }; });
@@ -341,11 +404,10 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
   const list = (gifts || []).filter((g) => filter === 'all' || (filter === 'collectible' ? g.collectible : filter === 'pinned' ? g.pinned : !g.collectible));
   const tabs: [typeof tab, string][] = [['gifts', `Подарки${u.giftsCount ? ` · ${u.giftsCount}` : ''}`], ['posts', `Посты${u.postsCount ? ` · ${u.postsCount}` : ''}`], ['stories', `Истории${u.storiesCount ? ` · ${u.storiesCount}` : ''}`]];
   const tileW = Math.floor((W - 24 - 20) / 3) - 0.5;
-  const openGift = (g: any) => router.push({ pathname: '/gift/[id]', params: { id: String(g.id) } });
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      {blur.mode !== 'off' && <BlurBg uri={blurUri} color={'#e53935'} />}
+      {blur.mode !== 'off' && <BlurBg uri={blurUri} color={'#e53935'} clock={clock} />}
       <Animated.ScrollView contentInsetAdjustmentBehavior="never" onScroll={onScroll}
         onMomentumScrollEnd={(e: any) => { const n = e.nativeEvent; if (n.contentOffset.y + n.layoutMeasurement.height > n.contentSize.height - 600) setShown((v) => v + 18); }}
         onScrollEndDrag={(e: any) => { const n = e.nativeEvent; if (n.contentOffset.y + n.layoutMeasurement.height > n.contentSize.height - 600) setShown((v) => v + 18); }} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 170 }}>
@@ -375,6 +437,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
           {isMe && <GlassIcon size={38} onPress={() => router.push('/settings/profile')}><Pencil size={17} color={C.text} /></GlassIcon>}
         </Animated.View>
 
+        <ClockCtx.Provider value={clock}>
         <Animated.View style={[st.stage, stageSt]}>
           {!low && SPARKS.map((p, i) => <Twinkle key={i} {...p} color={mixWhite(glow, 0.4)} />)}
           <Animated.View style={[StyleSheet.absoluteFill, scatSt]}>
@@ -382,6 +445,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
           </Animated.View>
           <Animated.View style={avaSt}><HeroAvatar u={u} /></Animated.View>
         </Animated.View>
+        </ClockCtx.Provider>
 
         <Animated.View style={[st.nameRow, nameSt]}>
           <StyledName user={u} size={22.5} w={900} />
@@ -443,7 +507,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
           </Rise>
         )}
 
-        <Animated.View style={contentSt}>
+        <Animated.View style={contentSt} onLayout={(e) => { contentY.current = e.nativeEvent.layout.y; syncTop(); }}>
           <Glass radius={24} fill="rgba(255,255,255,0.07)" edge="rgba(255,255,255,0.12)" hi="rgba(255,255,255,0.14)" shadow={false} style={st.info}>
             {!u.anonNumber && isMe ? (
               <InfoRow first inline>
@@ -494,10 +558,10 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
             ) : <View style={st.filterBtn} />}
           </View>
 
-          <View style={{ paddingHorizontal: 12 }} key={tab}>
+          <View style={{ paddingHorizontal: 12 }} key={tab} onLayout={(e) => { innerY.current = e.nativeEvent.layout.y; syncTop(); }}>
             {tab === 'gifts' && (
               gifts === null ? null : !list.length ? <T dim center size={13} style={{ padding: 30 }}>{filter === 'all' ? 'Подарков пока нет' : 'Здесь пусто'}</T> : (
-                <View style={st.grid}>{list.slice(0, shown).map((g, i) => <GiftTile key={g.id} ug={g} index={i % 18} size={tileW} onPress={openGift} />)}</View>
+                <GiftGrid list={list.slice(0, shown)} tileW={tileW} rowH={rowH} win={win} onPress={openGift} />
               )
             )}
             {tab === 'posts' && (posts === null ? null : !posts.length

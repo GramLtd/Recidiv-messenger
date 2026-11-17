@@ -43,6 +43,8 @@ export default function Market() {
   const [sel, setSel] = useState<any>(null);
   const [tick, setTick] = useState(0);
   const [price, setPrice] = useState('');
+  const [shown, setShown] = useState(20);
+  useEffect(() => { setShown(20); }, [data]);
   const url = view === 'history' ? '/market/history' : `/market?kind=${kind}&sort=${sort}&q=${encodeURIComponent(q)}${giftId ? `&giftId=${giftId}` : ''}${view === 'mine' ? '&mine=1' : ''}`;
   useEffect(() => {
     setData(cache.get(`api:${url}`) || null);
@@ -100,7 +102,8 @@ export default function Market() {
   return (
     <View style={sheetStyle}>
       <SheetHead title="Маркет" right={<Glass radius={16} style={st.chip}><Spark amount={me.balance} size={13} /></Glass>} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" scrollEventThrottle={200}
+        onScroll={(e) => { const n = e.nativeEvent; if (n.contentOffset.y + n.layoutMeasurement.height > n.contentSize.height - 800) setShown((v) => (v < (data?.listings?.length || 0) ? v + 20 : v)); }}>
         <Glass radius={16} style={st.tabs} shadow={false}>
           {([['all', 'Все лоты', null], ['mine', 'Мои', Tag], ['history', 'История', History]] as const).map(([k, l, I]) => (
             <Press key={k} scale={0.96} onPress={() => setView(k)} style={[st.tab, view === k && st.tabOn]}>
@@ -132,7 +135,7 @@ export default function Market() {
         )}
         {!data ? null : !data.listings.length ? (
           <View style={{ padding: 40, alignItems: 'center', gap: 6 }}><T dim>Лотов нет</T><T size={13} dim center>Улучшите подарок до коллекционного и выставьте его на продажу</T></View>
-        ) : view === 'history' ? data.listings.map((l: any, i: number) => (
+        ) : view === 'history' ? data.listings.slice(0, shown).map((l: any, i: number) => (
           <Rise key={l.id} delay={Math.min(i, 12) * 25} style={st.tx}>
             {l.kind === 'gift' ? <CollectibleArt col={l.userGift.collectible} style={{ width: 44, height: 44, borderRadius: 10 }} pattern={false} /> : <AtSign size={28} color={C.accent} />}
             <View style={{ flex: 1 }}><T w={700} size={13.5}>{title(l)}</T><T size={11} dim>{l.mine ? `Продано ${l.buyer?.displayName || ''}` : `Куплено у ${l.seller.displayName}`} · {new Date(l.closedAt).toLocaleString('ru-RU')}</T></View>
@@ -140,8 +143,8 @@ export default function Market() {
           </Rise>
         )) : (
           <View style={st.grid}>
-            {data.listings.map((l: any, i: number) => (
-              <Rise key={l.id} delay={Math.min(i, 12) * 30} style={{ width: cw }}>
+            {data.listings.slice(0, shown).map((l: any, i: number) => (
+              <Rise key={l.id} delay={(i % 20) * 30} style={{ width: cw }}>
                 <Press scale={0.97} onPress={() => { setPrice(''); setSel(l); }} style={st.card}>
                   {l.kind === 'gift' ? <CollectibleArt col={l.userGift.collectible} style={{ height: 140 }} light /> : <UsernameArt name={l.username} />}
                   <View style={st.body}>
