@@ -32,6 +32,7 @@ r.get('/gifts/:id/attributes', (req, res) => {
 r.post('/gifts/:id/buy', (req, res) => {
   const g = db.prepare('SELECT * FROM gifts WHERE id = ? AND enabled = 1').get(Number(req.params.id));
   if (!g) fail(404, 'Подарок не найден');
+  if (req.body.toChatId) return buyForChat(req, res, g);
   const to = getUser(Number(req.body.toUserId || req.user.id));
   if (!to || to.is_bot) fail(404, 'Получатель не найден');
   const message = String(req.body.message || '').slice(0, 255);
@@ -57,6 +58,30 @@ r.post('/gifts/:id/buy', (req, res) => {
   }
   emitToUser(to.id, 'gift:received', { userGift: serializeUserGift(ugId, to.id) });
   res.json({ userGift: serializeUserGift(ugId, req.user.id) });
+});
+
+/** Gifts can also be sent to a channel: they are shown on the channel's profile. */
+function buyForChat(req, res, g) {
+  const chat = db.prepare("SELECT * FROM chats WHERE id = ? AND type = 'channel'").get(Number(req.body.toChatId));
+  if (!chat) fail(404, 'Канал не найден');
+  const message = String(req.body.message || '').slice(0, 255);
+  const anonymous = req.body.anonymous ? 1 : 0;
+  const ugId = tx(() => {
+    const fresh = db.prepare('SELECT * FROM gifts WHERE id = ?').get(g.id);
+    if (fresh.supply != null && fresh.sold >= fresh.supply) fail(410, 'Подарки закончились — ищите их на маркете');
+    changeBalance(req.user.id, -fresh.price, 'gift_buy', `Подарок «${fresh.name}» каналу ${chat.title}`, `gift:${fresh.id}`);
+    db.prepare('UPDATE gifts SET sold = sold + 1 WHERE id = ?').run(fresh.id);
+    return Number(db.prepare('INSERT INTO user_gifts (gift_id, owner_id, chat_id, sender_id, message, anonymous, price_paid, created_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)')
+      .run(fresh.id, chat.id, req.user.id, message, anonymous, fresh.price, now()).lastInsertRowid);
+  });
+  pushBalance(req.user.id);
+  createMessage({ chatId: chat.id, senderId: null, type: 'system', text: `🎁 ${anonymous ? 'Кто-то' : req.user.display_name} подарил(а) каналу «${g.name}»` });
+  res.json({ userGift: serializeUserGift(ugId, req.user.id) });
+}
+
+r.get('/chats/:id/gifts', (req, res) => {
+  const rows = db.prepare('SELECT * FROM user_gifts WHERE chat_id = ? AND converted = 0 ORDER BY id DESC LIMIT 200').all(Number(req.params.id));
+  res.json({ gifts: rows.map((x) => serializeUserGift(x, req.user.id)) });
 });
 
 r.get('/users/:id/gifts', (req, res) => {

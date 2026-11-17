@@ -21,7 +21,7 @@ function SupplyBar({ gift }) {
 }
 
 /** Gift catalogue → pick a gift → choose recipient / message / anonymity → buy. */
-export function GiftShopModal({ toUser: initialTo }) {
+export function GiftShopModal({ toUser: initialTo, toChat }) {
   const me = useStore((s) => s.me);
   const closeAll = useStore((s) => s.closeAllModals);
   const openModal = useStore((s) => s.openModal);
@@ -50,13 +50,13 @@ export function GiftShopModal({ toUser: initialTo }) {
     const recipient = to || me;
     const buy = () =>
       run(async () => {
-        await api(`/gifts/${picked.id}/buy`, { body: { toUserId: recipient.id, message, anonymous } });
+        await api(`/gifts/${picked.id}/buy`, { body: toChat ? { toChatId: toChat.id, message, anonymous } : { toUserId: recipient.id, message, anonymous } });
         setPicked(null);
         setMessage('');
         setAnonymous(false);
         reload();
         closeAll();
-      }, recipient.id === me.id ? 'Подарок добавлен в профиль 🎁' : `Подарок отправлен ${recipient.displayName} 🎁`);
+      }, toChat ? `Подарок отправлен каналу «${toChat.title}» 🎁` : recipient.id === me.id ? 'Подарок добавлен в профиль 🎁' : `Подарок отправлен ${recipient.displayName} 🎁`);
     return (
       <Modal
         title="Отправить подарок"
@@ -73,13 +73,20 @@ export function GiftShopModal({ toUser: initialTo }) {
             <div className="bold" style={{ fontSize: '1.15em' }}>{picked.name}</div>
             <SupplyBar gift={picked} />
           </div>
+          {toChat ? (
+            <div className="list-item" style={{ width: '100%', background: 'var(--bg-2)' }}>
+              <Avatar src={toChat.avatar} name={toChat.title} id={toChat.id} size={40} />
+              <div className="grow"><div className="small muted">Канал</div><div className="bold">{toChat.title}</div></div>
+            </div>
+          ) : (
           <div className="list-item" style={{ width: '100%', background: 'var(--bg-2)' }} onClick={() => setChoosing(true)}>
             <Avatar src={recipient.avatar} name={recipient.displayName} id={recipient.id} size={40} />
             <div className="grow"><div className="small muted">Получатель</div><div className="bold">{recipient.id === me.id ? 'Себе' : recipient.displayName}</div></div>
             <span className="accent small">Изменить</span>
           </div>
+          )}
           <textarea className="input" placeholder="Сообщение (необязательно)" value={message} onChange={(e) => setMessage(e.target.value)} maxLength={255} style={{ minHeight: 70 }} />
-          {recipient.id !== me.id && (
+          {(toChat || recipient.id !== me.id) && (
             <div className="row" style={{ width: '100%' }}>
               <div className="grow"><div>Анонимно</div><div className="small muted">Получатель не увидит отправителя</div></div>
               <Switch on={anonymous} onChange={setAnonymous} />
@@ -96,7 +103,7 @@ export function GiftShopModal({ toUser: initialTo }) {
   const gifts = (data?.gifts || []).filter((g) => filter === 'all' || (filter === 'limited' ? g.limited : !g.limited));
   return (
     <Modal title="Подарки" wide headExtra={<span className="chip" onClick={() => openModal('wallet')}><Spark amount={me.balance} /></span>}>
-      {initialTo && <div className="small muted" style={{ marginBottom: 10 }}>Подарок для <b style={{ color: 'var(--text)' }}>{initialTo.displayName}</b></div>}
+      {(initialTo || toChat) && <div className="small muted" style={{ marginBottom: 10 }}>Подарок для <b style={{ color: 'var(--text)' }}>{toChat ? `канала «${toChat.title}»` : initialTo.displayName}</b></div>}
       <div className="row" style={{ gap: 6, marginBottom: 12, overflowX: 'auto' }}>
         <span className="small muted">Коллекционные подарки — их можно улучшить, продать и передать</span>
         <span className="spacer" />

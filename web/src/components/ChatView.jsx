@@ -1,11 +1,11 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ArrowLeft, Search, MoreVertical, Paperclip, Smile, Send, Mic, X, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck,
-  FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square,
+  FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square, ChevronLeft,
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, upload, mediaUrl } from '../api.js';
-import { Avatar, Verified, Spark, WornGift } from './common.jsx';
+import { Avatar, Verified, Spark, WornGift, PremiumStar } from './common.jsx';
 import { AudioMessage } from './Music.jsx';
 import { audioDuration, titleFromFile } from '../player.js';
 import { GiftArt } from './GiftArt.jsx';
@@ -378,6 +378,7 @@ export default function ChatView() {
   const [searchQ, setSearchQ] = useState('');
   const [searchRes, setSearchRes] = useState([]);
   const wallpaper = useStore((s) => s.me?.wallpaper);
+  const otherUnread = useStore((s) => s.chats.reduce((n, c) => n + (c.id !== s.activeChatId && !c.muted ? c.unread || 0 : 0), 0));
   const scrollRef = useRef();
   // soft sound for messages arriving in the open chat
   const lastSeenId = useRef(null);
@@ -468,32 +469,33 @@ export default function ChatView() {
   return (
     <div className={`chat-main ${wallpaper ? 'has-wp' : ''}`}>
       <ChatWallpaper wp={wallpaper} />
-      <div className="chat-header">
-        <button className="icon-btn back-btn" onClick={() => openChat(null)}><ArrowLeft size={22} /></button>
+      <div className="chat-header tg-head">
+        <button className="lg tg-back" onClick={() => openChat(null)} aria-label="Назад">
+          <ChevronLeft size={24} />
+          {otherUnread > 0 && <span className="tg-back-count">{otherUnread > 999 ? '999+' : otherUnread}</span>}
+        </button>
         {searchOpen ? (
-          <>
-            <div className="search-box">
-              <Search size={18} />
-              <input autoFocus placeholder="Поиск в чате" value={searchQ} onChange={(e) => setSearchQ(e.target.value)} />
-            </div>
-            <button className="icon-btn" onClick={() => { setSearchOpen(false); setSearchQ(''); }}><X size={22} /></button>
-          </>
+          <div className="lg tg-search">
+            <Search size={17} />
+            <input autoFocus placeholder="Поиск в чате" value={searchQ} onChange={(e) => setSearchQ(e.target.value)} />
+            <button onClick={() => { setSearchOpen(false); setSearchQ(''); }} aria-label="Закрыть"><X size={18} /></button>
+          </div>
         ) : (
-          <>
-            <div className="row info" onClick={() => setRightPanel(!rightPanel)}>
-              <Avatar src={chat.avatar} name={chat.title} id={chat.peer?.id || chat.id} size={42} saved={chat.type === 'saved'} />
-              <div className="grow">
-                <div className="title"><span className="ellipsis">{chat.title}</span>{chat.peer?.verified && <Verified />}{chat.peer?.wornGift && <WornGift gift={chat.peer.wornGift} size={20} />}</div>
-                {status}
-              </div>
-            </div>
-            {chat.type === 'private' && !chat.peer?.isBot && chat.peer && (
-              <button className="icon-btn" title="Отправить подарок" onClick={() => openModal('giftShop', { toUser: chat.peer })}><Gift size={21} /></button>
-            )}
-            <button className="icon-btn" onClick={() => setSearchOpen(true)}><Search size={21} /></button>
-            <button className="icon-btn" onClick={() => setRightPanel(!rightPanel)}><MoreVertical size={21} /></button>
-          </>
+          <button className="lg tg-title" onClick={() => setRightPanel(!rightPanel)}>
+            <span className="tg-name">
+              <span className="ellipsis">{chat.title}</span>
+              {chat.peer?.verified && <Verified size={15} />}
+              {chat.peer?.premium && <PremiumStar size={14} />}
+              {chat.peer?.wornGift && <WornGift gift={chat.peer.wornGift} size={18} />}
+              {chat.muted && <BellOff size={13} className="muted" />}
+            </span>
+            {status || <span className="status">{chat.type === 'saved' ? 'облако' : ''}</span>}
+          </button>
         )}
+        {!searchOpen && <button className="lg tg-round" onClick={() => setSearchOpen(true)} aria-label="Поиск"><Search size={19} /></button>}
+        <button className="tg-avatar" onClick={() => setRightPanel(!rightPanel)} aria-label="Профиль">
+          <Avatar src={chat.avatar} name={chat.title} id={chat.peer?.id || chat.id} size={44} saved={chat.type === 'saved'} />
+        </button>
       </div>
 
       {searchOpen && searchRes.length > 0 && (

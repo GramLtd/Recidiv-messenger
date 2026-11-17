@@ -450,6 +450,7 @@ addColumn('users', 'show_balance', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('users', 'privacy', 'TEXT');
 addColumn('users', 'sessions_after', 'INTEGER');
 addColumn('users', 'blur_bg', 'TEXT');
+addColumn('user_gifts', 'chat_id', 'INTEGER');
 db.exec(`
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,

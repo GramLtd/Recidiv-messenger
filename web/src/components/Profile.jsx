@@ -7,7 +7,9 @@ import { GiftArt } from './GiftArt.jsx';
 import { lastSeen, membersLabel } from '../util.js';
 
 export { GiftTile, GiftsGrid, ProfileView, UserProfileModal } from './ProfileView.jsx';
-import { ProfileView } from './ProfileView.jsx';
+import { ProfileView, GiftsGrid } from './ProfileView.jsx';
+import { mediaUrl } from '../api.js';
+import { colorFor } from '../util.js';
 
 function GroupInfo({ chat }) {
   const me = useStore((s) => s.me);
@@ -35,8 +37,14 @@ function GroupInfo({ chat }) {
   };
   return (
     <>
-      <div className="profile-hero">
-        <Avatar src={chat.avatar} name={chat.title} id={chat.id} size={110} />
+      <div className="pv-blurbg chan-blur" aria-hidden>
+        <div className="pv-blur-inner">
+          {chat.avatar ? <img src={mediaUrl(chat.avatar)} alt="" /> : <div style={{ width: '100%', height: '100%', background: `radial-gradient(circle at 50% 30%, ${colorFor(chat.id)}, #000 75%)` }} />}
+        </div>
+        <i className="pv-blur-shade" />
+      </div>
+      <div className="profile-hero chan-hero">
+        <div className="pv-avatar"><span className="pv-ring" /><Avatar src={chat.avatar} name={chat.title} id={chat.id} size={110} /></div>
         <h2>{chat.title}</h2>
         <div className="muted small">{membersLabel(chat)}</div>
       </div>
@@ -44,6 +52,7 @@ function GroupInfo({ chat }) {
         <button onClick={mute}>{chat.muted ? <Bell size={22} /> : <BellOff size={22} />}{chat.muted ? 'Вкл. звук' : 'Без звука'}</button>
         {isAdmin && <button onClick={() => openModal('editChat', { chat })}><Pencil size={22} />Изменить</button>}
         {isAdmin && <button onClick={() => openModal('newChat', { type: 'addMembers', chat })}><UserPlus size={22} />Добавить</button>}
+        {chat.type === 'channel' && <button onClick={() => openModal('giftShop', { toChat: chat })}><Gift size={22} />Подарить</button>}
         {chat.isMember && <button onClick={leave} style={{ color: '#ff4d4f' }}><LogOut size={22} />Покинуть</button>}
       </div>
       {chat.description && <div className="info-row"><Info size={22} /><div className="grow"><div style={{ whiteSpace: 'pre-wrap' }}>{chat.description}</div><div className="label">Описание</div></div></div>}
@@ -54,6 +63,7 @@ function GroupInfo({ chat }) {
           <Copy size={18} />
         </div>
       )}
+      {chat.type === 'channel' && <ChannelGifts chat={chat} />}
       {members.data?.members?.length > 0 && (
         <>
           <div className="section-title row" style={{ paddingLeft: 16 }}><Users size={16} /> {chat.type === 'channel' ? 'Подписчики' : 'Участники'}</div>
@@ -81,6 +91,17 @@ function GroupInfo({ chat }) {
   );
 }
 
+function ChannelGifts({ chat }) {
+  const { data } = useAsync(() => api(`/chats/${chat.id}/gifts`), [chat.id]);
+  if (!data?.gifts?.length) return null;
+  return (
+    <>
+      <div className="section-title row" style={{ paddingLeft: 16 }}><Gift size={16} /> Подарки · {data.gifts.length}</div>
+      <div style={{ padding: '0 12px 8px' }}><GiftsGrid gifts={data.gifts} /></div>
+    </>
+  );
+}
+
 export function RightPanel() {
   const chat = useStore((s) => s.chats.find((c) => c.id === s.activeChatId));
   const setRightPanel = useStore((s) => s.setRightPanel);
@@ -93,7 +114,7 @@ export function RightPanel() {
     );
   }
   return (
-    <aside className="right-panel">
+    <aside className="right-panel chan-panel" key={chat.id}>
       <div className="chat-header" style={{ borderBottom: 0 }}>
         <button className="icon-btn" onClick={() => setRightPanel(false)}><X size={22} /></button>
         <div className="bold">{chat.type === 'private' ? 'Информация' : chat.type === 'channel' ? 'Канал' : chat.type === 'saved' ? 'Избранное' : 'Группа'}</div>

@@ -25,7 +25,7 @@ function loadTgs(src) {
 }
 
 /** Plays a .tgs animation; shows `poster` until it is ready (and if it fails). */
-export function TgsPlayer({ src, poster, size, className = '', style, loop = true }) {
+export function TgsPlayer({ src, poster, size, className = '', style, loop = true, onDone }) {
   const box = useRef();
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -41,6 +41,7 @@ export function TgsPlayer({ src, poster, size, className = '', style, loop = tru
         // lottie mutates the data object — give each player its own copy
         anim = lottie.loadAnimation({ container: box.current, renderer: 'svg', loop, autoplay: true, animationData: structuredClone(data), rendererSettings: { preserveAspectRatio: 'xMidYMid meet' } });
         anim.addEventListener('DOMLoaded', () => !cancelled && setReady(true));
+        if (!loop) anim.addEventListener('complete', () => !cancelled && onDone?.());
       })
       .catch(() => !cancelled && setFailed(true));
     return () => {

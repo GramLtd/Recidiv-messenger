@@ -6,11 +6,14 @@ export const emojiCode = (e) => [...String(e || '')].map((c) => c.codePointAt(0)
 export const emoji3d = (e) => `/emoji3d/${emojiCode(e)}.webp`;
 
 /** 3D model image (animated when available) with graceful fallback to the plain emoji. */
-export function GiftModel({ emoji, image, animation, filter, size, animated = false, className = '', style }) {
+export function GiftModel({ emoji, image, animation, filter, size, animated = false, loop = true, className = '', style }) {
   const [failed, setFailed] = useState(false);
+  // play-once players free their SVG after the animation and show the still image again
+  const [done, setDone] = useState(false);
+  if (done) animated = false;
   const common = { width: size, height: size, filter: filter || undefined, ...style };
   if (animated && isTgs(animation) && !failed) {
-    return <TgsPlayer src={animation} poster={image} size={size} className={`gift-model ${className}`} style={{ filter: filter || undefined, ...style }} />;
+    return <TgsPlayer src={animation} poster={image} size={size} loop={loop} onDone={loop ? undefined : () => setDone(true)} className={`gift-model ${className}`} style={{ filter: filter || undefined, ...style }} />;
   }
   const src = (animated && !isTgs(animation) && animation) || image || (emoji ? emoji3d(emoji) : null);
   if (!src || failed) {
@@ -24,15 +27,15 @@ export function GiftModel({ emoji, image, animation, filter, size, animated = fa
 }
 
 /** Regular gift or collectible, depending on the user gift. */
-export function GiftArt({ userGift, gift, size = 80, height, rounded = 16, animated = false, style }) {
+export function GiftArt({ userGift, gift, size = 80, height, rounded = 16, animated = false, loop = true, style }) {
   const g = gift || userGift?.gift;
   const col = userGift?.collectible;
-  if (col) return <CollectibleArt col={col} size={size} height={height} rounded={rounded} animated={animated} style={style} />;
+  if (col) return <CollectibleArt col={col} size={size} height={height} rounded={rounded} animated={animated} loop={loop} style={style} />;
   const h = height || size;
   const modelSize = typeof h === 'number' ? h * 0.82 : '82%';
   return (
     <div className="center" style={{ width: size, height: h, ...style }}>
-      <GiftModel emoji={g?.emoji} image={g?.image} animation={g?.animation} size={modelSize} animated={animated} className="floaty" />
+      <GiftModel emoji={g?.emoji} image={g?.image} animation={g?.animation} size={modelSize} animated={animated} loop={loop} className="floaty" />
     </div>
   );
 }
@@ -51,7 +54,7 @@ const PATTERN = RINGS.flatMap((ring, ri) =>
   }),
 );
 
-export function CollectibleArt({ col, size = 200, height, rounded = 16, animated = false, tilt = false, style, children }) {
+export function CollectibleArt({ col, size = 200, height, rounded = 16, animated = false, loop = true, tilt = false, style, children }) {
   const { backdrop, symbol, model } = col;
   const ref = useRef();
   const h = height || size;
@@ -99,9 +102,8 @@ export function CollectibleArt({ col, size = 200, height, rounded = 16, animated
         ))}
       </div>
       <div className="model-wrap">
-        <GiftModel emoji={model?.emoji} image={model?.image} animation={model?.animation} filter={model?.filter} size="100%" animated={animated} className="floaty" />
+        <GiftModel emoji={model?.emoji} image={model?.image} animation={model?.animation} filter={model?.filter} size="100%" animated={animated} loop={loop} className="floaty" />
       </div>
-      <div className="shine" />
       {children}
     </div>
   );

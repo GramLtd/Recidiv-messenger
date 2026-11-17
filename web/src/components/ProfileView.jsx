@@ -22,7 +22,8 @@ function useInView(ref) {
   const [v, setV] = useState(false);
   useEffect(() => {
     if (!ref.current) return undefined;
-    const io = new IntersectionObserver(([e]) => setV(e.isIntersecting), { rootMargin: '80px' });
+    // latch: becomes true the first time the card is visible (plays its animation once)
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setV(true); io.disconnect(); } }, { rootMargin: '40px' });
     io.observe(ref.current);
     return () => io.disconnect();
   }, [ref]);
@@ -56,9 +57,9 @@ export function GiftTile({ ug, onClick, index = 0, canPin, onPin }) {
       style={{ animationDelay: `${Math.min(index, 20) * 45}ms`, opacity: ug.hidden ? 0.45 : undefined }}>
       <span className="glare" />
       {col ? (
-        <GiftArt userGift={ug} size="100%" height="100%" rounded={0} animated={inView} style={{ position: 'absolute', inset: 0 }} />
+        <GiftArt userGift={ug} size="100%" height="100%" rounded={0} animated={inView} loop={false} style={{ position: 'absolute', inset: 0 }} />
       ) : (
-        <div className="gift-card-art"><GiftArt userGift={ug} size="78%" height="78%" animated={inView} /></div>
+        <div className="gift-card-art"><GiftArt userGift={ug} size="78%" height="78%" animated={inView} loop={false} /></div>
       )}
       {col && <span className="gift-num">#{col.number}</span>}
       {ug.listing && <span className="gift-sale">продаётся</span>}
@@ -160,7 +161,7 @@ function Orbit({ gifts, onOpen }) {
               <i key={k} className="pv-gift-spark" style={{ '--a': `${(k / SPARKS_PER) * 360 + i * 23}deg`, animationDelay: `${(k * 0.7 + i * 0.3) % 3.5}s` }} />
             ))}
             <span style={{ animationDelay: `${i * 0.6}s`, animationDuration: `${7 + (i % 3)}s` }}>
-              <GiftModel emoji={m?.emoji || ug.gift.emoji} image={m?.image || ug.gift.image} animation={m?.animation} animated filter={m?.filter} size={size} />
+              <GiftModel emoji={m?.emoji || ug.gift.emoji} image={m?.image || ug.gift.image} animation={m?.animation} animated loop={false} filter={m?.filter} size={size} />
             </span>
           </button>
         );
@@ -190,21 +191,21 @@ function CountUp({ value }) {
   return <>{fmtNum(v)}</>;
 }
 
-function ProfileTrack({ track }) {
+function ProfileTrack({ track, onOpen }) {
   const cur = usePlayer((s) => s.current());
   const playing = usePlayer((s) => s.playing);
   const time = usePlayer((s) => s.time);
   const playTrack = usePlayer((s) => s.playTrack);
   const active = cur?.url === track.url;
   return (
-    <div className={`pv-track ${active ? 'active' : ''}`} onClick={() => playTrack(track)}>
+    <div className={`pv-track ${active ? 'active' : ''}`} onClick={() => (onOpen ? onOpen() : playTrack(track))}>
       <Cover track={track} size={44} radius={10} />
       <div className="grow" style={{ minWidth: 0 }}>
         <div className="ellipsis bold">{track.title}</div>
         <div className="ellipsis small muted">{track.artist || 'Неизвестный исполнитель'}</div>
       </div>
       <span className="small muted">{fmtTime(active ? time : track.duration)}</span>
-      <span className="pv-track-play">{active && playing ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" style={{ marginLeft: 2 }} />}</span>
+      <span className="pv-track-play" onClick={(e) => { e.stopPropagation(); playTrack(track); }}>{active && playing ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" style={{ marginLeft: 2 }} />}</span>
       {active && <i className="pv-track-progress" style={{ width: `${track.duration ? (time / track.duration) * 100 : 0}%` }} />}
     </div>
   );
@@ -374,7 +375,7 @@ export function ProfileView({ userId, onClose }) {
         )}
         <ProfileLinks links={u.links} />
         {u.profileTrack ? (
-          <ProfileTrack track={u.profileTrack} />
+          <ProfileTrack track={u.profileTrack} onOpen={isMe ? () => useStore.getState().setTab('music') : undefined} />
         ) : isMe ? (
           <button className="pv-track empty" onClick={() => useStore.getState().setTab('music')}>
             <Music2 size={18} /> <span className="grow">Добавить музыку в профиль</span> <ChevronRight size={16} />
@@ -415,9 +416,6 @@ export function ProfileView({ userId, onClose }) {
       )}
 
       {pop && <ProfilePopup pop={pop} u={u} isMe={isMe} onClose={() => setPop(null)} />}
-      {isMe && u.profileTrack && (
-        <button className="pv-music-btn lg" onClick={() => useStore.getState().setTab('music')}><Music2 size={18} /> <span className="grow">Моя музыка</span> <ChevronRight size={16} /></button>
-      )}
       <div className="pv-info">
         {u.anonNumber ? (
           <div className="pv-row">
