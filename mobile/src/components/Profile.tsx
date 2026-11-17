@@ -344,10 +344,10 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
         {u.banner?.url && (
           <View style={[st.banner, { height: 260 + insets.top }]} pointerEvents="none">
             {Platform.OS === 'web' ? (
-              <>
+              <View style={[StyleSheet.absoluteFill, { maskImage: 'linear-gradient(180deg, #000 45%, transparent 100%)', WebkitMaskImage: 'linear-gradient(180deg, #000 45%, transparent 100%)' } as any]}>
                 {u.banner.type === 'video' ? <BannerVideo url={u.banner.url} /> : <Image source={{ uri: mediaUrl(u.banner.url) }} style={StyleSheet.absoluteFill} contentFit="cover" />}
-                <LinearGradient colors={['rgba(0,0,0,0.15)', 'rgba(30,22,22,0.4)', 'rgba(40,30,30,0.95)']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />
-              </>
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+              </View>
             ) : (
               <MaskedView style={StyleSheet.absoluteFill} maskElement={<LinearGradient colors={['#000', '#000', 'transparent']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />}>
                 {u.banner.type === 'video' ? <BannerVideo url={u.banner.url} /> : <Image source={{ uri: mediaUrl(u.banner.url) }} style={StyleSheet.absoluteFill} contentFit="cover" />}
@@ -359,7 +359,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
         {/* hero glow */}
         <Radial inner={`${glow}40`} outer="rgba(0,0,0,0)" cy="34%" stop={0.75} style={{ position: 'absolute', top: insets.top - 40, left: 0, right: 0, height: 420, opacity: 0.6 }} />
 
-        <Animated.View style={[st.top, { marginTop: insets.top + 4 }, topSt]}>
+        <Animated.View style={[st.top, { marginTop: insets.top + 10 }, topSt]}>
           {!own ? <GlassIcon size={38} onPress={() => router.back()}><ChevronLeft size={22} color={C.text} /></GlassIcon> : <View />}
           <View style={{ flex: 1 }} />
           {isMe && <GlassIcon size={38} onPress={() => router.push('/settings/privacy')}><Shield size={17} color={C.text} /></GlassIcon>}
