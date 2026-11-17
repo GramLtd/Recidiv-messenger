@@ -11,5 +11,12 @@
   "ios": {
     "backgroundColor": "#000000",
     "contentInset": "never"
+  },
+  "plugins": {
+    "Keyboard": {
+      "resize": "native",
+      "style": "DARK",
+      "resizeOnFullScreen": true
+    }
   }
 }

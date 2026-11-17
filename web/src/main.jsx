@@ -5,6 +5,16 @@ import App from './App.jsx';
 import { applyTheme, loadTheme } from './theme.js';
 import './styles.css';
 import './styles-v5.css';
+import { Capacitor } from '@capacitor/core';
+
+// Native app: no Safari-style "▲ ▼ ✓" bar above the keyboard, dark keyboard.
+if (Capacitor.isNativePlatform()) {
+  import('@capacitor/keyboard').then(({ Keyboard, KeyboardStyle }) => {
+    Keyboard.setAccessoryBarVisible({ isVisible: false }).catch(() => {});
+    Keyboard.setStyle({ style: KeyboardStyle.Dark }).catch(() => {});
+  }).catch(() => {});
+  document.documentElement.classList.add('native-app');
+}
 
 applyTheme(loadTheme());
 
