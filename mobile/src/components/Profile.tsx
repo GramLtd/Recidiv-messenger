@@ -339,7 +339,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       {blur.mode !== 'off' && <BlurBg uri={blurUri} color={'#e53935'} />}
-      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 170 }}>
+      <Animated.ScrollView contentInsetAdjustmentBehavior="never" onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 170 }}>
         {/* banner */}
         {u.banner?.url && (
           <View style={[st.banner, { height: 260 + insets.top }]} pointerEvents="none">

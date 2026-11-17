@@ -22,7 +22,7 @@ export default function ProxyScreen() {
     router.back();
   };
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingTop: insets.top + 10, padding: 14, gap: 12 }} keyboardShouldPersistTaps="handled">
+    <ScrollView contentInsetAdjustmentBehavior="never" style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingTop: insets.top + 10, padding: 14, gap: 12 }} keyboardShouldPersistTaps="handled">
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Press onPress={() => router.back()}><T size={30}>‹</T></Press>
         <T bold size={24}>Прокси</T>

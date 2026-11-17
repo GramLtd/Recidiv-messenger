@@ -28,7 +28,7 @@ export default function GiftSheet() {
   });
   const supply = ug.gift?.supply;
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: C.bg2 }} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView contentInsetAdjustmentBehavior="never" style={{ flex: 1, backgroundColor: C.bg2 }} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={st.hero}>
         {col ? <CollectibleArt col={{ ...col, model: null }} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: '#1d1d22' }]} />}
         <View style={st.top}>

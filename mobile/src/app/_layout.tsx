@@ -64,7 +64,7 @@ export default function Root() {
 /** Any render error shows its message (instead of closing the app) with a retry button. */
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 24, paddingTop: 80, gap: 14 }}>
+    <ScrollView contentInsetAdjustmentBehavior="never" style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 24, paddingTop: 80, gap: 14 }}>
       <Text style={{ color: '#fff', fontSize: 22, fontWeight: '700' }}>Что-то пошло не так</Text>
       <Text selectable style={{ color: C.text2, fontSize: 14 }}>{String(error?.message || error)}</Text>
       <Text onPress={() => { retry(); }} style={{ color: C.accent, fontSize: 17, fontWeight: '600', marginTop: 10 }}>Повторить</Text>

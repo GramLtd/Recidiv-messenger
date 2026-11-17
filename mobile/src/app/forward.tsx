@@ -16,7 +16,7 @@ export default function Forward() {
   return (
     <View style={{ flex: 1, paddingTop: 18 }}>
       <T bold size={20} style={{ paddingHorizontal: 18, marginBottom: 8 }}>{postId ? 'Поделиться в…' : 'Переслать в…'}</T>
-      <FlatList data={chats} keyExtractor={(c) => String(c.id)} renderItem={({ item }) => (
+      <FlatList contentInsetAdjustmentBehavior="never" data={chats} keyExtractor={(c) => String(c.id)} renderItem={({ item }) => (
         <Press onPress={() => go(item)} scale={0.98} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 8 }}>
           <Avatar uri={item.avatar} name={item.title} id={item.peer?.id || item.id} size={44} />
           <T bold numberOfLines={1} style={{ flex: 1 }}>{item.title}</T>

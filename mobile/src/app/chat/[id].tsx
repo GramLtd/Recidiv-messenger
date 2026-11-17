@@ -316,7 +316,7 @@ export default function ChatScreen() {
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Wallpaper wp={me.wallpaper} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <FlatList
+        <FlatList contentInsetAdjustmentBehavior="never"
           inverted
           data={items}
           keyExtractor={(it) => it.k}
@@ -340,7 +340,7 @@ export default function ChatScreen() {
             {emoji && (
               <Animated.View entering={FadeIn.duration(180)} style={st.emojiPanel}>
                 <Glass radius={22} fill="rgba(24,24,28,0.72)" style={{ flex: 1 }}>
-                  <ScrollView contentContainerStyle={st.emojiGrid}>
+                  <ScrollView contentInsetAdjustmentBehavior="never" contentContainerStyle={st.emojiGrid}>
                     {EMOJIS.map((e, i) => <Pressable key={i} onPress={() => setText((t) => t + e)} style={st.emojiCell}><T size={26}>{e}</T></Pressable>)}
                   </ScrollView>
                 </Glass>
@@ -429,7 +429,7 @@ export default function ChatScreen() {
       </View>
       {search !== null && results.length > 0 && (
         <View style={[st.results, { top: insets.top + 64 }]}>
-          <ScrollView keyboardShouldPersistTaps="handled">
+          <ScrollView contentInsetAdjustmentBehavior="never" keyboardShouldPersistTaps="handled">
             {results.map((m) => (
               <Pressable key={m.id} style={st.resRow} onPress={() => { setSearch(null); setResults([]); }}>
                 <View style={{ flex: 1 }}><T w={700} size={13.5}>{m.sender?.displayName}</T><T size={13} dim numberOfLines={1}>{m.text}</T></View>

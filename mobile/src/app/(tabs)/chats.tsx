@@ -28,7 +28,7 @@ function StoriesBar() {
   const mine = feed.find((f) => f.isMe);
   const others = feed.filter((f) => !f.isMe);
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.stories}>
+    <ScrollView contentInsetAdjustmentBehavior="never" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.stories}>
       <Press scale={0.92} onPress={() => (mine ? router.push(`/story/${me.id}`) : Alert.alert('Истории', 'Публикация историй скоро появится в приложении.'))} style={st.chip}>
         <View>
           {mine ? <Ring seen={mine.allViewed} size={70}><Avatar uri={me.avatar} name={me.displayName} id={me.id} size={58} /></Ring> : <Avatar uri={me.avatar} name={me.displayName} id={me.id} size={58} />}
@@ -159,7 +159,7 @@ export default function Chats() {
   ) : undefined;
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <FlatList
+      <FlatList contentInsetAdjustmentBehavior="never"
         data={local}
         keyExtractor={(c) => String(c.id)}
         renderItem={({ item, index }) => <ChatRow c={item} index={index} meId={me.id} editing={editing} onAction={action} />}

@@ -210,13 +210,25 @@ export function Spark({ amount, size = BASE, color = C.accent, amountColor }: { 
   );
 }
 
+/**
+ * react-native-svg on iOS ignores the alpha of rgba()/#rrggbbaa stop colours (a 30%-transparent stop becomes solid),
+ * so split every colour into an opaque stopColor + stopOpacity.
+ */
+export function stopProps(c: string): { stopColor: string; stopOpacity: number } {
+  const m = c.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+))?\s*\)$/i);
+  if (m) return { stopColor: `rgb(${m[1]},${m[2]},${m[3]})`, stopOpacity: m[4] !== undefined ? Number(m[4]) : 1 };
+  const h = c.match(/^#([0-9a-f]{6})([0-9a-f]{2})$/i);
+  if (h) return { stopColor: `#${h[1]}`, stopOpacity: parseInt(h[2], 16) / 255 };
+  return { stopColor: c, stopOpacity: 1 };
+}
+
 /** Radial gradient box (CSS radial-gradient(circle, a, b)). */
 export function Radial({ inner, outer, style, cx = '50%', cy = '50%', stop = 0.78, radius, mid, midStop = 0.38, r = '70%' }: { inner: string; outer: string; style?: StyleProp<ViewStyle>; cx?: string; cy?: string; stop?: number; radius?: number; mid?: string; midStop?: number; r?: string }) {
   const gid = `rg${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (
     <View style={[{ overflow: 'hidden', borderRadius: radius }, style]} pointerEvents="none">
       <Svg width="100%" height="100%">
-        <Defs><RadialGradient id={gid} cx={cx} cy={cy} r={r}>{[<Stop key="a" offset="0" stopColor={inner} />, ...(mid ? [<Stop key="m" offset={String(midStop)} stopColor={mid} />] : []), <Stop key="b" offset={String(stop)} stopColor={outer} />, <Stop key="c" offset="1" stopColor={outer} />]}</RadialGradient></Defs>
+        <Defs><RadialGradient id={gid} cx={cx} cy={cy} r={r}>{[<Stop key="a" offset="0" {...stopProps(inner)} />, ...(mid ? [<Stop key="m" offset={String(midStop)} {...stopProps(mid)} />] : []), <Stop key="b" offset={String(stop)} {...stopProps(outer)} />, <Stop key="c" offset="1" {...stopProps(outer)} />]}</RadialGradient></Defs>
         <Rect width="100%" height="100%" fill={`url(#${gid})`} />
       </Svg>
     </View>

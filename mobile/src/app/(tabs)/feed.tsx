@@ -114,7 +114,7 @@ export default function Feed() {
   const data = tab === 'tags' && !tag ? [] : posts || [];
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <FlatList
+      <FlatList contentInsetAdjustmentBehavior="never"
         data={data}
         keyExtractor={(p) => `${p.kind || 'post'}${p.id}`}
         renderItem={({ item, index }) => (item.kind === 'channel'

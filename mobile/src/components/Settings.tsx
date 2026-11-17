@@ -85,7 +85,7 @@ export function Page({ title, children, right }: { title: string; children: Reac
         <T w={800} size={18.75} numberOfLines={1} style={{ flex: 1, letterSpacing: -0.2 }}>{title}</T>
         {right}
       </View>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 6, paddingBottom: insets.bottom + 40 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 6, paddingBottom: insets.bottom + 40 }} keyboardShouldPersistTaps="handled">
         {children}
       </ScrollView>
     </View>

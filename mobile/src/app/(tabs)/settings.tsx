@@ -26,7 +26,7 @@ export default function Settings() {
   const go = (page: string) => router.push(`/settings/${page}` as any);
   if (!me) return null;
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 140, paddingHorizontal: 14 }} showsVerticalScrollIndicator={false}>
+    <ScrollView contentInsetAdjustmentBehavior="never" style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 140, paddingHorizontal: 14 }} showsVerticalScrollIndicator={false}>
       <Rise><T w={800} size={19} style={{ paddingHorizontal: 4, marginBottom: 14, marginTop: 10 }}>Настройки</T></Rise>
       <Rise delay={40}>
         <Press scale={0.98} onPress={() => go('profile')} style={st.me}>
