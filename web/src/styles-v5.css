@@ -1025,3 +1025,11 @@ html.perf .modal-body > *, html.perf .page-body > *, html.perf .post, html.perf 
 
 /* round video messages (кружки) */
 .round-video { display: block; width: 220px; height: 220px; border-radius: 50%; object-fit: cover; background: #111; cursor: pointer; }
+
+/* floating composer: messages scroll under the glass input instead of ending above an opaque strip */
+.chat-main { --composer-h: 76px; }
+.chat-main .composer-wrap { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; background: none; pointer-events: none; }
+.chat-main .composer-wrap > * { pointer-events: auto; }
+.chat-main .messages { padding-bottom: calc(var(--composer-h) + 8px); }
+.chat-main .scroll-down { bottom: calc(var(--composer-h) + 12px); }
+.tg-head > * { flex-shrink: 0; } .tg-head > .tg-title, .tg-head > .tg-search { flex-shrink: 1; }

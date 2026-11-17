@@ -409,6 +409,15 @@ export default function ChatView() {
   const wallpaper = useStore((s) => s.me?.wallpaper);
   // phones: the chat slides out to the right (and can be swiped back from the left edge)
   const mainRef = useRef();
+  // the composer floats over the messages (liquid glass on top of the chat); keep its height in --composer-h
+  useEffect(() => {
+    const main = mainRef.current;
+    const wrap = main?.querySelector('.composer-wrap');
+    if (!main || !wrap) { main?.style.setProperty('--composer-h', '0px'); return undefined; }
+    const ro = new ResizeObserver(() => main.style.setProperty('--composer-h', `${wrap.offsetHeight}px`));
+    ro.observe(wrap);
+    return () => ro.disconnect();
+  });
   const closeChat = () => {
     const app = document.querySelector('.app');
     if (!app || innerWidth > 768) return openChat(null);
@@ -546,7 +555,7 @@ export default function ChatView() {
           </button>
         )}
         {!searchOpen && (chat.type === 'private' || chat.type === 'saved' || chat.role === 'owner' || chat.role === 'admin') && (
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
             <button className={`lg tg-round ${chat.autoDelete ? 'on' : ''}`} onClick={() => setTimerMenu(!timerMenu)} aria-label="Автоудаление" title="Автоудаление сообщений" style={chat.autoDelete ? { color: 'var(--accent)' } : undefined}><Timer size={19} /></button>
             {timerMenu && (
               <>
