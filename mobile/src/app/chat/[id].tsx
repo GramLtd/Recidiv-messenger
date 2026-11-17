@@ -1,17 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
-import Animated, { FadeIn, FadeInDown, SlideInDown, ZoomIn, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, SlideInDown, ZoomIn, LinearTransition, useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { useStore, sendTyping } from '../../lib/store';
 import { api } from '../../lib/api';
 import { decryptFrom, canEncryptTo } from '../../lib/e2e';
 import { mediaUrl } from '../../lib/config';
-import { Avatar, Glass, Press, T } from '../../components/ui';
+import { AccentFill, Avatar, BottomFade, Glass, Press, T, TopFade } from '../../components/ui';
+import { Icon } from '../../components/Icon';
 import { C } from '../../lib/theme';
 import { usePerf } from '../../lib/perf';
 
@@ -81,6 +82,11 @@ export default function ChatScreen() {
   const [secret, setSecret] = useState(false);
   const [canSecret, setCanSecret] = useState(false);
   const lastTyping = useRef(0);
+  const [composerH, setComposerH] = useState(70);
+  // composer floats over the messages and rides the keyboard on the UI thread
+  const kb = useAnimatedKeyboard();
+  const composerSt = useAnimatedStyle(() => ({ transform: [{ translateY: -Math.max(0, kb.height.value - insets.bottom) }] }));
+  const spacerSt = useAnimatedStyle(() => ({ height: composerH + Math.max(0, kb.height.value - insets.bottom) }));
 
   useEffect(() => { openChat(chatId); loadMessages(chatId).catch(() => {}); return () => openChat(null); }, [chatId]);
   useEffect(() => { if (chat?.type === 'private' && chat.peer && chat.peer.id !== me?.id) canEncryptTo(chat.peer.id).then(setCanSecret); }, [chat?.peer?.id]);
@@ -129,7 +135,7 @@ export default function ChatScreen() {
   const canPost = chat.isMember !== false && (chat.type !== 'channel' || chat.role !== 'member');
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
       <FlatList
         inverted
         data={items}
@@ -137,7 +143,8 @@ export default function ChatScreen() {
         renderItem={({ item }) => item.day
           ? <View style={s.dayWrap}><Glass radius={12} style={s.dayPill}><T size={13} bold>{item.day}</T></Glass></View>
           : <Bubble m={item.m} out={item.m.sender?.id === me?.id && chat.type !== 'channel'} peerId={chat.peer?.id} meId={me?.id} onLong={setMenu} onReact={react} />}
-        contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.top + 74, paddingHorizontal: 8 }}
+        ListHeaderComponent={<Animated.View style={spacerSt} />}
+        contentContainerStyle={{ paddingBottom: insets.top + 74, paddingHorizontal: 8 }}
         onEndReached={() => hasMore && loadMessages(chatId, true).catch(() => {})}
         onEndReachedThreshold={0.4}
         keyboardDismissMode="interactive"
@@ -145,9 +152,10 @@ export default function ChatScreen() {
         windowSize={11}
         maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
       />
-      {/* floating glass header, like Telegram */}
+      {/* floating glass header, like Telegram: content fades + blurs under it */}
+      <TopFade height={insets.top + 78} />
       <View style={[s.header, { paddingTop: insets.top + 6 }]} pointerEvents="box-none">
-        <Press onPress={() => router.back()}><Glass radius={23} style={s.round}><T size={28} style={{ marginTop: -3 }}>‹</T></Glass></Press>
+        <Press onPress={() => router.back()}><Glass radius={23} style={s.round}><Icon name="back" size={26} stroke={2.4} /></Glass></Press>
         <Press onPress={() => chat.peer && router.push(`/user/${chat.peer.id}`)} style={{ flex: 1 }} scale={0.97}>
           <Glass radius={23} style={s.titlePill}>
             <T bold numberOfLines={1} size={16}>{chat.title}</T>
@@ -158,11 +166,12 @@ export default function ChatScreen() {
       </View>
 
       {canPost && (
-        <View style={{ paddingHorizontal: 10, paddingBottom: Math.max(8, insets.bottom), paddingTop: 6 }}>
+        <Animated.View onLayout={(e) => setComposerH(e.nativeEvent.layout.height)} style={[s.composer, { paddingBottom: Math.max(8, insets.bottom) }, composerSt]}>
+          <BottomFade height={composerH + 40} />
           {(reply || edit) && (
             <Animated.View entering={SlideInDown.springify().damping(20)} style={s.replyBar}>
               <T size={13} bold style={{ color: C.accent, flex: 1 }} numberOfLines={1}>{edit ? 'Редактирование' : `Ответ ${reply.sender?.displayName || ''}`}: <T size={13} dim>{(edit || reply).text}</T></T>
-              <Press onPress={() => { setReply(null); setEdit(null); if (edit) setText(''); }}><T dim>✕</T></Press>
+              <Press onPress={() => { setReply(null); setEdit(null); if (edit) setText(''); }}><Icon name="close" size={18} color={C.text2} /></Press>
             </Animated.View>
           )}
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
@@ -176,10 +185,10 @@ export default function ChatScreen() {
                 style={s.input}
               />
             </Glass>
-            {canSecret && <Press onPress={() => setSecret(!secret)} haptic><Glass radius={23} style={[s.round, secret && { backgroundColor: 'rgba(52,199,89,0.3)' }]}><T>🔒</T></Glass></Press>}
-            <Press onPress={submit} haptic disabled={!text.trim()}><View style={[s.round, { backgroundColor: C.accent }]}><T bold size={20} style={{ color: '#fff' }}>{edit ? '✓' : '➤'}</T></View></Press>
+            {canSecret && <Press onPress={() => setSecret(!secret)} haptic><Glass radius={23} style={[s.round, secret && { backgroundColor: 'rgba(52,199,89,0.35)' }]}><Icon name="lock" size={20} color={secret ? '#fff' : C.text2} /></Glass></Press>}
+            <Press onPress={submit} haptic scale={0.85} disabled={!text.trim()}><AccentFill radius={23} style={s.round}><Icon name={edit ? 'check' : 'send'} size={24} stroke={2.6} /></AccentFill></Press>
           </View>
-        </View>
+        </Animated.View>
       )}
 
       {/* long-press menu: quick reactions + actions over a blurred chat */}
@@ -207,14 +216,15 @@ export default function ChatScreen() {
               <Animated.View entering={FadeInDown.delay(60).springify().damping(18)} style={{ alignSelf: menu.sender?.id === me?.id ? 'flex-end' : 'flex-start', width: 240 }}>
                 <Glass radius={18}>
                   {[
-                    ['reply', '↩  Ответить'],
-                    menu.text && ['copy', '⧉  Копировать'],
-                    !menu.deleted && menu.type !== 'secret' && ['forward', '↪  Переслать'],
-                    menu.sender?.id === me?.id && !menu.deleted && menu.text && menu.type !== 'secret' && ['edit', '✎  Изменить'],
-                    (menu.sender?.id === me?.id || chat.role === 'owner' || chat.role === 'admin') && !menu.deleted && ['delete', '🗑  Удалить'],
+                    ['reply', 'Ответить', 'reply'],
+                    menu.text && ['copy', 'Копировать', 'copy'],
+                    !menu.deleted && menu.type !== 'secret' && ['forward', 'Переслать', 'forward'],
+                    menu.sender?.id === me?.id && !menu.deleted && menu.text && menu.type !== 'secret' && ['edit', 'Изменить', 'edit'],
+                    (menu.sender?.id === me?.id || chat.role === 'owner' || chat.role === 'admin') && !menu.deleted && ['delete', 'Удалить', 'trash'],
                   ].filter(Boolean).map((a: any, i: number) => (
                     <Press key={a[0]} onPress={() => act(a[0])} scale={0.98} style={[s.menuItem, i > 0 && s.menuSep]}>
                       <T style={a[0] === 'delete' ? { color: '#ff5a5f' } : undefined}>{a[1]}</T>
+                      <Icon name={a[2]} size={20} color={a[0] === 'delete' ? '#ff5a5f' : C.text} />
                     </Press>
                   ))}
                 </Glass>
@@ -223,7 +233,7 @@ export default function ChatScreen() {
           )}
         </Pressable>
       </Modal>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -252,7 +262,8 @@ const s = StyleSheet.create({
   reaction: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.1)' },
   reactionMine: { backgroundColor: C.accent },
   input: { color: C.text, fontSize: 17, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, maxHeight: 140 },
-  replyBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 6, borderRadius: 14, backgroundColor: C.bg3 },
-  menuItem: { paddingHorizontal: 16, paddingVertical: 13 },
+  replyBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 6, borderRadius: 14, backgroundColor: 'rgba(40,40,44,0.9)' },
+  menuItem: { paddingHorizontal: 16, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  composer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 10, paddingTop: 6 },
   menuSep: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.12)' },
 });

@@ -3,13 +3,14 @@ import { Dimensions, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming, Easing, FadeInDown } from 'react-native-reanimated';
+import Animated, { Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming, Easing, FadeIn } from 'react-native-reanimated';
 import { api } from '../lib/api';
 import { cache } from '../lib/db';
 import { mediaUrl } from '../lib/config';
 import { useStore } from '../lib/store';
 import { usePerf } from '../lib/perf';
 import { Avatar, Glass, GlassButton, Press, T } from './ui';
+import { Icon } from './Icon';
 import { C } from '../lib/theme';
 
 const W = Dimensions.get('window').width;
@@ -73,17 +74,21 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
   const pinned = useMemo(() => gifts.filter((g) => g.pinned).slice(0, 10), [gifts]);
   const spots = useMemo(() => layout(pinned.length), [pinned.length]);
 
-  // scroll-driven header: pull down → avatar stretches (iOS bounce = spring), scroll up → shrinks & fades
+  // scroll-driven header, continuous (no clamps on the pull side, so it follows the finger and the iOS bounce
+  // springs it back): pull down → avatar follows at half speed and grows; scroll up → it lags, shrinks and fades.
   const y = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((e) => { y.value = e.contentOffset.y; });
-  const avatarSt = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: interpolate(y.value, [-200, 0, 180], [-40, 0, -60], Extrapolation.CLAMP) },
-      { scale: interpolate(y.value, [-200, 0, 180], [1.45, 1, 0.35], Extrapolation.CLAMP) },
-    ],
-    opacity: interpolate(y.value, [0, 160], [1, 0], Extrapolation.CLAMP),
-  }));
-  const stageSt = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [0, 120], [1, 0], Extrapolation.CLAMP), transform: [{ scale: interpolate(y.value, [-200, 0], [1.12, 1], Extrapolation.CLAMP) }] }));
+  const avatarSt = useAnimatedStyle(() => {
+    const v = y.value;
+    return {
+      transform: [
+        { translateY: v < 0 ? v * 0.5 : v * 0.3 },
+        { scale: v < 0 ? 1 + Math.min(-v, 320) / 520 : interpolate(v, [0, 180], [1, 0.4], Extrapolation.CLAMP) },
+      ],
+      opacity: interpolate(v, [40, 170], [1, 0], Extrapolation.CLAMP),
+    };
+  });
+  const stageSt = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [20, 130], [1, 0], Extrapolation.CLAMP) }));
   const miniSt = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [150, 200], [0, 1], Extrapolation.CLAMP), transform: [{ translateY: interpolate(y.value, [150, 200], [-10, 0], Extrapolation.CLAMP) }] }));
   const bgSt = useAnimatedStyle(() => ({ transform: [{ scale: interpolate(y.value, [-200, 0], [1.4, 1], Extrapolation.CLAMP) }] }));
 
@@ -108,8 +113,12 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
             </View>
           </Animated.View>
         </Animated.View>
-        <Animated.View entering={FadeInDown.springify().damping(18)} style={{ alignItems: 'center', gap: 6, paddingHorizontal: 16 }}>
-          <T bold size={26} style={u.nameStyle?.color ? { color: u.nameStyle.color } : undefined}>{u.displayName}{u.verified ? ' ☑︎' : ''}{u.premium ? ' ✦' : ''}</T>
+        <Animated.View entering={FadeIn.duration(220)} style={{ alignItems: 'center', gap: 6, paddingHorizontal: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <T bold size={26} style={u.nameStyle?.color ? { color: u.nameStyle.color } : undefined}>{u.displayName}</T>
+            {u.verified && <Icon name="verified" size={22} color="#fff" fill={C.accent} />}
+            {u.premium && <Icon name="spark" size={20} color={C.accent} fill={C.accent} />}
+          </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Glass radius={14} style={s.pill}><T size={13} bold style={{ color: u.online ? C.green : C.text2 }}>{u.online ? 'в сети' : 'был(а) недавно'}</T></Glass>
             {isMe && <Glass radius={14} style={s.pill}><T size={13} bold>✦ {useStore.getState().me?.balance ?? 0}</T></Glass>}
@@ -135,7 +144,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
         <T bold size={18} style={{ paddingHorizontal: 16, marginBottom: 8 }}>Подарки · {gifts.length}</T>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, gap: 8 }}>
           {gifts.map((g, i) => (
-            <Animated.View key={g.id} entering={low ? undefined : FadeInDown.delay(Math.min(i, 9) * 35).springify().damping(18)} style={[s.gift, { backgroundColor: g.collectible?.backdrop?.edge || C.bg3 }]}>
+            <Animated.View key={g.id} entering={low ? undefined : FadeIn.delay(Math.min(i, 9) * 30).duration(220)} style={[s.gift, { backgroundColor: g.collectible?.backdrop?.edge || C.bg3 }]}>
               <Image source={{ uri: mediaUrl(g.collectible?.model?.image || g.gift.image) }} style={{ width: '78%', height: '78%' }} contentFit="contain" cachePolicy="memory-disk" />
               {g.collectible && <T size={10} bold style={s.num}>#{g.collectible.number}</T>}
             </Animated.View>
@@ -150,7 +159,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
       </Animated.View>
       {!own && (
         <Press onPress={() => router.back()} style={{ position: 'absolute', top: insets.top + 6, left: 12 }}>
-          <Glass radius={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><T size={28} style={{ marginTop: -3 }}>‹</T></Glass>
+          <Glass radius={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Icon name="back" size={26} stroke={2.4} /></Glass>
         </Press>
       )}
     </View>

@@ -9,7 +9,8 @@ import { api } from '../../lib/api';
 import { cache } from '../../lib/db';
 import { mediaUrl } from '../../lib/config';
 import { useStore } from '../../lib/store';
-import { Avatar, Glass, Press, T } from '../../components/ui';
+import { Avatar, Press, T, TopFade } from '../../components/ui';
+import { Icon } from '../../components/Icon';
 import { C } from '../../lib/theme';
 import { chatTime } from './chats';
 
@@ -49,7 +50,7 @@ const Post = React.memo(function Post({ p, onChange, onRemove }: any) {
           <T bold>{p.author.displayName}{p.author.premium ? ' ✦' : ''}</T>
           <T dim size={13}>{chatTime(p.createdAt)}{p.edited ? ' · изменено' : ''}</T>
         </View>
-        {p.author.id === meId && <Press onPress={menu}><T dim size={20}>•••</T></Press>}
+        {p.author.id === meId && <Press onPress={menu}><Icon name="more" size={22} color={C.text2} /></Press>}
       </View>
       {!!p.text && <T style={{ marginTop: 8, lineHeight: 22 }}>{p.text}</T>}
       {p.media?.[0] && (
@@ -59,11 +60,11 @@ const Post = React.memo(function Post({ p, onChange, onRemove }: any) {
         </Press>
       )}
       <View style={s.actions}>
-        <Press onPress={like} haptic><T size={18} style={{ color: p.liked ? '#ff3b5c' : C.text2 }}>{p.liked ? '♥' : '♡'} {p.likes || ''}</T></Press>
-        <T dim size={15}>💬 {p.comments || ''}</T>
-        <T dim size={15}>↻ {p.reposts || ''}</T>
+        <Press onPress={like} haptic scale={0.8} style={s.act}><Icon name="heart" size={21} color={p.liked ? '#ff3b5c' : C.text2} fill={p.liked ? '#ff3b5c' : 'none'} /><T size={14} style={{ color: p.liked ? '#ff3b5c' : C.text2 }}>{p.likes || ''}</T></Press>
+        <View style={s.act}><Icon name="comment" size={20} color={C.text2} /><T dim size={14}>{p.comments || ''}</T></View>
+        <View style={s.act}><Icon name="repost" size={20} color={C.text2} /><T dim size={14}>{p.reposts || ''}</T></View>
         <View style={{ flex: 1 }} />
-        <T dim size={13}>👁 {p.views}</T>
+        <View style={s.act}><Icon name="eye" size={16} color={C.text2} /><T dim size={13}>{p.views}</T></View>
       </View>
     </Press>
   );
@@ -88,15 +89,17 @@ export default function Feed() {
         removeClippedSubviews
         windowSize={7}
       />
-      <View style={[s.top, { paddingTop: insets.top + 6 }]}><T bold size={30}>Лента</T></View>
+      <TopFade height={insets.top + 72} />
+      <View style={[s.top, { paddingTop: insets.top + 6 }]} pointerEvents="none"><T bold size={30}>Лента</T></View>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  top: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: 8, backgroundColor: 'rgba(0,0,0,0.85)' },
+  top: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: 8 },
   post: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 22, marginTop: 10 },
+  act: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   bigHeart: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
 });

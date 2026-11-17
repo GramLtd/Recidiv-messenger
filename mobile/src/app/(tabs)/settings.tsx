@@ -7,13 +7,14 @@ import { usePerf } from '../../lib/perf';
 import { e2eReady } from '../../lib/e2e';
 import { kv } from '../../lib/db';
 import { Avatar, Press, T } from '../../components/ui';
+import { Icon } from '../../components/Icon';
 import { C } from '../../lib/theme';
 
 function Row({ title, sub, right, onPress, danger }: any) {
   return (
     <Press scale={0.99} onPress={onPress} disabled={!onPress && !right} style={s.row}>
       <View style={{ flex: 1 }}><T style={danger ? { color: '#ff5a5f' } : undefined}>{title}</T>{sub ? <T dim size={13}>{sub}</T> : null}</View>
-      {right ?? (onPress ? <T dim size={22}>›</T> : null)}
+      {right ?? (onPress ? <Icon name="chevron" size={20} color={C.text3} /> : null)}
     </Press>
   );
 }
@@ -35,7 +36,7 @@ export default function Settings() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingTop: insets.top + 10, paddingBottom: 130, paddingHorizontal: 12 }}>
       <T bold size={32} style={{ paddingHorizontal: 4, marginBottom: 14 }}>Настройки</T>
-      <Press onPress={() => router.push('/(tabs)/profile')} style={[s.group, s.me]}>
+      <Press onPress={() => router.push('/profile')} style={[s.group, s.me]}>
         <Avatar uri={me?.avatar} name={me?.displayName} id={me?.id} size={60} />
         <View style={{ flex: 1 }}><T bold size={18}>{me?.displayName}</T><T dim>{me?.username ? `@${me.username}` : me?.email}</T></View>
       </Press>

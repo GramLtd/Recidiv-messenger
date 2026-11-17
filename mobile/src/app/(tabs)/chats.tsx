@@ -3,7 +3,8 @@ import { FlatList, RefreshControl, StyleSheet, TextInput, View } from 'react-nat
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../lib/store';
-import { Avatar, Glass, Press, T } from '../../components/ui';
+import { Avatar, Glass, Press, T, TopFade } from '../../components/ui';
+import { Icon } from '../../components/Icon';
 import { C } from '../../lib/theme';
 
 export const chatTime = (ts?: number) => {
@@ -53,9 +54,11 @@ export default function Chats() {
         windowSize={9}
         removeClippedSubviews
       />
+      <TopFade height={insets.top + 122} />
       <View style={[s.head, { paddingTop: insets.top + 6 }]} pointerEvents="box-none">
         <T bold size={32}>Чаты</T>
-        <Glass radius={14} style={{ marginTop: 10 }}>
+        <Glass radius={14} style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', paddingLeft: 12 }}>
+          <Icon name="search" size={17} color={C.text2} />
           <TextInput placeholder="Поиск" placeholderTextColor={C.text2} value={q} onChangeText={setQ} style={s.search} />
         </Glass>
       </View>
@@ -64,8 +67,8 @@ export default function Chats() {
 }
 
 const s = StyleSheet.create({
-  head: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: 10, backgroundColor: 'rgba(0,0,0,0.82)' },
-  search: { height: 40, paddingHorizontal: 14, color: C.text, fontSize: 16 },
+  head: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: 10 },
+  search: { flex: 1, height: 40, paddingHorizontal: 8, color: C.text, fontSize: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 8 },
   badge: { minWidth: 22, height: 22, borderRadius: 11, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
 });

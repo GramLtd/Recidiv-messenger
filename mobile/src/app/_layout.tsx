@@ -1,6 +1,6 @@
 import 'react-native-get-random-values';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -8,6 +8,7 @@ import { DarkTheme, ThemeProvider } from 'expo-router';
 import { useStore } from '../lib/store';
 import { onNotificationTap, requestNotifications } from '../lib/notify';
 import { C } from '../lib/theme';
+import { TopFade } from '../components/ui';
 
 const theme = { ...DarkTheme, colors: { ...DarkTheme.colors, background: C.bg, card: C.bg, primary: C.accent } };
 
@@ -48,7 +49,21 @@ export default function Root() {
             <Stack.Screen name="settings/proxy" />
           </Stack>
         )}
+        {/* dim + blur under the status bar on every screen */}
+        <TopFade />
       </ThemeProvider>
     </GestureHandlerRootView>
+  );
+}
+
+/** Any render error shows its message (instead of closing the app) with a retry button. */
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
+  return (
+    <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 24, paddingTop: 80, gap: 14 }}>
+      <Text style={{ color: '#fff', fontSize: 22, fontWeight: '700' }}>Что-то пошло не так</Text>
+      <Text selectable style={{ color: C.text2, fontSize: 14 }}>{String(error?.message || error)}</Text>
+      <Text onPress={() => { retry(); }} style={{ color: C.accent, fontSize: 17, fontWeight: '600', marginTop: 10 }}>Повторить</Text>
+      <Text onPress={() => router.replace('/(tabs)/chats')} style={{ color: C.accent, fontSize: 17, fontWeight: '600' }}>К чатам</Text>
+    </ScrollView>
   );
 }
