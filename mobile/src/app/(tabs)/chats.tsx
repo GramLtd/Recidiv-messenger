@@ -59,7 +59,7 @@ const ChatRow = React.memo(function ChatRow({ c, index, meId, editing, onAction 
   return (
     <Rise delay={Math.min(index, 14) * 28} duration={300} dy={8}>
       <Press scale={0.97} onPress={() => (editing ? menu() : router.push(`/chat/${c.id}`))} onLongPress={menu} style={st.row}>
-        {c.type === 'saved' ? <View style={st.saved}><Bookmark size={24} color="#fff" fill="#fff" /></View> : <Avatar uri={c.avatar} name={c.title} id={c.peer?.id || c.id} size={54} online={c.peer?.online} />}
+        {c.type === 'saved' ? <Avatar name="" id={c.id} size={54} emoji="🔖" /> : <Avatar uri={c.avatar} name={c.title} id={c.peer?.id || c.id} size={54} online={c.peer?.online} />}
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={st.top}>
             <View style={st.name}>

@@ -3,6 +3,7 @@ import { ActionSheetIOS, Alert, Dimensions, Linking, Platform, Share, StyleSheet
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Path } from 'react-native-svg';
@@ -27,6 +28,12 @@ import { CollectibleArt, GiftArt, GiftModel } from './GiftArt';
 import { PostCard } from './Post';
 
 const W = Dimensions.get('window').width;
+/** color-mix(in srgb, c k, #fff) */
+function mixWhite(hex: string, k: number) {
+  const n = parseInt(hex.replace('#', '').slice(0, 6), 16);
+  const f = (v: number) => Math.round(v * k + 255 * (1 - k));
+  return `rgb(${f((n >> 16) & 255)},${f((n >> 8) & 255)},${f(n & 255)})`;
+}
 const H = Dimensions.get('window').height;
 const STAGE_W = Math.min(340, W);
 const STAGE_H = 236;
@@ -119,7 +126,7 @@ function ScatterGift({ ug, i, x, y, size, rot, delay, low, onPress }: any) {
     <Animated.View style={[{ position: 'absolute', left: x - size / 2, top: y - size / 2, width: size, height: size }, a]}>
       <Press onPress={onPress} scale={0.85} style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
         {!low && <Radial inner={'rgba(255,255,255,0.22)'} outer="rgba(0,0,0,0)" stop={0.68} style={{ position: 'absolute', width: size * 1.9, height: size * 1.9, borderRadius: size }} />}
-        {!low && <Radial inner={`${gc}55`} outer="rgba(0,0,0,0)" stop={0.6} style={{ position: 'absolute', width: size * 1.9, height: size * 1.9, borderRadius: size }} />}
+        {!low && <Radial inner={`${gc}66`} outer="rgba(0,0,0,0)" stop={0.62} style={{ position: 'absolute', width: size * 1.9, height: size * 1.9, borderRadius: size }} />}
         {!low && Array.from({ length: 5 }, (_, k) => (
           <Twinkle key={k} kind="cross" x={50 + Math.cos(k * 1.3 + i) * 62} y={50 + Math.sin(k * 1.3 + i) * 62} s={9 * (0.6 + (k % 3) * 0.25)} d={((k * 0.55 + delay / 1000) % 2.8) * 1000} color="#fff" />
         ))}
@@ -257,6 +264,11 @@ export function GiftTile({ ug, index, onPress, size }: { ug: any; index: number;
   );
 }
 
+function BannerVideo({ url }: { url: string }) {
+  const player = useVideoPlayer(mediaUrl(url) || null, (p) => { p.loop = true; p.muted = true; p.play(); });
+  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />;
+}
+
 /* ---------------------------------------------------------------- the profile */
 const FILTERS: [string, string][] = [['all', 'Все подарки'], ['collectible', 'Коллекционные'], ['pinned', 'Закреплённые'], ['regular', 'Обычные']];
 
@@ -327,10 +339,17 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
         {/* banner */}
         {u.banner?.url && (
           <View style={[st.banner, { height: 260 + insets.top }]} pointerEvents="none">
-            <MaskedView style={StyleSheet.absoluteFill} maskElement={<LinearGradient colors={['#000', '#000', 'transparent']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />}>
-              <Image source={{ uri: mediaUrl(u.banner.url) }} style={StyleSheet.absoluteFill} contentFit="cover" />
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
-            </MaskedView>
+            {Platform.OS === 'web' ? (
+              <>
+                {u.banner.type === 'video' ? <BannerVideo url={u.banner.url} /> : <Image source={{ uri: mediaUrl(u.banner.url) }} style={StyleSheet.absoluteFill} contentFit="cover" />}
+                <LinearGradient colors={['rgba(0,0,0,0.15)', 'rgba(30,22,22,0.4)', 'rgba(40,30,30,0.95)']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />
+              </>
+            ) : (
+              <MaskedView style={StyleSheet.absoluteFill} maskElement={<LinearGradient colors={['#000', '#000', 'transparent']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />}>
+                {u.banner.type === 'video' ? <BannerVideo url={u.banner.url} /> : <Image source={{ uri: mediaUrl(u.banner.url) }} style={StyleSheet.absoluteFill} contentFit="cover" />}
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+              </MaskedView>
+            )}
           </View>
         )}
         {/* hero glow */}
@@ -344,7 +363,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
         </Animated.View>
 
         <Animated.View style={[st.stage, stageSt]}>
-          {!low && SPARKS.map((p, i) => <Twinkle key={i} {...p} color={`${glow}`} />)}
+          {!low && SPARKS.map((p, i) => <Twinkle key={i} {...p} color={mixWhite(glow, 0.4)} />)}
           <Animated.View style={[StyleSheet.absoluteFill, scatSt]}>
             {orbit.map((g, i) => <ScatterGift key={g.id} ug={g} i={i} {...layout[i]} low={low} onPress={() => openGift(g)} />)}
           </Animated.View>
@@ -405,7 +424,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
           <Rise delay={200} style={st.bar}>
             <Btn title="Написать" icon={<MessageCircle size={18} color="#fff" />} onPress={write} style={{ flex: 1.15 }} />
             <Btn secondary title={u.isFollowing ? 'Вы подписаны' : 'Подписаться'} color={u.isFollowing ? C.accent : C.text}
-              icon={u.isFollowing ? <UserCheck size={18} color={C.accent} /> : <UserPlus size={18} color={C.text} />} onPress={follow} style={{ flex: 1 }} />
+              onPress={follow} style={{ flex: 1 }} />
             <GlassIcon size={44} onPress={() => Alert.alert('Подарки', 'Магазин подарков скоро появится в приложении.')}><Gift size={19} color={C.text} /></GlassIcon>
             <GlassIcon size={44} onPress={more}><Ellipsis size={19} color={C.text} /></GlassIcon>
           </Rise>

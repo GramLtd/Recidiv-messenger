@@ -464,7 +464,6 @@ addColumn('users', 'privacy', 'TEXT');
 addColumn('users', 'sessions_after', 'INTEGER');
 addColumn('users', 'blur_bg', 'TEXT');
 addColumn('user_gifts', 'chat_id', 'INTEGER');
-addColumn('posts', 'edited_at', 'INTEGER');
 addColumn('users', 'e2e_key', 'TEXT');
 db.exec(`
 CREATE TABLE IF NOT EXISTS sessions (
@@ -505,6 +504,7 @@ CREATE TABLE IF NOT EXISTS contacts (user_id INTEGER NOT NULL REFERENCES users(i
 CREATE TABLE IF NOT EXISTS blocks (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, blocked_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at INTEGER NOT NULL, PRIMARY KEY (user_id, blocked_id));
 CREATE TABLE IF NOT EXISTS profile_views (viewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, viewed_at INTEGER NOT NULL, PRIMARY KEY (viewer_id, user_id));
 `);
+addColumn('posts', 'edited_at', 'INTEGER');
 for (const [k, v] of Object.entries({ premium_price: '300', posts_per_day: '5', posts_per_day_premium: '20', post_cooldown: '30', post_cooldown_premium: '15' })) {
   db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)').run(k, v);
 }

@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import {
   ArrowDownLeft, ArrowUpRight, Camera, Check, Crown, Eye, HardDrive, KeyRound, Lock, MapPin, Monitor, Plus, Send, ShieldCheck, Smartphone, Sparkles, Trash2,
 } from 'lucide-react-native';
@@ -15,7 +16,7 @@ import { db, kv, wipe } from '../../lib/db';
 import { e2eReady } from '../../lib/e2e';
 import { fmtNum, lastSeen } from '../../lib/util';
 import { C } from '../../lib/theme';
-import { Avatar, Btn, Glass, PremiumStar, Press, Rise, Spark, SparkIcon, T } from '../../components/ui';
+import { AccentFill, Avatar, Btn, Glass, PremiumStar, Press, Radial, Rise, Spark, SparkIcon, T } from '../../components/ui';
 import { Group, IconSq, Page, Radio, Row, Switch } from '../../components/Settings';
 import { StyledName } from '../../components/Profile';
 
@@ -309,16 +310,16 @@ function WalletPage() {
       <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
         {[['all', 'Все'], ['in', 'Пришло'], ['out', 'Ушло']].map(([k, l]) => (
           <Press key={k} onPress={() => setFilter(k)} scale={0.92}>
-            {filter === k ? <View style={[st.chip, { backgroundColor: C.accent }]}><T w={700} size={13} color="#fff">{l}</T></View>
-              : <Glass radius={16} style={st.chip}><T w={700} size={13}>{l}</T></Glass>}
+            {filter === k ? <AccentFill radius={16} style={st.chip}><T size={13.2} color="#fff">{l}</T></AccentFill>
+              : <Glass radius={16} style={st.chip}><T size={13.2}>{l}</T></Glass>}
           </Press>
         ))}
       </View>
       {!data ? null : !txs.length ? <T dim center size={13} style={{ padding: 20 }}>Пока пусто</T> : txs.map((x: any, i: number) => (
-        <Rise key={x.id} delay={Math.min(i, 12) * 25} style={st.tx}>
+        <Rise key={x.id} delay={Math.min(i, 12) * 25} style={[st.tx, { borderBottomWidth: 1, borderBottomColor: C.border }]}>
           <IconSq color={x.amount > 0 ? '#34c759' : '#3a3a3c'}>{x.amount > 0 ? <ArrowDownLeft size={18} color="#fff" /> : <ArrowUpRight size={18} color="#fff" />}</IconSq>
           <View style={{ flex: 1, minWidth: 0 }}><T size={13} numberOfLines={1}>{x.description || x.type}</T><T size={11} dim>{new Date(x.createdAt).toLocaleString('ru-RU')}</T></View>
-          <T w={800} color={x.amount > 0 ? '#34c759' : C.text}>{x.amount > 0 ? '+' : ''}{fmtNum(x.amount)}</T>
+          <T w={700} color={x.amount > 0 ? '#2ecc71' : C.text}>{x.amount > 0 ? '+' : ''}{fmtNum(x.amount)}</T>
         </Rise>
       ))}
     </>
@@ -327,18 +328,24 @@ function WalletPage() {
 export function WalletCard({ amount, owner }: { amount: number; owner: string }) {
   return (
     <Rise>
-      <LinearGradient colors={['#1a1a1d', '#3d0b0f', '#ff2d3d']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.wcard}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-          <View style={st.wlogo}><SparkIcon size={26} fill="#fff" /></View>
-          <View style={{ flex: 1 }}><T w={800} size={17} color="#fff">Recidivist</T><View style={st.wtag}><T w={800} size={9} color="#fff">CARD</T></View></View>
-          <View style={st.wchip} />
+      <View style={st.wcard}>
+        <LinearGradient colors={['#1a1a1d', '#050505']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+        <Radial inner={`rgba(${C.accentRgb},0.55)`} outer="rgba(0,0,0,0)" cx="80%" cy="120%" stop={0.55} style={StyleSheet.absoluteFill} />
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+          <Image source={require('../../../assets/brand-icon.png')} style={{ width: 46, height: 46, borderRadius: 14 }} />
+          <View style={{ flex: 1 }}>
+            <T w={900} size={24} color="#ffe3e6" style={{ letterSpacing: -0.5 }}>Recidivist</T>
+            <View style={st.wtag}><T w={800} size={9.3} color="#111" style={{ letterSpacing: 2 }}>CARD</T></View>
+          </View>
+          <LinearGradient colors={['#e8e8e8', '#9a9a9a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.wchip} />
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 26 }}>
-          <T w={800} size={34} color="#fff">{fmtNum(amount || 0)}</T>
-          <T w={700} size={14} color="rgba(255,255,255,0.75)">✦ Искры</T>
+        <View style={{ flex: 1 }} />
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
+          <T w={900} size={39} color="#fff" style={{ letterSpacing: -0.8 }}>{fmtNum(amount || 0)}</T>
+          <T w={800} size={13} color={C.accent}>✦ Искры</T>
         </View>
-        <T w={600} size={14} color="rgba(255,255,255,0.8)" style={{ marginTop: 6 }}>{owner}</T>
-      </LinearGradient>
+        <T w={700} color="rgba(255,255,255,0.85)" style={{ marginTop: 2 }}>{owner}</T>
+      </View>
     </Rise>
   );
 }
@@ -365,12 +372,16 @@ function PremiumPage() {
   const active = !!data?.active;
   return (
     <>
-      <Rise style={{ alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <LinearGradient colors={['#ff4f7b', C.accent, '#ff7a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.premStar}><SparkIcon size={50} fill="#fff" /></LinearGradient>
-        <T w={900} size={22}>Recidivist Premium</T>
-        <T dim center size={14} style={{ paddingHorizontal: 20, lineHeight: 19 }}>Заметный профиль, особые шрифты, больше лимитов и полный контроль над тем, кто вам пишет.</T>
-        {data && (active ? <T w={700} size={14}>активен до {new Date(data.until).toLocaleDateString('ru-RU')}</T> : <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Spark amount={data.price} /><T w={700}>/ месяц</T></View>)}
-      </Rise>
+      <LinearGradient colors={['#5b2bff', '#c13bff', '#ff4f7b', '#ff9a3c']} locations={[0, 0.4, 0.7, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.premHero}>
+        <Float><View style={st.premStar}><SparkIcon size={44} fill="#fff" /></View></Float>
+        <T w={900} size={24} color="#fff" center style={{ marginBottom: 6 }}>Recidivist Premium</T>
+        <T size={14.3} color="rgba(255,255,255,0.9)" center style={{ maxWidth: 320, alignSelf: 'center', lineHeight: 20, marginBottom: 14 }}>Заметный профиль, особые шрифты, больше лимитов и полный контроль над тем, кто вам пишет.</T>
+        {data && (
+          <View style={st.premPrice}>
+            {active ? <T w={800} color="#fff">активен до {new Date(data.until).toLocaleDateString('ru-RU')}</T> : <><Spark amount={data.price} color="#fff" /><T w={800} color="#fff">/ месяц</T></>}
+          </View>
+        )}
+      </LinearGradient>
       <Group>
         {PERKS.map(([t, sub, I, c], i) => <Row key={t} index={i} icon={I} color={c} title={t} sub={sub} />)}
       </Group>
@@ -383,6 +394,13 @@ function PremiumPage() {
         onPress={() => run(async () => { setMe((await api('/premium/buy', { body: { months } })).user); load(); }, 'Premium активирован ⭐')} />
     </>
   );
+}
+
+function Float({ children }: { children: React.ReactNode }) {
+  const t = useSharedValue(0); const e = useSharedValue(0.5);
+  useEffect(() => { e.value = withSpring(1, { damping: 11, stiffness: 160 }); t.value = withDelay(1000, withRepeat(withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }), -1, true)); }, []);
+  const a = useAnimatedStyle(() => ({ opacity: Math.min(1, e.value * 1.4), transform: [{ scale: e.value }, { translateY: -6 * t.value }] }));
+  return <Animated.View style={[{ alignSelf: 'center', marginBottom: 12 }, a]}>{children}</Animated.View>;
 }
 
 /* ---------------- stubs for heavy pages not yet ported ---------------- */
@@ -408,13 +426,15 @@ const st = StyleSheet.create({
   camera: { position: 'absolute', right: 0, bottom: 0, width: 32, height: 32, borderRadius: 16, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: C.bg },
   inline: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 14 },
   warn: { flexDirection: 'row', gap: 10, margin: 10, padding: 12, borderRadius: 14, backgroundColor: 'rgba(255,204,0,0.08)', borderWidth: 1, borderColor: 'rgba(255,204,0,0.25)' },
-  chip: { paddingHorizontal: 14, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  tx: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
-  wcard: { borderRadius: 22, padding: 18, minHeight: 190, overflow: 'hidden' },
+  chip: { paddingHorizontal: 12, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  tx: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 4 },
+  wcard: { borderRadius: 26, padding: 20, aspectRatio: 1.6, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   wlogo: { width: 46, height: 46, borderRadius: 14, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
-  wtag: { alignSelf: 'flex-start', marginTop: 3, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.18)' },
-  wchip: { width: 40, height: 30, borderRadius: 7, backgroundColor: '#d9b45a', opacity: 0.85 },
-  premStar: { width: 96, height: 96, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
+  wtag: { alignSelf: 'flex-start', marginTop: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.85)' },
+  wchip: { width: 44, height: 34, borderRadius: 8 },
+  premHero: { marginHorizontal: -14, marginTop: -6, marginBottom: 14, paddingTop: 26, paddingHorizontal: 20, paddingBottom: 30, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
+  premStar: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.22)', borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.5)', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 15, shadowOffset: { width: 0, height: 10 } },
+  premPrice: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 18, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' },
   seg: { flexDirection: 'row', padding: 4, borderRadius: 999, backgroundColor: C.glass, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)', marginBottom: 10 },
   segBtn: { flex: 1, height: 40, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   segOn: { backgroundColor: 'rgba(255,255,255,0.14)' },

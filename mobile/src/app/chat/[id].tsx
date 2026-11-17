@@ -121,7 +121,7 @@ function Content({ m, chat, out }: { m: any; chat: any; out: boolean }) {
         <GiftArt ug={m.gift} style={{ width: 160, height: 160, borderRadius: 14, marginVertical: 4 }} />
         <T w={700}>{m.gift.collectible ? `${m.gift.gift.name} #${m.gift.collectible.number}` : m.gift.gift.name}</T>
         {m.gift.collectible ? <T size={12.8} dim>Коллекционный подарок</T> : <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}><T size={12.8} dim>Подарок за</T><Spark amount={m.gift.gift.price} size={12.8} /></View>}
-        <View style={st.outlineBtn}><GiftIcon size={15} color={C.accent} /><T w={700} size={13} color={C.accent}>Посмотреть</T></View>
+        <Glass radius={12} style={st.outlineBtn}><GiftIcon size={15} color={C.accent} /><T w={600} size={13.5} color={C.accent}>Посмотреть</T></Glass>
         {!!m.text && <T style={{ marginTop: 6, fontStyle: 'italic' }}>«{m.text}»</T>}
       </Pressable>
     ) : null;
@@ -179,7 +179,7 @@ const Bubble = React.memo(function Bubble({ m, chat, meId, grouped, groupedNext,
           <T style={{ lineHeight: 21 }} selectable={false}>
             {text}
             {/* invisible copy of the meta reserves room on the last line, like the web's floated .meta */}
-            <T size={10.8} color="transparent">{'  '}{metaText}</T>
+            <T size={10.8} color="transparent">{'\u00A0\u00A0'}{metaText.trimEnd()}{showTicks ? '\u00A0\u00A0\u00A0\u00A0\u00A0' : ''}</T>
           </T>
         ) : null}
         {text || (!mediaOnly && !sticker && m.type !== 'gift' && m.type !== 'transfer') ? <View style={st.metaAbs}>{meta}</View> : (mediaOnly || sticker) ? meta : <View style={{ alignSelf: 'flex-end', marginTop: 2 }}>{meta}</View>}
@@ -526,7 +526,7 @@ const st = StyleSheet.create({
   postPrev: { flexDirection: 'row', gap: 10, alignItems: 'center', minWidth: 220, maxWidth: 300, padding: 8, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.06)', borderLeftWidth: 3, borderLeftColor: C.accent, marginBottom: 4 },
   videoBox: { width: 220, height: 160, borderRadius: 12, backgroundColor: '#111', alignItems: 'center', justifyContent: 'center', gap: 4 },
   gifTag: { position: 'absolute', left: 8, top: 8, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.5)' },
-  outlineBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingHorizontal: 14, height: 34, borderRadius: 17, borderWidth: 1.5, borderColor: C.accent },
+  outlineBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingHorizontal: 14, height: 36 },
   composerWrap: { paddingHorizontal: 12, paddingTop: 8 },
   composerInner: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   composer: { flex: 1, minHeight: 50, justifyContent: 'flex-end' },

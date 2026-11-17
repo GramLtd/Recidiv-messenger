@@ -5,10 +5,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Check, ChevronLeft } from 'lucide-react-native';
+import { ArrowLeft, Check } from 'lucide-react-native';
 import { C } from '../lib/theme';
 import { usePerf } from '../lib/perf';
-import { GlassIcon, Rise, T } from './ui';
+import { Press, Rise, T } from './ui';
 
 /** Web `.set-group-wrap` */
 export function Group({ title, children, footer, delay = 0 }: { title?: string; children: ReactNode; footer?: string; delay?: number }) {
@@ -35,7 +35,7 @@ export function Row({ icon: Icon, color, title, sub, value, onPress, right, dang
       <Pressable onPress={onPress ? () => { Haptics.selectionAsync(); onPress(); } : undefined} disabled={!onPress} style={({ pressed }) => [st.row, pressed && onPress && { backgroundColor: 'rgba(255,255,255,0.06)' }]}>
         {Icon && <IconSq color={color}><Icon size={18} color="#fff" /></IconSq>}
         <View style={{ flex: 1, minWidth: 0 }}>
-          {typeof title === 'string' ? <T numberOfLines={1} color={danger ? C.danger : C.text}>{title}</T> : title}
+          {typeof title === 'string' ? <T color={danger ? C.danger : C.text}>{title}</T> : title}
           {sub ? (typeof sub === 'string' ? <T size={12} dim>{sub}</T> : sub) : null}
         </View>
         {value !== undefined && value !== null && value !== '' && (typeof value === 'string' ? <T size={14.3} dim numberOfLines={1} style={{ maxWidth: '45%' }}>{value}</T> : value)}
@@ -81,8 +81,8 @@ export function Page({ title, children, right }: { title: string; children: Reac
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <View style={[st.head, { paddingTop: insets.top + 6 }]}>
-        <GlassIcon size={40} onPress={() => router.back()}><ChevronLeft size={22} color={C.text} /></GlassIcon>
-        <T w={800} size={16.5} numberOfLines={1} style={{ flex: 1 }}>{title}</T>
+        <Press scale={0.85} onPress={() => router.back()} style={{ width: 36, height: 40, justifyContent: 'center' }}><ArrowLeft size={24} color={C.text2} /></Press>
+        <T w={800} size={18.75} numberOfLines={1} style={{ flex: 1, letterSpacing: -0.2 }}>{title}</T>
         {right}
       </View>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 6, paddingBottom: insets.bottom + 40 }} keyboardShouldPersistTaps="handled">
@@ -103,5 +103,5 @@ const st = StyleSheet.create({
   check: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: C.text3, alignItems: 'center', justifyContent: 'center' },
   sw: { width: 51, height: 31, borderRadius: 16, padding: 2 },
   thumb: { height: 27, borderRadius: 14, backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 4, shadowOffset: { width: 0, height: 3 } },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingBottom: 8 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 16, paddingRight: 12, minHeight: 56, paddingBottom: 4 },
 });

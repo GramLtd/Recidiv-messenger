@@ -3,13 +3,13 @@ import { Dimensions, FlatList, RefreshControl, StyleSheet, View } from 'react-na
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { Hash, Image as ImageIcon, Megaphone } from 'lucide-react-native';
+import { Eye, Hash } from 'lucide-react-native';
 import { api } from '../../lib/api';
 import { cache } from '../../lib/db';
 import { useStore } from '../../lib/store';
 import { C } from '../../lib/theme';
 import { Avatar, Glass, Press, Rise, T } from '../../components/ui';
-import { PostCard, ago } from '../../components/Post';
+import { PostCard, RichText, ago } from '../../components/Post';
 
 const W = Dimensions.get('window').width;
 const TABS: [string, string][] = [['all', 'Лента'], ['following', 'Подписки'], ['tags', 'Теги']];
@@ -36,25 +36,36 @@ function Composer() {
   return (
     <Press scale={0.98} onPress={() => router.push('/compose')}>
       <Glass radius={22} shadow={false} style={st.composer}>
-        <Avatar uri={me?.avatar} name={me?.displayName} id={me?.id} size={38} />
-        <T dim style={{ flex: 1 }}>Что нового?</T>
-        <ImageIcon size={20} color={C.text2} />
+        <Avatar uri={me?.avatar} name={me?.displayName} id={me?.id} size={40} />
+        <T dim style={{ flex: 1, paddingVertical: 9 }}>Что нового?</T>
       </Glass>
     </Press>
   );
 }
 
 function ChannelItem({ p, index }: { p: any; index: number }) {
+  const c = p.chat;
+  const open = () => { useStore.getState().upsertChat(c); router.push(`/chat/${c.id}`); };
   return (
-    <Rise delay={Math.min(index, 10) * 40} style={st.post}>
-      <Press scale={0.98} onPress={() => { useStore.getState().upsertChat(p.chat); router.push(`/chat/${p.chat.id}`); }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Avatar uri={p.chat.avatar} name={p.chat.title} id={p.chat.id} size={42} />
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 5 }}><Megaphone size={14} color={C.text2} /><T w={700} numberOfLines={1}>{p.chat.title}</T><T size={13} dim>· {ago(p.createdAt)}</T></View>
+    <View style={{ paddingHorizontal: 12 }}>
+      <Rise delay={Math.min(index, 10) * 40} style={st.post}>
+        <Press scale={0.99} onPress={open}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Avatar uri={c.avatar} name={c.title} id={c.id} size={42} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><T w={700} numberOfLines={1} style={{ flexShrink: 1 }}>{c.title}</T><View style={st.chanTag}><T w={700} size={10.5} color={C.accent}>канал</T></View></View>
+              <T size={13} dim numberOfLines={1}>{c.username ? `@${c.username} · ` : ''}{ago(p.createdAt)}</T>
+            </View>
+          </View>
+          {!!p.text && <View style={{ marginTop: 8, marginLeft: 52 }}><RichText text={p.text} /></View>}
+        </Press>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, marginLeft: 44 }}>
+          <Press scale={0.9} onPress={open} style={st.pa}><T w={600} size={13.5} color={C.accent}>Открыть канал</T></Press>
+          <View style={{ flex: 1 }} />
+          <View style={st.pa}><Eye size={18} color={C.text3} /><T w={600} size={13.5} muted>{p.views || 0}</T></View>
         </View>
-        {!!p.text && <T style={{ marginTop: 8, marginLeft: 52, lineHeight: 21.75 }}>{p.text}</T>}
-      </Press>
-    </Rise>
+      </Rise>
+    </View>
   );
 }
 
@@ -124,7 +135,9 @@ const st = StyleSheet.create({
   seg: { flexDirection: 'row', padding: 4 },
   segInd: { position: 'absolute', top: 4, bottom: 4, left: 4, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.13)', borderTopWidth: 0.5, borderColor: 'rgba(255,255,255,0.3)' },
   segBtn: { flex: 1, height: 40, alignItems: 'center', justifyContent: 'center' },
-  composer: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, marginBottom: 8 },
+  composer: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 12, marginBottom: 8, minHeight: 70 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 34 },
-  post: { paddingTop: 14, paddingBottom: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: C.border },
+  post: { paddingTop: 14, paddingBottom: 10, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: C.border },
+  chanTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: `rgba(${C.accentRgb},0.16)` },
+  pa: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 10, borderRadius: 18 },
 });

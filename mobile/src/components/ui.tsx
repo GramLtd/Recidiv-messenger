@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect } from 'react';
+import React, { ReactNode, useEffect, useId } from 'react';
 import { Pressable, StyleSheet, Text, View, ViewStyle, StyleProp, TextStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
@@ -46,7 +46,7 @@ export function Glass({ children, style, radius = 22, fill = C.glass, edge = C.g
   const low = usePerf((s) => s.low);
   return (
     <View style={[shadow && st.glassShadow, { borderRadius: radius }, style]}>
-      <View style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden' }]} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden', zIndex: -1 }]} pointerEvents="none">
         {low ? <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(38,38,42,0.96)' }]} /> : <BlurView tint="systemUltraThinMaterialDark" intensity={intensity} style={StyleSheet.absoluteFill} />}
         {!low && <View style={[StyleSheet.absoluteFill, { backgroundColor: fill }]} />}
         <View style={[StyleSheet.absoluteFill, { borderRadius: radius, borderWidth: 0.5, borderColor: edge }]} />
@@ -159,15 +159,15 @@ export function TopFade({ height }: { height?: number }) {
 
 /* ------------------------------------------------------------------ avatar & badges */
 /** Web Avatar: photo, or initials on a 160° gradient of the user's colour. */
-export function Avatar({ uri, name, id = 0, size = 44, online }: { uri?: string | null; name?: string; id?: number; size?: number; online?: boolean }) {
+export function Avatar({ uri, name, id = 0, size = 44, online, emoji }: { uri?: string | null; name?: string; id?: number; size?: number; online?: boolean; emoji?: string }) {
   const col = colorFor(id);
   return (
     <View style={{ width: size, height: size }}>
-      {uri ? (
+      {uri && !emoji ? (
         <Image source={{ uri: mediaUrl(uri) }} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#222' }} contentFit="cover" transition={120} cachePolicy="memory-disk" />
       ) : (
         <LinearGradient colors={[col, shade(col, 0.6)]} start={{ x: 0.33, y: 0 }} end={{ x: 0.67, y: 1 }} style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center' }}>
-          <T w={600} size={size * 0.38} color="#fff">{initials(name || '')}</T>
+          <T w={600} size={size * 0.38} color="#fff">{emoji || initials(name || '')}</T>
         </LinearGradient>
       )}
       {online && <View style={{ position: 'absolute', right: 1, bottom: 1, width: 14, height: 14, borderRadius: 7, backgroundColor: C.green, borderWidth: 2.5, borderColor: C.bg }} />}
@@ -185,12 +185,16 @@ export const Verified = ({ size = 16 }: { size?: number }) => <BadgeCheck size={
 
 const SPARK_D = 'M12 1.5c.6 4.9 2.4 7.9 10.5 10.5C14.4 14.6 12.6 17.6 12 22.5c-.6-4.9-2.4-7.9-10.5-10.5C9.6 9.4 11.4 6.4 12 1.5z';
 /** Premium badge: the currency spark with the web's gradient. */
-export const PremiumStar = ({ size = 15 }: { size?: number }) => (
+export const PremiumStar = ({ size = 15 }: { size?: number }) => <PremiumStarInner size={size} />;
+function PremiumStarInner({ size }: { size: number }) {
+  const gid = `ps${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  return (
   <Svg width={size} height={size} viewBox="0 0 24 24">
-    <Defs><SvgLinear id="ps" x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor="#ffb3a0" /><Stop offset="0.45" stopColor={C.accent} /><Stop offset="1" stopColor="#ff7a1a" /></SvgLinear></Defs>
-    <Path fill="url(#ps)" d={SPARK_D} />
+    <Defs><SvgLinear id={gid} x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor="#ffb3a0" /><Stop offset="0.45" stopColor={C.accent} /><Stop offset="1" stopColor="#ff7a1a" /></SvgLinear></Defs>
+    <Path fill={`url(#${gid})`} d={SPARK_D} />
   </Svg>
-);
+  );
+}
 export const SparkIcon = ({ size = 20, color = 'currentColor', fill = 'none', stroke = 2 }: { size?: number; color?: string; fill?: string; stroke?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth={fill !== 'none' ? 0 : stroke} strokeLinejoin="round">
     <Path d="M12 2.5c.6 4.6 2.3 7.4 9.5 9.5-7.2 2.1-8.9 4.9-9.5 9.5-.6-4.6-2.3-7.4-9.5-9.5 7.2-2.1 8.9-4.9 9.5-9.5z" fill={fill === 'none' ? 'none' : fill} />
@@ -208,11 +212,12 @@ export function Spark({ amount, size = BASE, color = C.accent, amountColor }: { 
 
 /** Radial gradient box (CSS radial-gradient(circle, a, b)). */
 export function Radial({ inner, outer, style, cx = '50%', cy = '50%', stop = 0.78, radius }: { inner: string; outer: string; style?: StyleProp<ViewStyle>; cx?: string; cy?: string; stop?: number; radius?: number }) {
+  const gid = `rg${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (
     <View style={[{ overflow: 'hidden', borderRadius: radius }, style]} pointerEvents="none">
       <Svg width="100%" height="100%">
-        <Defs><RadialGradient id="rg" cx={cx} cy={cy} r="70%"><Stop offset="0" stopColor={inner} /><Stop offset={String(stop)} stopColor={outer} /><Stop offset="1" stopColor={outer} /></RadialGradient></Defs>
-        <Rect width="100%" height="100%" fill="url(#rg)" />
+        <Defs><RadialGradient id={gid} cx={cx} cy={cy} r="70%"><Stop offset="0" stopColor={inner} /><Stop offset={String(stop)} stopColor={outer} /><Stop offset="1" stopColor={outer} /></RadialGradient></Defs>
+        <Rect width="100%" height="100%" fill={`url(#${gid})`} />
       </Svg>
     </View>
   );
