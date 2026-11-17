@@ -50,7 +50,12 @@ if (vv) {
     // tallest viewport we have seen, and trust focus on touch devices.
     const open = vv.height < tallest * 0.8 || (touch && editing());
     root.classList.toggle('kb-open', open);
-    if (window.scrollY) window.scrollTo(0, 0);
+    if (window.scrollY || window.scrollX) window.scrollTo(0, 0);
+    // iOS scrolls overflow:hidden containers to reveal a focused field; such offsets never reset by themselves
+    for (const el of document.querySelectorAll('html, body, #root, .app, .chat-pane, .chat-main, .sidebar')) {
+      if (el.scrollLeft) el.scrollLeft = 0;
+      if (el.scrollTop && !el.classList.contains('sidebar')) el.scrollTop = 0;
+    }
   };
   vv.addEventListener('resize', sync);
   vv.addEventListener('scroll', sync);

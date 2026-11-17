@@ -248,13 +248,14 @@ function Composer({ chat }) {
   useEffect(() => {
     setText(drafts.current[chat.id] || '');
     setEmoji(false);
-    taRef.current?.focus();
+    // desktop only: on phones focusing here pops the keyboard mid-slide and iOS pans the whole page sideways
+    if (matchMedia('(pointer: fine)').matches) taRef.current?.focus({ preventScroll: true });
   }, [chat.id]);
   useEffect(() => {
-    if (edit) { setText(edit.text || ''); taRef.current?.focus(); }
+    if (edit) { setText(edit.text || ''); taRef.current?.focus({ preventScroll: true }); }
   }, [edit]);
   useEffect(() => {
-    if (reply) taRef.current?.focus();
+    if (reply) taRef.current?.focus({ preventScroll: true });
   }, [reply]);
   useLayoutEffect(() => {
     const ta = taRef.current;
