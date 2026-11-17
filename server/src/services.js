@@ -370,10 +370,10 @@ export function weightedPick(rows) {
 }
 
 // ---------------- usernames ----------------
-export const USERNAME_RE = /^[a-zA-Z][a-zA-Z0-9_]{3,31}$/;
+export const USERNAME_RE = /^[a-zA-Z][a-zA-Z0-9_]{2,31}$/;
 
 export function assertUsernameFree(name) {
-  if (!USERNAME_RE.test(name)) fail(400, 'Юзернейм: 4–32 символа, латиница, цифры и _, начинается с буквы');
+  if (!USERNAME_RE.test(name)) fail(400, 'Юзернейм: 3–32 символа, латиница, цифры и _, начинается с буквы');
   if (db.prepare('SELECT 1 FROM usernames WHERE name = ?').get(name.toLowerCase())) fail(409, 'Этот юзернейм уже занят');
 }
 

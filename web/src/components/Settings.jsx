@@ -135,7 +135,7 @@ function UsernamesTab() {
       ))}
       <div className="row">
         <input className="input grow" placeholder="новый_юзернейм" value={name} onChange={(e) => setName(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))} />
-        <button className="btn" disabled={busy || name.length < 4} onClick={claim}><Plus size={18} /></button>
+        <button className="btn" disabled={busy || name.length < 3} onClick={claim}><Plus size={18} /></button>
       </div>
       {data?.claimPrice > 0 && <div className="hint">Регистрация нового юзернейма стоит <Spark amount={data.claimPrice} /></div>}
     </div>

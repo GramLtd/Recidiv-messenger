@@ -115,7 +115,7 @@ function UsernamesPage() {
       </Group>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <View style={[st.inputWrap, { flex: 1 }]}><TextInput value={name} onChangeText={(v) => setName(v.replace(/[^a-zA-Z0-9_]/g, ''))} placeholder="новый_юзернейм" placeholderTextColor={C.text3} style={[st.input, { color: C.text }]} autoCapitalize="none" /></View>
-        <Btn icon={<Plus size={18} color="#fff" />} height={48} disabled={name.length < 4} onPress={() => run(async () => { setMe((await api('/me/usernames', { body: { name } })).user); setName(''); load(); }, `@${name} теперь ваш`)} />
+        <Btn icon={<Plus size={18} color="#fff" />} height={48} disabled={name.length < 3} onPress={() => run(async () => { setMe((await api('/me/usernames', { body: { name } })).user); setName(''); load(); }, `@${name} теперь ваш`)} />
       </View>
       {data?.claimPrice > 0 && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, paddingHorizontal: 4 }}><T size={12} dim>Регистрация нового юзернейма стоит</T><Spark amount={data.claimPrice} size={12} /></View>}
     </>

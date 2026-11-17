@@ -81,7 +81,7 @@ function MessageContent({ m, chat, onOpenMedia }) {
 }
 
 function linkify(text) {
-  const parts = text.split(/(https?:\/\/[^\s]+|@[a-zA-Z][a-zA-Z0-9_]{3,31})/g);
+  const parts = text.split(/(https?:\/\/[^\s]+|@[a-zA-Z][a-zA-Z0-9_]{2,31})/g);
   return parts.map((p, i) => {
     if (/^https?:\/\//.test(p)) return <a key={i} href={p} target="_blank" rel="noreferrer">{p}</a>;
     if (/^@/.test(p)) return <a key={i} href="#" onClick={(e) => { e.preventDefault(); resolveUsername(p.slice(1)); }}>{p}</a>;
