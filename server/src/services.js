@@ -174,7 +174,7 @@ export function createMessage({ chatId, senderId, type = 'text', text = '', medi
 export function messagePreview(m) {
   if (!m) return null;
   if (m.deleted) return 'Сообщение удалено';
-  const labels = { post: '📰 Пост', audio: '🎵 Музыка', transfer: '💸 Перевод', image: '🖼 Фото', video: '🎬 Видео', file: '📎 Файл', voice: '🎤 Голосовое', gift: '🎁 Подарок', sticker: 'Стикер' };
+  const labels = { gif: 'GIF', post: '📰 Пост', audio: '🎵 Музыка', transfer: '💸 Перевод', image: '🖼 Фото', video: '🎬 Видео', file: '📎 Файл', voice: '🎤 Голосовое', gift: '🎁 Подарок', sticker: 'Стикер' };
   if (m.type === 'text' || m.type === 'system') return m.text;
   if (m.type === 'gift') return m.text ? (/^\p{Extended_Pictographic}/u.test(m.text) ? m.text : `🎁 ${m.text}`) : labels.gift;
   return m.text ? `${labels[m.type] || ''} ${m.text}` : labels[m.type] || m.type;
@@ -376,11 +376,26 @@ export function safeUploadUrl(url) {
   if (typeof url !== 'string' || !UPLOAD_RE.test(url)) fail(400, 'Некорректная ссылка на файл');
   return url;
 }
+// Built-in stickers live in /gifts/...; GIFs from search come from Tenor's CDN.
+const STICKER_RE = /^\/gifts\/[a-z0-9_-]+\/[a-z0-9_-]+\.(webp|png)$/i;
+const STICKER_ANIM_RE = /^\/gifts\/[a-z0-9_-]+\/[a-z0-9_-]+\.tgs$/i;
+const GIF_RE = /^https:\/\/media\d*\.tenor\.com\/[A-Za-z0-9_\-./]+\.(mp4|gif|webp)$/;
 export function sanitizeMedia(media) {
   if (!media) return null;
+  const kind = String(media.kind || 'file').slice(0, 16);
+  if (kind === 'sticker') {
+    const url = typeof media.url === 'string' && STICKER_RE.test(media.url) ? media.url : safeUploadUrl(media.url);
+    const animation = typeof media.animation === 'string' && STICKER_ANIM_RE.test(media.animation) ? media.animation : undefined;
+    return { url, kind, animation };
+  }
+  if (kind === 'gif') {
+    const url = typeof media.url === 'string' && GIF_RE.test(media.url) ? media.url : safeUploadUrl(media.url);
+    const preview = typeof media.preview === 'string' && GIF_RE.test(media.preview) ? media.preview : undefined;
+    return { url, kind, preview, width: Number(media.width) || undefined, height: Number(media.height) || undefined };
+  }
   return {
     url: safeUploadUrl(media.url),
-    kind: String(media.kind || 'file').slice(0, 16),
+    kind,
     title: media.title ? String(media.title).slice(0, 200) : undefined,
     artist: media.artist ? String(media.artist).slice(0, 200) : undefined,
     duration: Number(media.duration) || undefined,

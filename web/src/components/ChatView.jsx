@@ -12,6 +12,7 @@ import { GiftArt } from './GiftArt.jsx';
 import { colorFor, dayLabel, lastSeen, membersLabel, timeHM, fileSize } from '../util.js';
 import { ChatWallpaper } from './ProfileExtras.jsx';
 import { PostPreview } from './Feed.jsx';
+import { MediaPanel, StickerView, GifView } from './MediaPanel.jsx';
 import { playSend, playIncoming } from '../sound.js';
 
 const QUICK_REACTIONS = ['❤️', '🔥', '👍', '😂', '😮', '😢', '💀', '🤡'];
@@ -28,6 +29,8 @@ function MessageContent({ m, chat, onOpenMedia }) {
       {m.type === 'voice' && media && <audio src={mediaUrl(media.url)} controls preload="metadata" />}
       {m.type === 'audio' && media && <AudioMessage media={media} />}
       {m.type === 'post' && media && <PostPreview media={media} />}
+      {m.type === 'sticker' && media && <StickerView media={media} />}
+      {m.type === 'gif' && media && <GifView media={media} />}
       {m.type === 'file' && media && (
         <a className="file-box" href={mediaUrl(media.url)} target="_blank" rel="noreferrer" download={media.name} style={{ color: 'inherit' }}>
           <span className="file-icon"><FileText size={22} /></span>
@@ -94,7 +97,8 @@ function Message({ m, chat, me, grouped, groupedNext, onContext, onOpenMedia, hi
   const isChannel = chat.type === 'channel';
   const showSender = !out && !grouped && (chat.type === 'group');
   const showAvatar = chat.type === 'group' && !out && !groupedNext;
-  const mediaOnly = (m.type === 'image' || m.type === 'video') && !m.text && !m.replyTo && !m.deleted;
+  const sticker = m.type === 'sticker' && !m.deleted;
+  const mediaOnly = (m.type === 'image' || m.type === 'video' || m.type === 'gif') && !m.text && !m.replyTo && !m.deleted;
   const read = out && chat.peerReadId >= m.id;
   const react = (emoji) => api(`/messages/${m.id}/react`, { body: { emoji } }).then((r) => useStore.getState().patchMessage(r.message));
   return (
@@ -109,7 +113,7 @@ function Message({ m, chat, me, grouped, groupedNext, onContext, onOpenMedia, hi
           {showAvatar && <Avatar src={m.sender?.avatar} name={m.sender?.displayName} id={m.sender?.id} size={34} onClick={() => openModal('userProfile', { userId: m.sender.id })} />}
         </div>
       )}
-      <div className={`bubble ${mediaOnly ? 'media-only' : ''}`}>
+      <div className={`bubble ${mediaOnly ? 'media-only' : ''} ${sticker ? 'sticker-bubble' : ''}`}>
         {isChannel && !grouped && <div className="sender" style={{ color: 'var(--accent)' }}>{chat.title}</div>}
         {showSender && m.sender && (
           <div className="sender" style={{ color: colorFor(m.sender.id) }} onClick={() => openModal('userProfile', { userId: m.sender.id })}>
@@ -243,6 +247,18 @@ function Composer({ chat }) {
     }
   };
 
+  const sendMedia = async (media) => {
+    setEmoji(false);
+    try {
+      window.__sentAt = Date.now();
+      playSend();
+      await sendMessage(chat.id, { media, replyTo: reply?.id });
+      setReply(null);
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
+
   const sendFiles = async (files) => {
     for (const f of files) {
       try {
@@ -299,9 +315,7 @@ function Composer({ chat }) {
   return (
     <div className="composer-wrap" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files.length) sendFiles([...e.dataTransfer.files]); }}>
       {emoji && (
-        <div className="emoji-panel" onMouseLeave={() => setEmoji(false)}>
-          {EMOJIS.map((e, i) => <button key={i} onClick={() => onChange(text + e)}>{e}</button>)}
-        </div>
+        <MediaPanel emojis={EMOJIS} onEmoji={(e) => onChange(text + e)} onSend={sendMedia} onClose={() => setEmoji(false)} />
       )}
       <div className="composer-inner">
         <div className="composer">

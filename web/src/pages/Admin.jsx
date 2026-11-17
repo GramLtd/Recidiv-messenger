@@ -414,6 +414,11 @@ function ConfigPage() {
           <Tri value={val.test_payments} onChange={set('test_payments')} />
         </div>
         <div className="card col">
+          <b>GIF-поиск (Tenor)</b>
+          <div className="small muted">Ключ берётся бесплатно в Google Cloud Console: включите «Tenor API» и создайте API key. Без ключа пользователи могут отправлять только свои GIF.</div>
+          <div className="field"><label>Tenor API key</label><input className="input" value={val.tenor_key} onChange={set('tenor_key')} placeholder="AIza…" /></div>
+        </div>
+        <div className="card col">
           <div className="row"><KeyRound size={18} className="accent" /><b className="grow">Вход и регистрация</b></div>
           <div className="row"><span className="grow small">Регистрация новых пользователей открыта</span><Switch on={val.registration !== 'false'} onChange={(on) => set('registration')(on ? 'true' : 'false')} /></div>
           <div className="row"><span className="grow small">Подтверждать почту кодом</span><Switch on={val.email_verification !== 'false'} onChange={(on) => set('email_verification')(on ? 'true' : 'false')} /></div>
