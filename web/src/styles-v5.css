@@ -1072,3 +1072,7 @@ html.perf .modal-body > *, html.perf .page-body > *, html.perf .post, html.perf 
 .auth-title span { animation: authItem .45s cubic-bezier(.32, .72, 0, 1) both; }
 .auth-feature { animation: authItem .4s cubic-bezier(.32, .72, 0, 1) both; }
 .auth-page .btn, .auth-page .input { transition: transform .25s cubic-bezier(.32, .72, 0, 1), background-color .2s, border-color .2s, opacity .2s; }
+
+/* auth feature icon: crisp white glyph on a deeper accent tile */
+.auth-feature-icon { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #fff), color-mix(in srgb, var(--accent) 85%, #000)); }
+.auth-feature-icon svg { color: #fff; stroke: #fff; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, .35)); }

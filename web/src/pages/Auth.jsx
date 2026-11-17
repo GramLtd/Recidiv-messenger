@@ -41,7 +41,7 @@ function Features() {
   return (
     <div className="auth-features">
       <div className="auth-feature" key={i}>
-        <span className="auth-feature-icon"><Icon size={22} /></span>
+        <span className="auth-feature-icon"><Icon size={22} color="#fff" strokeWidth={2.4} /></span>
         <div><b>{f.title}</b><span>{f.text}</span></div>
       </div>
       <div className="auth-dots">{FEATURES.map((_, k) => <button key={k} className={k === i ? 'on' : ''} onClick={() => setI(k)} aria-label={`Слайд ${k + 1}`} />)}</div>
