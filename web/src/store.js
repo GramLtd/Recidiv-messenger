@@ -40,6 +40,7 @@ export const useStore = create((set, get) => ({
     get().afterLogin();
   },
   logout() {
+    import('./components/common.jsx').then((m) => m.clearAsyncCache());
     setToken(null);
     socket?.disconnect();
     socket = null;

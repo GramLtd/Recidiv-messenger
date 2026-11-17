@@ -204,17 +204,36 @@ export function Spinner({ size = 28 }) {
   return <div className="spinner" style={{ width: size, height: size }} />;
 }
 
+// Stale-while-revalidate cache: a screen opened before shows its last data instantly
+// and refreshes in the background (key = loader source + deps).
+const asyncCache = new Map();
+const MAX_CACHE = 200;
+export const clearAsyncCache = () => asyncCache.clear();
+
 export function useAsync(fn, deps = []) {
-  const [state, setState] = useState({ loading: true, data: null, error: null });
-  const reload = () => {
-    setState((s) => ({ ...s, loading: true }));
-    return fn()
-      .then((data) => setState({ loading: false, data, error: null }))
-      .catch((error) => setState({ loading: false, data: null, error }));
+  const key = fn.toString() + JSON.stringify(deps);
+  const cached = asyncCache.get(key);
+  const [state, setState] = useState(() => (cached !== undefined ? { loading: false, data: cached, error: null } : { loading: true, data: null, error: null }));
+  const keyRef = useRef(key);
+  const put = (data) => {
+    asyncCache.delete(key);
+    asyncCache.set(key, data);
+    if (asyncCache.size > MAX_CACHE) asyncCache.delete(asyncCache.keys().next().value);
   };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { reload(); }, deps);
-  return { ...state, reload, setData: (data) => setState((s) => ({ ...s, data })) };
+  const reload = () => {
+    const k = key;
+    setState((s) => ({ ...s, loading: s.data == null }));
+    return fn()
+      .then((data) => { put(data); if (keyRef.current === k) setState({ loading: false, data, error: null }); })
+      .catch((error) => { if (keyRef.current === k) setState((s) => ({ loading: false, data: s.data, error })); });
+  };
+  useEffect(() => {
+    keyRef.current = key;
+    const c = asyncCache.get(key);
+    setState(c !== undefined ? { loading: false, data: c, error: null } : { loading: true, data: null, error: null });
+    reload();
+  }, deps); // eslint-disable-line react-hooks/exhaustive-deps
+  return { ...state, reload, setData: (data) => { put(data); setState((s) => ({ ...s, data })); } };
 }
 
 /** Wrap an async action: shows errors as toasts and tracks busy state. */

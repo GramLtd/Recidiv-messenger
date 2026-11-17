@@ -918,3 +918,30 @@ body { font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe
 /* no scrollbar strips anywhere (mobile-app look); scrolling still works */
 * { scrollbar-width: none; }
 *::-webkit-scrollbar { display: none; width: 0; height: 0; background: transparent; }
+
+/* ---------- performance on phones ----------
+   Blur inside entrance/transition keyframes is re-rasterised every frame and is the
+   main source of jank on iPhones — touch devices get the same motion without blur. */
+@media (hover: none), (pointer: coarse) {
+  @keyframes riseIn { from { opacity: 0; transform: translateY(10px) scale(.985); } }
+  @keyframes pageIn { from { opacity: 0; transform: translateY(10px); } }
+  @keyframes slideFwd { from { opacity: 0; transform: translateX(28px); } }
+  @keyframes slideBack { from { opacity: 0; transform: translateX(-28px); } }
+  @keyframes chatIn { from { opacity: 0; transform: translateX(22px); } }
+  @keyframes contentIn { from { opacity: 0; transform: translateY(12px) scale(.985); } }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(14px) scale(.9); } }
+  @keyframes menuIn { from { opacity: 0; transform: scale(.88) translateY(-4px); } }
+  @keyframes zoomIn { from { opacity: 0; transform: scale(.6); } }
+  @keyframes stepIn { from { opacity: 0; transform: translateX(26px) scale(.97); } }
+  @keyframes featIn { from { opacity: 0; transform: translateX(22px) scale(.96); } }
+  @keyframes letterIn { from { opacity: 0; transform: translateY(20px) scale(.7); } }
+  @keyframes sendSmooth { from { opacity: 0; transform: translateY(22px) scale(.97); } }
+  @keyframes modelIn { from { opacity: 0; transform: scale(.5) translateY(24px); } }
+  /* shorter staggers: content is readable sooner */
+  .modal-body > *, .page-body > *, .pv-info > *, .card > .row, .settings-list > * { animation-duration: .32s !important; }
+  .modal-body > :nth-child(n+4), .page-body > :nth-child(n+4) { animation-delay: .09s !important; }
+  .set-row, .post, .chat-item, .gift-card { animation-duration: .3s !important; }
+  .chat-item { animation-delay: 0s !important; }
+  /* lighter glass: smaller blur radius is much cheaper to composite */
+  .lg, .glass-icon, .btn.secondary, .chip:not(.on), .pill, .gift-actions button, .gs-actions button, .pv-link { backdrop-filter: blur(14px) saturate(1.6); -webkit-backdrop-filter: blur(14px) saturate(1.6); }
+}
