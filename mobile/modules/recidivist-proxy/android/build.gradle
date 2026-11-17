@@ -1,20 +1,24 @@
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
 
 group = 'lol.recidivist.proxy'
 version = '1.0.0'
 
-def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
-apply from: expoModulesCorePlugin
-applyKotlinExpoModulesCorePlugin()
-useCoreDependencies()
-useExpoPublishing()
+expoModule {
+  v2 true
+}
 
 android {
   namespace "lol.recidivist.proxy"
-  defaultConfig { versionCode 1; versionName "1.0.0" }
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
 }
 
 dependencies {
   implementation 'com.facebook.react:react-android'
+  implementation "com.squareup.okhttp3:okhttp:${expoModule.safeExtGet("okHttpVersion", '4.9.2')}"
 }
