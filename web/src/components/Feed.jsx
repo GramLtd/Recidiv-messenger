@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Heart, MessageCircle, Repeat2, Send, Eye, MoreHorizontal, ImagePlus, X, Trash2, Link2, Hash, Share2 } from 'lucide-react';
+import { Heart, MessageCircle, Repeat2, Send, Eye, MoreHorizontal, ImagePlus, X, Trash2, Link2, Hash, Share2, Pencil } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, upload, mediaUrl, PUBLIC_ORIGIN } from '../api.js';
 import { Avatar, Modal, Spinner, Verified, PremiumStar, StyledName, useAction } from './common.jsx';
@@ -78,6 +78,12 @@ export function PostCard({ post, onChange, onRemove, onTag, index = 0, embedded 
       onChange?.({ ...post, reposts: post.reposts + 1 });
     } catch (er) { toast(er.message, 'error'); }
   };
+  const editPost = async () => {
+    setMenu(false);
+    const text = prompt('Изменить пост', post.text || '');
+    if (text == null || text === post.text) return;
+    try { onChange?.((await api.patch(`/posts/${post.id}`, { text })).post); toast('Пост изменён'); } catch (er) { toast(er.message, 'error'); }
+  };
   const remove = async () => {
     setMenu(false);
     if (!confirm('Удалить пост?')) return;
@@ -97,7 +103,7 @@ export function PostCard({ post, onChange, onRemove, onTag, index = 0, embedded 
         <div className="grow" style={{ minWidth: 0 }}>
           <div className="row" style={{ gap: 4, minWidth: 0 }}>
             <b className="row" style={{ gap: 4, minWidth: 0 }} onClick={openProfile}><StyledName user={body.author} />{body.author.verified && <Verified size={14} />}{body.author.premium && <PremiumStar size={14} />}</b>
-            <span className="muted small ellipsis">{body.author.username ? `@${body.author.username} · ` : ''}{ago(body.createdAt)}</span>
+            <span className="muted small ellipsis">{body.author.username ? `@${body.author.username} · ` : ''}{ago(body.createdAt)}{body.edited ? ' · изменено' : ''}</span>
           </div>
         </div>
         {!embedded && (
@@ -110,6 +116,7 @@ export function PostCard({ post, onChange, onRemove, onTag, index = 0, embedded 
                   <button className="menu-item" onClick={() => { setMenu(false); navigator.clipboard?.writeText(`${PUBLIC_ORIGIN}/post/${post.id}`); toast('Ссылка скопирована'); }}><Link2 size={18} /> {t('Скопировать ссылку')}</button>
                   <button className="menu-item" onClick={repost}><Repeat2 size={18} /> {t('Репост')}</button>
                   <button className="menu-item" onClick={() => { setMenu(false); openModal('sharePost', { post }); }}><Share2 size={18} /> {t('Поделиться')}</button>
+                  {post.mine && !post.repost && <button className="menu-item" onClick={editPost}><Pencil size={18} /> Изменить</button>}
                   {(post.mine || me.isAdmin) && <button className="menu-item danger" onClick={remove}><Trash2 size={18} className="danger" /> {t('Удалить')}</button>}
                 </div>
               </>

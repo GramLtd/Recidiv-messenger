@@ -67,6 +67,9 @@ export function NotificationsPage() {
         <Row title="Каналы" right={sw('notifyChannels')} />
         <Row title="Показывать текст" sub="Иначе — просто «Новое сообщение»" right={sw('notifyPreview')} />
       </Group>
+      <Group title="Производительность" footer="Без размытия, частиц и бесконечных анимаций — максимум плавности и меньше расход батареи.">
+        <Row title="Режим производительности" right={<Switch on={theme.perf === true} onChange={(v) => update({ perf: v })} />} />
+      </Group>
       <Group title="Звуки">
         <Row title="Звук отправки" right={sw('sendSound')} />
         <Row title="Звук входящих в открытом чате" right={sw('inSound')} />

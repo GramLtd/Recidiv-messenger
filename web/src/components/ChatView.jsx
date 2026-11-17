@@ -130,7 +130,7 @@ function Message({ m, chat, me, grouped, groupedNext, onContext, onOpenMedia, hi
         )}
         <MessageContent m={m} chat={chat} onOpenMedia={onOpenMedia} />
         <span className="meta">
-          {m.edited && !m.deleted && 'изм. '}
+          {m.edited && !m.deleted && 'изменено · '}
           {isChannel && <span className="views"><Eye size={13} /> {m.views}</span>}
           {timeHM(m.createdAt)}
           {out && chat.type !== 'saved' && (read ? <CheckCheck size={15} /> : <Check size={15} />)}

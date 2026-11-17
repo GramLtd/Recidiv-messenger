@@ -62,6 +62,7 @@ function hexToRgb(hex) {
 export function applyTheme(t) {
   const root = document.documentElement;
   root.dataset.bg = t.bg;
+  root.classList.toggle('perf', !!t.perf);
   const [r, g, b] = hexToRgb(t.accent);
   root.style.setProperty('--accent', t.accent);
   root.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);

@@ -1001,3 +1001,24 @@ body { font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe
 .set-row:not(:disabled):active, .list-item:active, .chat-item:active { background: rgba(255, 255, 255, .06); transform: none; }
 .chat-item { transition: background .2s; }
 @media (max-width: 768px) { .app.has-chat .bottom-nav, .app.has-chat .mini-slot { opacity: 0; pointer-events: none; transform: translateY(20px); } .app .chat-pane { z-index: 30; } }
+
+/* ---------- fixes: dates in the middle, no underlay under glass header ---------- */
+.day-sep, .chat-main .day-sep { position: relative !important; top: auto !important; align-self: center; z-index: 1; }
+.tg-head { background: none !important; }
+
+/* ---------- performance mode ---------- */
+html.perf *, html.perf *::before, html.perf *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+html.perf .lg, html.perf .glass-icon, html.perf .btn.secondary, html.perf .chip:not(.on), html.perf .pill, html.perf .ctx-menu, html.perf .media-panel, html.perf .bottom-nav, html.perf .tg-avatar { background-color: rgba(38, 38, 42, .96) !important; }
+html.perf .pv-blur-inner { animation: none !important; filter: blur(30px) brightness(.45); transform: scale(1.2); }
+html.perf .pv-twinkle, html.perf .pv-gift-glow, html.perf .pv-sparks, html.perf .auth-float, html.perf .auth-bg .blob { display: none !important; }
+html.perf .pv-scatter-item > span, html.perf .floaty, html.perf .pv-worn-bubble { animation: none !important; }
+html.perf .modal-body > *, html.perf .page-body > *, html.perf .post, html.perf .chat-item, html.perf .gift-card, html.perf .set-row { animation: none !important; }
+
+/* ---------- smoother profile on iPhone: fewer composited layers ---------- */
+@media (hover: none), (pointer: coarse) {
+  .pv-gift-glow { filter: none; opacity: .55; }
+  .pv-twinkle { filter: none; }
+  .pv-scatter-item { will-change: transform; }
+  .pv-avatar { filter: none !important; }
+  .pv-scatter { filter: none !important; }
+}
