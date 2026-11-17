@@ -880,3 +880,38 @@ body { font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe
 .msg-gif { position: relative; width: min(280px, 70vw); max-height: 360px; border-radius: calc(var(--bubble-radius) - 4px); overflow: hidden; background: #111; }
 .msg-gif video, .msg-gif img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gif-tag { position: absolute; left: 8px; top: 8px; padding: 1px 6px; border-radius: 6px; font-size: .68em; font-weight: 800; background: rgba(0, 0, 0, .5); color: #fff; }
+
+/* =====================================================================
+   v0.9 — edge-to-edge under the status bar / Dynamic Island, profile collapse
+   ===================================================================== */
+:root { --sat: env(safe-area-inset-top, 0px); }
+.app { padding-top: 0 !important; }
+.page-head, .ios-head, .feed-head { padding-top: calc(var(--sat) + 4px); height: auto; min-height: calc(var(--header-h) + var(--sat)); }
+.ios-head { min-height: calc(58px + var(--sat)); }
+.tg-head { padding-top: calc(var(--sat) + 8px); }
+.chat-main .messages { padding-top: calc(70px + var(--sat)); }
+.chat-main .day-sep { top: calc(66px + var(--sat)); }
+.pv-top { margin-top: var(--sat); }
+.chan-head { padding-top: calc(var(--sat) + 8px) !important; height: auto !important; }
+.story-top { top: calc(18px + var(--sat)); }
+.story-progress { top: calc(8px + var(--sat)); }
+.admin { padding-top: var(--sat); height: 100dvh; box-sizing: border-box; }
+.right-panel > .pv .pv-top { margin-top: 0; }
+
+/* profile collapse on scroll (Telegram-like); --p = 0..1 set from JS */
+.pv { --p: 0; }
+.pv-stage { translate: 0 calc(var(--p) * -36px); }
+.pv-avatar { scale: calc(1 - var(--p) * .72); translate: 0 calc(var(--p) * -46px); opacity: calc(1 - var(--p) * 1.15); filter: blur(calc(var(--p) * 9px)); will-change: scale, translate, opacity, filter; }
+.pv-scatter { scale: calc(1 - var(--p) * .55); opacity: calc(1 - var(--p) * 1.7); filter: blur(calc(var(--p) * 5px)); }
+.pv-name { translate: 0 calc(var(--p) * -54px); scale: calc(1 - var(--p) * .3); opacity: calc(1 - var(--p) * 1.25); }
+.pv-pills, .pv-counts, .pv-worn-bubble { opacity: calc(1 - var(--p) * 1.5); }
+.pv-top { opacity: calc(1 - var(--p) * 1.4); }
+.pv-mini { position: sticky; top: 0; height: 0; z-index: 8; pointer-events: none; }
+.pv-mini-inner { position: absolute; left: 50%; top: calc(var(--sat) + 6px); translate: -50% calc((1 - var(--p)) * -14px); opacity: clamp(0, calc((var(--p) - .65) * 3), 1);
+  display: flex; align-items: center; gap: 8px; padding: 4px 14px 4px 4px; border-radius: 22px; max-width: 80%;
+  background: rgba(30, 30, 34, .5); backdrop-filter: blur(24px) saturate(1.8); -webkit-backdrop-filter: blur(24px) saturate(1.8); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .2); }
+.pv-mini-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; font-weight: 700; font-size: .92em; }
+.pv-mini-text small { font-weight: 500; font-size: .75em; color: var(--text-2); }
+.pv-collapsed .pv-mini { pointer-events: auto; }
+@media (prefers-reduced-motion: reduce) { .pv-avatar, .pv-scatter, .pv-name { filter: none; } }
+.pv.blurred > .pv-mini, .pv > .pv-mini { position: sticky; z-index: 8; }

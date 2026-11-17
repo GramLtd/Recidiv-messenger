@@ -307,6 +307,30 @@ export function ProfileView({ userId, onClose }) {
   const [filterMenu, setFilterMenu] = useState(false);
   const gifts = giftsReq.data?.gifts;
   const orbit = useMemo(() => (gifts ? gifts.filter((g) => g.pinned) : []), [gifts]);
+  // Telegram-like collapse: scroll progress 0..1 drives the hero (avatar shrinks & blurs, gifts fold in)
+  const pvRef = useRef();
+  useEffect(() => {
+    const el = pvRef.current;
+    if (!el) return undefined;
+    let sc = el.parentElement;
+    while (sc && sc !== document.body) {
+      const oy = getComputedStyle(sc).overflowY;
+      if (oy === 'auto' || oy === 'scroll') break;
+      sc = sc.parentElement;
+    }
+    if (!sc || sc === document.body) return undefined;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const p = Math.max(0, Math.min(1, sc.scrollTop / 190));
+      el.style.setProperty('--p', p.toFixed(3));
+      el.classList.toggle('pv-collapsed', p > 0.85);
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
+    sc.addEventListener('scroll', onScroll, { passive: true });
+    update();
+    return () => { sc.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf); };
+  }, [!!data]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const h = (e) => giftsReq.setData({ gifts: (giftsReq.data?.gifts || []).filter((g) => g.id !== e.detail) });
     window.addEventListener('gift:removed', h);
@@ -341,7 +365,13 @@ export function ProfileView({ userId, onClose }) {
   const blurOn = blur.mode !== 'off';
 
   return (
-    <div className={`pv ${blurOn ? 'blurred' : ''}`}>
+    <div ref={pvRef} className={`pv ${blurOn ? 'blurred' : ''}`}>
+      <div className="pv-mini" aria-hidden>
+        <div className="pv-mini-inner">
+          <Avatar src={u.avatar} name={u.displayName} id={u.id} size={30} />
+          <div className="pv-mini-text"><span className="row" style={{ gap: 4 }}><StyledName user={u} />{u.verified && <Verified size={13} />}</span><small>{isMe ? 'в сети' : lastSeen(u)}</small></div>
+        </div>
+      </div>
       {blurOn && (
         <div className="pv-blurbg" aria-hidden>
           <div className={`pv-blur-inner ${blur.mode === 'banner' ? 'static' : ''}`} key={blurSrc?.url || u.id}>
