@@ -1,103 +1,130 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActionSheetIOS, Alert, FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
+import { Dimensions, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
-import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
-import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Hash, Image as ImageIcon, Megaphone } from 'lucide-react-native';
 import { api } from '../../lib/api';
 import { cache } from '../../lib/db';
-import { mediaUrl } from '../../lib/config';
 import { useStore } from '../../lib/store';
-import { Avatar, Press, T } from '../../components/ui';
-import { Icon } from '../../components/Icon';
 import { C } from '../../lib/theme';
-import { chatTime } from './chats';
+import { Avatar, Glass, Press, Rise, T } from '../../components/ui';
+import { PostCard, ago } from '../../components/Post';
 
-const Post = React.memo(function Post({ p, onChange, onRemove }: any) {
-  const meId = useStore((s) => s.me?.id);
-  const [heart, setHeart] = useState(false);
-  if (p.kind === 'channel') {
-    return (
-      <Press scale={0.99} onPress={() => { useStore.getState().refreshChats().catch(() => {}); router.push(`/chat/${p.chat.id}`); }} style={s.post}>
-        <View style={s.head}><Avatar uri={p.chat.avatar} name={p.chat.title} id={p.chat.id} size={40} /><View style={{ flex: 1 }}><T bold>{p.chat.title} <T size={12} style={{ color: C.accent }}>канал</T></T><T dim size={13}>{chatTime(p.createdAt)}</T></View></View>
-        {!!p.text && <T style={{ marginTop: 8 }}>{p.text}</T>}
-      </Press>
-    );
-  }
-  const like = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (!p.liked) { setHeart(true); setTimeout(() => setHeart(false), 700); }
-    onChange({ ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) });
-    const r = await api(`/posts/${p.id}/like`, { body: {} }).catch(() => null);
-    if (r) onChange(r.post);
-  };
-  const menu = () => {
-    if (p.author.id !== meId) return;
-    const opts = ['Изменить', 'Удалить', 'Отмена'];
-    const handle = async (i: number) => {
-      if (i === 0) router.push({ pathname: '/compose', params: { editId: String(p.id), text: p.text } });
-      if (i === 1) Alert.alert('Удалить пост?', '', [{ text: 'Отмена' }, { text: 'Удалить', style: 'destructive', onPress: async () => { await api.del(`/posts/${p.id}`); onRemove(p); } }]);
-    };
-    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ options: opts, destructiveButtonIndex: 1, cancelButtonIndex: 2 }, handle);
-    else Alert.alert('Пост', '', [{ text: 'Изменить', onPress: () => handle(0) }, { text: 'Удалить', style: 'destructive', onPress: () => handle(1) }, { text: 'Отмена' }]);
-  };
+const W = Dimensions.get('window').width;
+const TABS: [string, string][] = [['all', 'Лента'], ['following', 'Подписки'], ['tags', 'Теги']];
+
+/** Web `.seg`: glass segmented control with a sliding glossy indicator. */
+function Seg({ tab, onChange }: { tab: string; onChange: (t: string) => void }) {
+  const idx = TABS.findIndex((t) => t[0] === tab);
+  const x = useSharedValue(idx);
+  useEffect(() => { x.value = withTiming(idx, { duration: 450, easing: Easing.bezier(0.32, 0.72, 0, 1) }); }, [idx]);
+  const w = (W - 28 - 8) / 3;
+  const ind = useAnimatedStyle(() => ({ transform: [{ translateX: x.value * w }] }));
   return (
-    <Press scale={1} onLongPress={menu} style={s.post}>
-      <View style={s.head}>
-        <Press onPress={() => router.push(`/user/${p.author.id}`)}><Avatar uri={p.author.avatar} name={p.author.displayName} id={p.author.id} size={40} /></Press>
-        <View style={{ flex: 1 }}>
-          <T bold>{p.author.displayName}{p.author.premium ? ' ✦' : ''}</T>
-          <T dim size={13}>{chatTime(p.createdAt)}{p.edited ? ' · изменено' : ''}</T>
-        </View>
-        {p.author.id === meId && <Press onPress={menu}><Icon name="more" size={22} color={C.text2} /></Press>}
-      </View>
-      {!!p.text && <T style={{ marginTop: 8, lineHeight: 22 }}>{p.text}</T>}
-      {p.media?.[0] && (
-        <Press scale={1} onLongPress={menu} onPress={() => {}} style={{ marginTop: 10 }}>
-          <Image source={{ uri: mediaUrl(p.media[0].url) }} style={{ width: '100%', aspectRatio: 1, borderRadius: 18 }} contentFit="cover" cachePolicy="memory-disk" />
-          {heart && <Animated.View entering={ZoomIn.springify()} style={s.bigHeart}><T size={90}>❤️</T></Animated.View>}
-        </Press>
-      )}
-      <View style={s.actions}>
-        <Press onPress={like} haptic scale={0.8} style={s.act}><Icon name="heart" size={21} color={p.liked ? '#ff3b5c' : C.text2} fill={p.liked ? '#ff3b5c' : 'none'} /><T size={14} style={{ color: p.liked ? '#ff3b5c' : C.text2 }}>{p.likes || ''}</T></Press>
-        <View style={s.act}><Icon name="comment" size={20} color={C.text2} /><T dim size={14}>{p.comments || ''}</T></View>
-        <View style={s.act}><Icon name="repost" size={20} color={C.text2} /><T dim size={14}>{p.reposts || ''}</T></View>
-        <View style={{ flex: 1 }} />
-        <View style={s.act}><Icon name="eye" size={16} color={C.text2} /><T dim size={13}>{p.views}</T></View>
-      </View>
+    <Glass radius={999} style={st.seg} shadow={false}>
+      <Animated.View style={[st.segInd, { width: w }, ind]} />
+      {TABS.map(([k, l]) => (
+        <Press key={k} scale={0.95} onPress={() => onChange(k)} style={st.segBtn}><T w={700} color={tab === k ? C.text : C.text2}>{l}</T></Press>
+      ))}
+    </Glass>
+  );
+}
+
+function Composer() {
+  const me = useStore((s) => s.me);
+  return (
+    <Press scale={0.98} onPress={() => router.push('/compose')}>
+      <Glass radius={22} shadow={false} style={st.composer}>
+        <Avatar uri={me?.avatar} name={me?.displayName} id={me?.id} size={38} />
+        <T dim style={{ flex: 1 }}>Что нового?</T>
+        <ImageIcon size={20} color={C.text2} />
+      </Glass>
     </Press>
   );
-});
+}
+
+function ChannelItem({ p, index }: { p: any; index: number }) {
+  return (
+    <Rise delay={Math.min(index, 10) * 40} style={st.post}>
+      <Press scale={0.98} onPress={() => { useStore.getState().upsertChat(p.chat); router.push(`/chat/${p.chat.id}`); }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Avatar uri={p.chat.avatar} name={p.chat.title} id={p.chat.id} size={42} />
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 5 }}><Megaphone size={14} color={C.text2} /><T w={700} numberOfLines={1}>{p.chat.title}</T><T size={13} dim>· {ago(p.createdAt)}</T></View>
+        </View>
+        {!!p.text && <T style={{ marginTop: 8, marginLeft: 52, lineHeight: 21.75 }}>{p.text}</T>}
+      </Press>
+    </Rise>
+  );
+}
 
 export default function Feed() {
   const insets = useSafeAreaInsets();
-  const [posts, setPosts] = useState<any[]>(() => cache.get('feed') || []);
+  const [tab, setTab] = useState('all');
+  const [tag, setTag] = useState<string | null>(null);
+  const [tags, setTags] = useState<any[] | null>(null);
+  const [posts, setPosts] = useState<any[] | null>(() => cache.get('feed') || null);
   const [refreshing, setRefreshing] = useState(false);
-  const load = useCallback(async () => { const r = await api('/feed'); setPosts(r.posts); cache.set('feed', r.posts); }, []);
-  useEffect(() => { load().catch(() => {}); }, [load]);
-  const change = (np: any) => setPosts((l) => l.map((x) => (x.id === np.id ? np : x)));
-  const remove = (op: any) => setPosts((l) => l.filter((x) => x.id !== op.id));
+  const source = tab === 'following' ? '/feed?tab=following' : tag ? `/feed?tab=tag&tag=${encodeURIComponent(tag)}` : '/feed';
+  const load = useCallback(async () => {
+    const r = await api(source);
+    setPosts(r.posts);
+    if (source === '/feed') cache.set('feed', r.posts);
+  }, [source]);
+  useEffect(() => { if (tab !== 'tags' || tag) { setPosts(source === '/feed' ? cache.get('feed') || null : null); load().catch(() => setPosts([])); } }, [source, tab]);
+  useEffect(() => { if (tab === 'tags' && !tags) api('/tags/trending').then((r) => setTags(r.tags)).catch(() => setTags([])); }, [tab]);
+  const change = (np: any) => setPosts((l) => (l || []).map((x) => (x.id === np.id ? np : x)));
+  const remove = (op: any) => setPosts((l) => (l || []).filter((x) => x.id !== op.id));
+  const header = (
+    <View>
+      <View style={{ paddingHorizontal: 14, paddingTop: 4, paddingBottom: 8 }}><Seg tab={tab} onChange={(t) => { setTab(t); if (t !== 'tags') setTag(null); }} /></View>
+      {tab === 'all' && <View style={{ paddingHorizontal: 12, paddingBottom: 4 }}><Composer /></View>}
+      {tag && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8 }}>
+          <Hash size={20} color={C.accent} /><T w={700} style={{ flex: 1 }}>{tag}</T>
+          <Press onPress={() => setTag(null)}><Glass radius={16} style={st.chip}><T w={700} size={13}>Все теги</T></Glass></Press>
+        </View>
+      )}
+      {tab === 'tags' && !tag && (
+        <View style={{ paddingHorizontal: 14 }}>
+          <T size={12} w={600} dim style={{ marginVertical: 8 }}>ПОПУЛЯРНЫЕ ТЕГИ</T>
+          {tags && !tags.length && <T dim center size={13} style={{ padding: 30 }}>Тегов пока нет — добавьте #тег в пост</T>}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {(tags || []).map((x, i) => (
+              <Rise key={x.tag} delay={i * 30}>
+                <Press onPress={() => setTag(x.tag)} scale={0.92}><Glass radius={16} style={st.chip}><Hash size={14} color={C.text} /><T w={700} size={13}>{x.tag}</T><T size={11} dim>{x.count}</T></Glass></Press>
+              </Rise>
+            ))}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+  const data = tab === 'tags' && !tag ? [] : posts || [];
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <FlatList
-        data={posts}
-        keyExtractor={(p) => String(p.id)}
-        renderItem={({ item, index }) => <Animated.View entering={index < 8 ? FadeInDown.delay(index * 40).springify().damping(18) : undefined}><Post p={item} onChange={change} onRemove={remove} /></Animated.View>}
-        ListHeaderComponent={<T bold size={32} style={{ paddingHorizontal: 16, paddingBottom: 6 }}>Лента</T>}
+        data={data}
+        keyExtractor={(p) => `${p.kind || 'post'}${p.id}`}
+        renderItem={({ item, index }) => (item.kind === 'channel'
+          ? <ChannelItem p={item} index={index} />
+          : <View style={{ paddingHorizontal: 12 }}><PostCard p={item} index={index} onChange={change} onRemove={remove} /></View>)}
+        ListHeaderComponent={header}
+        ListEmptyComponent={posts && !(tab === 'tags' && !tag) ? <T dim center size={13} style={{ padding: 30 }}>{tab === 'following' ? 'Подпишитесь на людей — их посты появятся здесь' : 'Постов пока нет'}</T> : undefined}
         contentContainerStyle={{ paddingTop: insets.top + 6, paddingBottom: 130 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load().catch(() => {}); setRefreshing(false); }} tintColor={C.text2} />}
-        removeClippedSubviews
-        windowSize={7}
+        windowSize={9}
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  post: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 22, marginTop: 10 },
-  act: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  bigHeart: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
+const st = StyleSheet.create({
+  seg: { flexDirection: 'row', padding: 4 },
+  segInd: { position: 'absolute', top: 4, bottom: 4, left: 4, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.13)', borderTopWidth: 0.5, borderColor: 'rgba(255,255,255,0.3)' },
+  segBtn: { flex: 1, height: 40, alignItems: 'center', justifyContent: 'center' },
+  composer: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, marginBottom: 8 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 34 },
+  post: { paddingTop: 14, paddingBottom: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: C.border },
 });

@@ -6,6 +6,7 @@ import { notifyMessage } from './notify';
 import { initE2E, encryptFor } from './e2e';
 import { deriveKeys } from './seed';
 import { secret } from './kv';
+import { initFont } from './fonts';
 
 export type Msg = any;
 export type Chat = any;
@@ -28,6 +29,8 @@ type State = {
   send: (chat: Chat, payload: { text?: string; replyTo?: number; media?: any; secret?: boolean }) => Promise<void>;
   upsertMessage: (m: Msg) => void;
   setMe: (u: any) => void;
+  upsertChat: (c: Chat) => void;
+  ensureChat: (id: number) => Promise<void>;
 };
 
 const sortChats = (list: Chat[]) => [...list].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.lastMessage?.createdAt || 0) - (a.lastMessage?.createdAt || 0));
@@ -43,6 +46,7 @@ export const useStore = create<State>((set, get) => ({
 
   async boot() {
     setUnauthorizedHandler(() => get().logout());
+    await initFont().catch(() => {});
     const t = await loadToken();
     if (!t) return set({ booted: true });
     try {
@@ -110,6 +114,15 @@ export const useStore = create<State>((set, get) => ({
     saveMessages([m]);
   },
   setMe(u) { set({ me: { ...get().me, ...u } }); },
+  upsertChat(c) {
+    const list = get().chats;
+    set({ chats: list.some((x) => x.id === c.id) ? list.map((x) => (x.id === c.id ? { ...x, ...c } : x)) : [...list, c] });
+  },
+  async ensureChat(id) {
+    if (get().chats.some((x) => x.id === id)) return;
+    const r = await api(`/chats/${id}`);
+    if (r.chat) get().upsertChat(r.chat);
+  },
 }));
 
 function mergeById(a: Msg[], b: Msg[]) {

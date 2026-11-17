@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Tabs, TabList, TabSlot, TabTrigger, useTabTrigger } from 'expo-router/ui';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, Easing } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { AccentFill, Avatar, Glass, Press } from '../../components/ui';
+import { AccentFill, Avatar, Glass, Press, T } from '../../components/ui';
 import { Icon } from '../../components/Icon';
 import { useStore } from '../../lib/store';
 import { C } from '../../lib/theme';
@@ -48,8 +48,8 @@ function Item({ tab, index, onFocus }: { tab: (typeof TABS)[number]; index: numb
       {tab.name === 'profile'
         ? <View style={[s.ava, on && s.avaOn]}><Avatar uri={me?.avatar} name={me?.displayName} id={me?.id} size={24} /></View>
         : <Icon name={tab.icon as any} size={23} color={color} stroke={on ? 2.3 : 1.8} />}
-      <Text numberOfLines={1} style={[s.label, { color }]}>{tab.label}</Text>
-      {tab.name === 'chats' && unread > 0 && <View style={s.badge}><Text style={s.badgeT}>{unread > 99 ? '99+' : unread}</Text></View>}
+      <T numberOfLines={1} w={600} size={10.5} color={color}>{tab.label}</T>
+      {tab.name === 'chats' && unread > 0 && <View style={s.badge}><T w={700} size={11} color="#fff">{unread > 99 ? '99+' : unread}</T></View>}
     </Press>
   );
 }
@@ -64,7 +64,7 @@ function TabBar() {
   return (
     <View pointerEvents="box-none" style={[s.wrap, { bottom: Math.max(12, insets.bottom - 4) }]}>
       <View style={s.shadow}>
-        <Glass radius={33} intensity={30} strong style={s.bar}>
+        <Glass radius={33} intensity={34} fill="rgba(255,255,255,0.08)" edge="rgba(255,255,255,0.14)" hi="rgba(255,255,255,0.18)" shadow={false} style={s.bar}>
           <View style={s.row} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
             {w > 0 && (
               <Animated.View pointerEvents="none" style={[s.indicator, { width: slot }, ind]}>
