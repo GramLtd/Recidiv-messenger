@@ -945,3 +945,59 @@ body { font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe
   /* lighter glass: smaller blur radius is much cheaper to composite */
   .lg, .glass-icon, .btn.secondary, .chip:not(.on), .pill, .gift-actions button, .gs-actions button, .pv-link { backdrop-filter: blur(14px) saturate(1.6); -webkit-backdrop-filter: blur(14px) saturate(1.6); }
 }
+
+/* =====================================================================
+   v1.0 — native-feel navigation (iOS / Instagram)
+   ===================================================================== */
+:root { --ios: cubic-bezier(.32, .72, 0, 1); --ios-dur: .42s; }
+
+/* pushed screens (settings): new page slides over, previous parallaxes and dims */
+.push-stack { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; --push: 0; }
+.push-under { flex: 1; min-height: 0; display: flex; flex-direction: column; transform: translateX(calc(var(--push) * -28%)); transition: transform var(--ios-dur) var(--ios), filter var(--ios-dur) var(--ios); filter: brightness(calc(1 - var(--push) * .35)); }
+.push-under > .page { animation: none; }
+.push-layer { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; background: var(--bg); box-shadow: -10px 0 30px rgba(0, 0, 0, .45); animation: pushIn var(--ios-dur) var(--ios) both; transition: transform .36s var(--ios); will-change: transform; }
+.push-layer.closing { transform: translateX(100%) !important; }
+.push-layer > .page { animation: none; }
+.push-layer .sp-body { animation: none; }
+.push-dragging .push-under { transition: none; }
+@keyframes pushIn { from { transform: translateX(100%); } }
+.push-stack .modal-body > *, .push-stack .page-body > * { animation: none !important; }
+
+/* chats on phones: the chat slides over the list (list keeps its scroll) */
+@media (max-width: 768px) {
+  .app { position: relative; --chat: 0; }
+  .app .chat-pane { display: flex !important; position: absolute; inset: 0; z-index: 25; transform: translateX(100%); visibility: hidden; transition: transform var(--ios-dur) var(--ios), visibility 0s linear var(--ios-dur); box-shadow: -10px 0 30px rgba(0, 0, 0, .5); }
+  .app.has-chat .chat-pane { transform: none; visibility: visible; transition: transform var(--ios-dur) var(--ios), visibility 0s; }
+  .app.has-chat .sidebar { display: flex !important; transform: translateX(-28%); filter: brightness(.65); }
+  .app .sidebar { transition: transform var(--ios-dur) var(--ios), filter var(--ios-dur) var(--ios); }
+  .app.chat-closing .chat-pane { transform: translateX(100%); }
+  .app.chat-closing .sidebar { transform: none; filter: none; }
+  .app.chat-dragging .sidebar { transition: none; transform: translateX(calc(var(--chat) * -28%)); filter: brightness(calc(1 - var(--chat) * .35)); }
+  .app .chat-main { animation: none; }
+}
+
+/* tabs: quick, soft cross-fade instead of a long slide */
+@keyframes tabIn { from { opacity: 0; transform: scale(.992); } }
+.sidebar.dir-fwd > .tab-page, .sidebar.dir-back > .tab-page { animation: tabIn .22s ease-out both; }
+.tab-page .page-body > *, .tab-page .modal-body > * { animation-duration: .26s !important; }
+
+/* bottom sheets & modals: iOS spring */
+@media (max-width: 560px) { .modal { animation: sheetUp .46s var(--ios) both; } }
+.modal-overlay { animation: fade .3s var(--ios); }
+
+/* iOS switch: spring knob that stretches while pressed */
+.switch { width: 51px; height: 31px; border-radius: 16px; background: rgba(120, 120, 128, .32); transition: background .3s var(--ios); }
+.switch::after { left: 2px; top: 2px; width: 27px; height: 27px; border-radius: 14px; box-shadow: 0 3px 8px rgba(0, 0, 0, .15), 0 3px 1px rgba(0, 0, 0, .06); transition: transform .35s var(--ios), width .2s var(--ios); }
+.switch:active::after { width: 33px; }
+.switch.on { background: #34c759; }
+.switch.on::after { transform: translateX(20px); }
+.switch.on:active::after { transform: translateX(14px); }
+
+/* segmented controls & tabs: smoother indicator */
+.seg-ind, .pv-tab-line, .nav-indicator { transition-timing-function: var(--ios) !important; transition-duration: .45s !important; }
+.tabs button { transition: background .3s var(--ios), color .25s; }
+
+/* press feedback like native lists */
+.set-row:not(:disabled):active, .list-item:active, .chat-item:active { background: rgba(255, 255, 255, .06); transform: none; }
+.chat-item { transition: background .2s; }
+@media (max-width: 768px) { .app.has-chat .bottom-nav, .app.has-chat .mini-slot { opacity: 0; pointer-events: none; transform: translateY(20px); } .app .chat-pane { z-index: 30; } }

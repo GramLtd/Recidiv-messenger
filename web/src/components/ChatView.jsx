@@ -13,6 +13,7 @@ import { colorFor, dayLabel, lastSeen, membersLabel, timeHM, fileSize } from '..
 import { ChatWallpaper } from './ProfileExtras.jsx';
 import { PostPreview } from './Feed.jsx';
 import { MediaPanel, StickerView, GifView } from './MediaPanel.jsx';
+import { useEdgeSwipe } from './Push.jsx';
 import { playSend, playIncoming } from '../sound.js';
 
 const QUICK_REACTIONS = ['❤️', '🔥', '👍', '😂', '😮', '😢', '💀', '🤡'];
@@ -392,6 +393,30 @@ export default function ChatView() {
   const [searchQ, setSearchQ] = useState('');
   const [searchRes, setSearchRes] = useState([]);
   const wallpaper = useStore((s) => s.me?.wallpaper);
+  // phones: the chat slides out to the right (and can be swiped back from the left edge)
+  const mainRef = useRef();
+  const closeChat = () => {
+    const app = document.querySelector('.app');
+    if (!app || innerWidth > 768) return openChat(null);
+    const pane = app.querySelector('.chat-pane');
+    if (pane) { pane.style.transition = ''; pane.style.transform = ''; }
+    app.classList.remove('chat-dragging');
+    app.classList.add('chat-closing');
+    setTimeout(() => { openChat(null); app.classList.remove('chat-closing'); }, 340);
+  };
+  useEdgeSwipe(mainRef, {
+    enabled: !!chatId,
+    onBack: closeChat,
+    onProgress: (p, animate) => {
+      const app = document.querySelector('.app');
+      const pane = app?.querySelector('.chat-pane');
+      if (!pane || innerWidth > 768) return;
+      pane.style.transition = animate ? '' : 'none';
+      pane.style.transform = p ? `translateX(${p * 100}%)` : '';
+      app.style.setProperty('--chat', String(1 - p));
+      app.classList.toggle('chat-dragging', !animate);
+    },
+  });
   const otherUnread = useStore((s) => s.chats.reduce((n, c) => n + (c.id !== s.activeChatId && !c.muted ? c.unread || 0 : 0), 0));
   const scrollRef = useRef();
   // soft sound for messages arriving in the open chat
@@ -481,10 +506,10 @@ export default function ChatView() {
   };
 
   return (
-    <div className={`chat-main ${wallpaper ? 'has-wp' : ''}`}>
+    <div ref={mainRef} className={`chat-main ${wallpaper ? 'has-wp' : ''}`}>
       <ChatWallpaper wp={wallpaper} />
       <div className="chat-header tg-head">
-        <button className="lg tg-back" onClick={() => openChat(null)} aria-label="Назад">
+        <button className="lg tg-back" onClick={closeChat} aria-label="Назад">
           <ChevronLeft size={24} />
           {otherUnread > 0 && <span className="tg-back-count">{otherUnread > 999 ? '999+' : otherUnread}</span>}
         </button>

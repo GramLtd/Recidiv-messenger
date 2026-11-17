@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
+import { PushLayer } from './Push.jsx';
 import {
   Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone, User as UserIcon, AtSign, Bookmark, Gift, CreditCard, Wallet as WalletIcon,
   Globe, Hand, MonitorSmartphone, Contrast, Type, HardDrive, Shield, MapPin,
@@ -8,7 +9,7 @@ import { Group, Row, NotificationsPage, PremiumPage, WalletCardPage, LanguagePag
 import { useT, useLang, LANGS } from '../i18n.js';
 import { useStore } from '../store.js';
 import { api, upload } from '../api.js';
-import { Avatar, Modal, Spark, Switch, useAsync, useAction, PremiumStar, nameStyleCss, StyledName, SparkIcon } from './common.jsx';
+import { Avatar, Modal, InlinePage, Spark, Switch, useAsync, useAction, PremiumStar, nameStyleCss, StyledName, SparkIcon } from './common.jsx';
 import { AvatarCropper, BannerEditor, LinksEditor, WallpaperPicker, BlurBgEditor } from './ProfileExtras.jsx';
 import { WalletsSection } from './LazyTon.jsx';
 import { ACCENTS, BACKGROUNDS, FONTS, loadTheme, saveTheme } from '../theme.js';
@@ -206,6 +207,20 @@ const PAGES = {
 export function SettingsModal({ tab: initialTab }) {
   const t = useT();
   const [page, setPage] = useState(initialTab && PAGES[initialTab] ? initialTab : null);
+  const inline = useContext(InlinePage);
+  if (inline) {
+    // tab page: iOS-style push navigation, home stays mounted underneath (keeps its scroll)
+    return (
+      <div className={`push-stack ${page ? 'has-push' : ''}`}>
+        <div className="push-under"><SettingsHome open={setPage} /></div>
+        {page && (
+          <PushLayer key={page} onDone={() => setPage(null)}>
+            {(back) => <Modal title={t(PAGES[page][0])} back={back} className={`settings-page sp-${page}`}><div className="sp-body">{PAGES[page][1]()}</div></Modal>}
+          </PushLayer>
+        )}
+      </div>
+    );
+  }
   if (page) {
     const [title, render] = PAGES[page];
     return <Modal title={t(title)} back={() => setPage(null)} className={`settings-page sp-${page}`}><div key={page} className="sp-body">{render()}</div></Modal>;
