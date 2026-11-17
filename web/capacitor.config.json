@@ -1,0 +1,15 @@
+{
+  "appId": "lol.recidivist.app",
+  "appName": "Recidivist",
+  "webDir": "dist",
+  "backgroundColor": "#000000",
+  "android": {
+    "backgroundColor": "#000000",
+    "allowMixedContent": false,
+    "adjustMarginsForEdgeToEdge": "auto"
+  },
+  "ios": {
+    "backgroundColor": "#000000",
+    "contentInset": "never"
+  }
+}

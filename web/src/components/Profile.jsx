@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, AtSign, Info, Link2, MessageCircle, Gift, Send, Pin, Bell, BellOff, LogOut, UserPlus, Pencil, Shield, Trash2, Copy, Camera, Users } from 'lucide-react';
 import { useStore } from '../store.js';
-import { api, upload } from '../api.js';
+import { api, upload, PUBLIC_ORIGIN } from '../api.js';
 import { Avatar, Verified, Modal, useAsync, Spinner, useAction, WornGift } from './common.jsx';
 import { GiftArt } from './GiftArt.jsx';
 import { lastSeen, membersLabel } from '../util.js';
@@ -19,7 +19,7 @@ function GroupInfo({ chat }) {
   const toast = useStore((s) => s.toast);
   const isAdmin = chat.role === 'owner' || chat.role === 'admin';
   const members = useAsync(() => api(`/chats/${chat.id}/members`), [chat.id, chat.memberCount]);
-  const link = chat.username ? `${location.origin}/@${chat.username}` : chat.inviteCode ? `${location.origin}/join/${chat.inviteCode}` : null;
+  const link = chat.username ? `${PUBLIC_ORIGIN}/@${chat.username}` : chat.inviteCode ? `${PUBLIC_ORIGIN}/join/${chat.inviteCode}` : null;
   const leave = async () => {
     if (!confirm(chat.type === 'channel' ? 'Покинуть канал?' : 'Покинуть группу?')) return;
     await api(`/chats/${chat.id}/leave`, { body: {} });

@@ -100,6 +100,8 @@ server/            Node.js · Express 5 · Socket.IO · SQLite (better-sqlite3)
   src/services.js  сериализация, леджер баланса, уведомления, общая логика
   src/routes/      auth · users · chats · stories · gifts · market · wallet · admin
 web/               React 18 · Vite · Zustand · socket.io-client · TonConnect UI
+  android/ ios/    нативные проекты Capacitor
+desktop/           Electron-клиент для ПК
   src/pages/       Auth · Main · Admin
   src/components/  Sidebar · ChatView · Profile · Gifts · Market · Wallet · Stories · Settings
 ```
@@ -108,13 +110,59 @@ web/               React 18 · Vite · Zustand · socket.io-client · TonConnect
 - Покупка на маркете атомарна: списание у покупателя, зачисление продавцу за вычетом комиссии и передача владения идут одной транзакцией. Есть защита от смены цены (`expectedPrice`).
 - Файлы складываются в `server/data/uploads`, БД — в `server/data/recidivist.db`.
 
-## Мобильные и десктопные версии (план)
+## Клиенты (Android / iOS / ПК)
 
-Клиент — обычный React SPA, поэтому нативные сборки делаются из той же кодовой базы:
+Нативные клиенты — это тот же веб-клиент из `web/`, собранный в режиме приложения (`npm run build:app` = `vite build --mode app`, переменные в `web/.env.app`). Приложение ходит на сервер `https://recidivist.lol` (API, Socket.IO, `/uploads`), а интерфейс, звуки, иконки и 3D-подарки лежат внутри самого приложения.
 
-- **Android / iOS** — [Capacitor](https://capacitorjs.com): `npm i @capacitor/core @capacitor/cli`, `npx cap add android` / `ios`, и `VITE_API_URL=https://ваш-сервер` при сборке. `.ipa` собирается в Xcode (Archive → Export), для установки вне App Store подписывается своим сертификатом (AltStore, Sideloadly, TrollStore и т. п.). Пуш-уведомления — через `@capacitor/push-notifications` + FCM/APNs.
-- **Windows** — Electron или Tauri: оборачивают тот же `web/dist`, указывают `VITE_API_URL`.
-- Уже есть PWA-манифест: веб-версию можно «установить» на телефон из браузера.
+```
+web/capacitor.config.json   Capacitor: appId lol.recidivist.app, appName Recidivist, webDir dist
+web/android/                Android-проект (Capacitor 7, Gradle)
+web/ios/                    iOS-проект (Capacitor 7, Xcode + CocoaPods)
+web/assets/                 исходники иконки и сплэша (генерация: npx @capacitor/assets generate)
+desktop/                    Electron: Windows (установщик + portable), macOS (dmg), Linux (AppImage)
+.github/workflows/clients.yml   сборка всех клиентов в GitHub Actions
+```
+
+### Как получить APK / IPA / EXE (GitHub Actions)
+
+1. На GitHub откройте репозиторий → вкладка **Actions** → слева workflow **Clients** → кнопка **Run workflow** (ветка — нужная, поле «Server URL» можно оставить `https://recidivist.lol`) → **Run workflow**.
+2. Дождитесь, пока задачи станут зелёными (Android ~10 мин, iOS ~15 мин, ПК ~10 мин; задачи независимы — если одна упала, остальные всё равно соберутся).
+3. Откройте завершённый запуск и внизу, в блоке **Artifacts**, скачайте:
+   - `Recidivist-android` — `Recidivist-debug.apk` (устанавливается сразу) и `Recidivist-release-unsigned.apk` (без подписи, для своей подписи);
+   - `Recidivist-ios` — `Recidivist-unsigned.ipa`;
+   - `Recidivist-desktop-Windows` — `Recidivist-Setup-…-x64.exe` (установщик) и `Recidivist-Portable-…-x64.exe`;
+   - `Recidivist-desktop-macOS` — `.dmg` (universal: Intel + Apple Silicon);
+   - `Recidivist-desktop-Linux` — `.AppImage`.
+
+   Артефакты скачиваются zip-архивом — распакуйте его. Хранятся 90 дней.
+4. Если запушить тег вида `v1.0.0` (`git tag v1.0.0 && git push origin v1.0.0`), workflow запустится сам и выложит все файлы в **Releases**.
+
+### Установка
+
+- **Android**: скопируйте `Recidivist-debug.apk` на телефон, откройте его и разрешите «Установку из неизвестных источников» для файлового менеджера/браузера. При первом голосовом сообщении приложение спросит доступ к микрофону.
+- **iOS (неподписанный IPA)** — нужно подписать при установке:
+  - **AltStore / SideStore**: установите AltStore (AltServer на ПК/Mac), на iPhone откройте AltStore → **My Apps** → **+** → выберите `Recidivist-unsigned.ipa`. Бесплатный Apple ID — приложение нужно обновлять (Refresh) раз в 7 дней.
+  - **Sideloadly** (Windows/macOS): подключите iPhone кабелем, перетащите IPA в окно Sideloadly, введите Apple ID → **Start**. Затем на iPhone: Настройки → Основные → VPN и управление устройством → доверять разработчику. На iOS 16+ включите «Режим разработчика» (Настройки → Конфиденциальность и безопасность).
+  - **TrollStore** (если поддерживается вашей версией iOS): откройте IPA через «Поделиться» → TrollStore → Install. Подпись не истекает.
+- **Windows**: `Recidivist-Setup-…-x64.exe` — обычный установщик (ярлык на рабочем столе и в «Пуске»); `Recidivist-Portable-…-x64.exe` — запускается без установки. Файлы не подписаны, поэтому SmartScreen покажет предупреждение: **Подробнее → Выполнить в любом случае**.
+- **macOS**: откройте `.dmg`, перетащите Recidivist в «Программы». Приложение не подписано: первый запуск — правый клик → **Открыть** (или `xattr -cr /Applications/Recidivist.app`).
+- **Linux**: `chmod +x Recidivist-*.AppImage && ./Recidivist-*.AppImage`.
+
+### Другой адрес сервера (VITE_API_URL)
+
+- В GitHub Actions: при **Run workflow** укажите свой адрес в поле «Server URL» — он подставится в `VITE_API_URL` и `VITE_TONCONNECT_MANIFEST`.
+- Насовсем: поменяйте адрес в `web/.env.app`.
+- Разово при локальной сборке переменные окружения важнее файла: `VITE_API_URL=https://my.server VITE_TONCONNECT_MANIFEST=https://my.server/tonconnect-manifest.json npm --prefix web run build:app`.
+
+На сервере ничего настраивать не нужно: CORS уже открыт (`cors()` и Socket.IO с `origin: '*'`), авторизация идёт по токену в заголовке, без кук. Обычная веб-сборка (`npm run build`) работает как раньше — с относительными адресами.
+
+### Локальная сборка
+
+- **Android** (нужны JDK 21 и Android SDK): `cd web && npm ci && npm run cap:android && cd android && ./gradlew assembleDebug` → `web/android/app/build/outputs/apk/debug/app-debug.apk`. Или `npx cap open android` и сборка в Android Studio.
+- **iOS** (только macOS + Xcode): `cd web && npm ci && npm run cap:ios && npx cap open ios`.
+- **ПК**: `cd desktop && npm ci && npm run dist` (под текущую ОС) или `npm run dist:win` / `dist:mac` / `dist:linux`; результат в `desktop/dist/`. `npm start` — запуск без упаковки. Windows-установщик на Linux собирается только с установленным Wine (`wine64` + `wine32`), архив `--win zip` — без него.
+
+В приложении Electron интерфейс отдаётся по собственному протоколу `app://recidivist/`, внешние ссылки открываются в системном браузере, второй запуск просто разворачивает уже открытое окно, F12 — DevTools.
 
 ## Дальнейшие шаги
 

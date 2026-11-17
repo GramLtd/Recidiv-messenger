@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Heart, MessageCircle, Repeat2, Send, Eye, MoreHorizontal, ImagePlus, X, Trash2, Link2, Hash, Share2 } from 'lucide-react';
 import { useStore } from '../store.js';
-import { api, upload, mediaUrl } from '../api.js';
+import { api, upload, mediaUrl, PUBLIC_ORIGIN } from '../api.js';
 import { Avatar, Modal, Spinner, Verified, PremiumStar, StyledName, useAction } from './common.jsx';
 import { useT } from '../i18n.js';
 import { fmtNum } from '../util.js';
@@ -107,7 +107,7 @@ export function PostCard({ post, onChange, onRemove, onTag, index = 0, embedded 
               <>
                 <div style={{ position: 'fixed', inset: 0, zIndex: 9 }} onClick={() => setMenu(false)} />
                 <div className="ctx-menu" style={{ position: 'absolute', right: 0, top: 40, left: 'auto', zIndex: 10, '--origin': 'top right' }}>
-                  <button className="menu-item" onClick={() => { setMenu(false); navigator.clipboard?.writeText(`${location.origin}/post/${post.id}`); toast('Ссылка скопирована'); }}><Link2 size={18} /> {t('Скопировать ссылку')}</button>
+                  <button className="menu-item" onClick={() => { setMenu(false); navigator.clipboard?.writeText(`${PUBLIC_ORIGIN}/post/${post.id}`); toast('Ссылка скопирована'); }}><Link2 size={18} /> {t('Скопировать ссылку')}</button>
                   <button className="menu-item" onClick={repost}><Repeat2 size={18} /> {t('Репост')}</button>
                   <button className="menu-item" onClick={() => { setMenu(false); openModal('sharePost', { post }); }}><Share2 size={18} /> {t('Поделиться')}</button>
                   {(post.mine || me.isAdmin) && <button className="menu-item danger" onClick={remove}><Trash2 size={18} className="danger" /> {t('Удалить')}</button>}

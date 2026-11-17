@@ -1,0 +1,102 @@
+{
+  "name": "recidivist-desktop",
+  "productName": "Recidivist",
+  "version": "1.0.0",
+  "description": "Recidivist messenger desktop client",
+  "author": "Recidivist",
+  "license": "ISC",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "web": "node scripts/build-web.mjs",
+    "start": "npm run web && electron .",
+    "dist": "npm run web && electron-builder --publish never",
+    "dist:win": "npm run web && electron-builder --win --publish never",
+    "dist:mac": "npm run web && electron-builder --mac --publish never",
+    "dist:linux": "npm run web && electron-builder --linux --publish never"
+  },
+  "build": {
+    "appId": "lol.recidivist.app",
+    "productName": "Recidivist",
+    "copyright": "Recidivist",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "build/icon.png",
+      "web-dist/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "artifactName": "Recidivist-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "Recidivist",
+      "artifactName": "Recidivist-Setup-${version}-x64.${ext}"
+    },
+    "portable": {
+      "artifactName": "Recidivist-Portable-${version}-x64.${ext}"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.social-networking",
+      "identity": null,
+      "hardenedRuntime": false,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Микрофон нужен для голосовых сообщений и распознавания музыки.",
+        "NSCameraUsageDescription": "Камера нужна для фото и видео в чатах и аватарки."
+      }
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Network;InstantMessaging",
+      "synopsis": "Recidivist messenger",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "syncDesktopName": true,
+      "executableName": "recidivist"
+    },
+    "publish": null
+  },
+  "devDependencies": {
+    "electron": "44.11.3",
+    "electron-builder": "26.18.0"
+  },
+  "desktopName": "recidivist.desktop"
+}

@@ -6,6 +6,11 @@ export const setToken = (t) => (t ? localStorage.setItem(TOKEN_KEY, t) : localSt
 // For native wrappers (Capacitor / Electron) set VITE_API_URL to the server origin.
 export const API_ORIGIN = import.meta.env.VITE_API_URL || '';
 
+// Public origin used for share links (location.origin is capacitor://localhost / app://… inside native wrappers).
+export const PUBLIC_ORIGIN = API_ORIGIN || location.origin;
+// True when running inside a native wrapper build (Capacitor / Electron).
+export const IS_APP = !!API_ORIGIN && API_ORIGIN !== location.origin;
+
 export const mediaUrl = (u) => (!u ? u : u.startsWith('/') ? API_ORIGIN + u : u);
 
 export async function api(path, { method, body, signal } = {}) {

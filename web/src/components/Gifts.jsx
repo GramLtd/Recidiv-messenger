@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Sparkles, Send, Tag, Tag as TagIcon, EyeOff, Eye, Repeat, Pin, ArrowUpCircle, Info, Search, X, Link2, Gem, Crown, MoreHorizontal, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { useStore } from '../store.js';
-import { api } from '../api.js';
+import { api, PUBLIC_ORIGIN } from '../api.js';
 import { Avatar, Modal, Spark, Switch, Spinner, useAsync, useAction, Verified } from './common.jsx';
 import { GiftArt, CollectibleArt, GiftModel } from './GiftArt.jsx';
 import { UserPicker } from './NewChat.jsx';
@@ -217,7 +217,7 @@ function GiftSheet({ userGiftId, dir, nav }) {
     run(async () => { await api.del(`/user-gifts/${ug.id}`); close(); window.dispatchEvent(new CustomEvent('gift:removed', { detail: ug.id })); }, 'Подарок удалён');
   };
   const unlist = () => run(async () => { await api.del(`/market/listings/${ug.listing.id}`); setData({ userGift: { ...ug, listing: null } }); }, 'Снято с продажи');
-  const copyLink = () => { navigator.clipboard?.writeText(`${location.origin}/gift/${col?.slug || ug.id}`); toast('Ссылка скопирована'); setMenu(false); };
+  const copyLink = () => { navigator.clipboard?.writeText(`${PUBLIC_ORIGIN}/gift/${col?.slug || ug.id}`); toast('Ссылка скопирована'); setMenu(false); };
 
   // tilt the model with the finger / cursor
   const tilt = (e) => {

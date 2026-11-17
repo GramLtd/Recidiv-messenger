@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { mediaUrl } from '../api.js';
 
 // Telegram-style .tgs stickers = gzipped Lottie JSON. Parsed animations are cached by URL.
 const cache = new Map();
@@ -9,7 +10,8 @@ export const isTgs = (src) => typeof src === 'string' && /\.tgs($|\?)/i.test(src
 
 function loadTgs(src) {
   if (!cache.has(src)) {
-    const p = fetch(src)
+    // bundled art (/gifts, /emoji-anim…) stays local; user uploads come from the API server
+    const p = fetch(/^\/uploads\//.test(src) ? mediaUrl(src) : src)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         if (typeof DecompressionStream === 'undefined') throw new Error('no DecompressionStream');

@@ -4,7 +4,7 @@ import {
   MoreHorizontal, UserPlus, UserMinus, UserCheck, Ban, Link2, MapPin, Coins, AtSign, Copy, Store,
 } from 'lucide-react';
 import { useStore } from '../store.js';
-import { api, mediaUrl } from '../api.js';
+import { api, mediaUrl, PUBLIC_ORIGIN } from '../api.js';
 import { Avatar, Verified, Modal, useAsync, Spinner, WornGift, Spark, PremiumStar, nameStyleCss, useAction, StyledName, SparkIcon } from './common.jsx';
 import { PostList } from './Feed.jsx';
 import { Popover } from './Popover.jsx';
@@ -429,7 +429,7 @@ export function ProfileView({ userId, onClose }) {
                     <button className="menu-item" onClick={act(() => openModal('transfer', { toUser: u }))}><Coins size={18} /> {t('Отправить искры')}</button>
                     <button className="menu-item" onClick={act(() => openModal('giftShop', { toUser: u }))}><Gift size={18} /> {t('Отправить подарок')}</button>
                     <button className="menu-item" onClick={act(() => openModal('giftPremium', { toUser: u }))}><SparkIcon size={18} /> {t('Подарить Premium')}</button>
-                    <button className="menu-item" onClick={act(() => { navigator.clipboard?.writeText(`${location.origin}/${u.username ? `@${u.username}` : ''}`); useStore.getState().toast('Ссылка скопирована'); })}><Link2 size={18} /> {t('Скопировать ссылку')}</button>
+                    <button className="menu-item" onClick={act(() => { navigator.clipboard?.writeText(`${PUBLIC_ORIGIN}/${u.username ? `@${u.username}` : ''}`); useStore.getState().toast('Ссылка скопирована'); })}><Link2 size={18} /> {t('Скопировать ссылку')}</button>
                     <button className="menu-item danger" onClick={act(toggleBlock)}><Ban size={18} className="danger" /> {u.isBlocked ? t('Разблокировать') : t('Заблокировать')}</button>
                   </div>
                 </>
@@ -625,7 +625,7 @@ function ProfilePopup({ pop, u, isMe, onClose }) {
               : info.acquiredAt ? <>Имя зарегистрировано {when(info.acquiredAt)}. Юзернеймы переходят из рук в руки на Маркете.</> : 'Юзернеймы переходят из рук в руки на Маркете.'}
           </div>
           <button className="btn block" onClick={() => { close(); setTimeout(() => openModal('market', { kind: 'username', q: name }), 360); }}><Store size={17} /> Маркет</button>
-          <button className="btn secondary block" onClick={() => { navigator.clipboard?.writeText(`${location.origin}/@${name}`); toast('Ссылка скопирована'); close(); }}><Link2 size={17} /> Копировать ссылку</button>
+          <button className="btn secondary block" onClick={() => { navigator.clipboard?.writeText(`${PUBLIC_ORIGIN}/@${name}`); toast('Ссылка скопирована'); close(); }}><Link2 size={17} /> Копировать ссылку</button>
         </>
       )}
     </Popover>

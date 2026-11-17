@@ -5,3 +5,19 @@ server/data/
 *.db
 *.db-*
 .DS_Store
+
+# native clients (Capacitor / Electron) build output
+web/android/app/build/
+web/android/build/
+web/android/.gradle/
+web/android/local.properties
+web/ios/App/Pods/
+web/ios/App/build/
+web/ios/DerivedData/
+desktop/dist/
+desktop/web-dist/
+*.apk
+*.aab
+*.ipa
+*.AppImage
+*.dmg
