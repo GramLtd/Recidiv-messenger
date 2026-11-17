@@ -11,6 +11,12 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - 'claude/**'
+    paths:
+      - 'web/**'
+      - 'desktop/**'
+      - '.github/workflows/clients.yml'
 
 permissions:
   contents: read
