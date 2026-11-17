@@ -182,7 +182,7 @@ function expiryFor(chatId, type) {
 export function messagePreview(m) {
   if (!m) return null;
   if (m.deleted) return 'Сообщение удалено';
-  const labels = { secret: '🔒 Зашифрованное сообщение', gif: 'GIF', post: '📰 Пост', audio: '🎵 Музыка', transfer: '💸 Перевод', image: '🖼 Фото', video: '🎬 Видео', file: '📎 Файл', voice: '🎤 Голосовое', gift: '🎁 Подарок', sticker: 'Стикер' };
+  const labels = { album: '🖼 Альбом', secret: '🔒 Зашифрованное сообщение', gif: 'GIF', post: '📰 Пост', audio: '🎵 Музыка', transfer: '💸 Перевод', image: '🖼 Фото', video: '🎬 Видео', file: '📎 Файл', voice: '🎤 Голосовое', gift: '🎁 Подарок', sticker: 'Стикер' };
   if (m.type === 'text' || m.type === 'system') return m.text;
   if (m.type === 'gift') return m.text ? (/^\p{Extended_Pictographic}/u.test(m.text) ? m.text : `🎁 ${m.text}`) : labels.gift;
   return m.text ? `${labels[m.type] || ''} ${m.text}` : labels[m.type] || m.type;
@@ -392,6 +392,12 @@ const GIF_RE = /^https:\/\/media\d*\.tenor\.com\/[A-Za-z0-9_\-./]+\.(mp4|gif|web
 export function sanitizeMedia(media) {
   if (!media) return null;
   const kind = String(media.kind || 'file').slice(0, 16);
+  if (kind === 'album') {
+    // Telegram-style album: up to 10 photos / videos in one message
+    const items = (Array.isArray(media.items) ? media.items : []).slice(0, 10).map((it) => sanitizeMedia(it)).filter((it) => it && ['image', 'video'].includes(it.kind));
+    if (!items.length) return null;
+    return items.length === 1 ? items[0] : { kind: 'album', items: items.map(({ url, kind: k, width, height, duration }) => ({ url, kind: k, width, height, duration })) };
+  }
   if (kind === 'sticker') {
     const url = typeof media.url === 'string' && STICKER_RE.test(media.url) ? media.url : safeUploadUrl(media.url);
     const animation = typeof media.animation === 'string' && STICKER_ANIM_RE.test(media.animation) ? media.animation : undefined;

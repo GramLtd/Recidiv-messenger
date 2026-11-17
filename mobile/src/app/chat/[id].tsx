@@ -97,6 +97,7 @@ function Content({ m, chat, out }: { m: any; chat: any; out: boolean }) {
   const md = m.media;
   if (m.deleted) return <T dim style={{ fontStyle: 'italic' }}>Сообщение удалено</T>;
   switch (m.type) {
+    case 'album': return md?.items ? <Album items={md.items} /> : null;
     case 'image': return md ? (
       <Pressable onPress={() => router.push({ pathname: '/media', params: { url: md.url, kind: 'image' } })}>
         <Image source={{ uri: mediaUrl(md.url) }} style={{ width: Math.min(W * 0.66, 280), height: Math.min(W * 0.66, 280) * (md.height && md.width ? Math.min(1.4, md.height / md.width) : 1), borderRadius: 12, backgroundColor: '#111' }} contentFit="cover" cachePolicy="memory-disk" transition={120} />
@@ -142,6 +143,36 @@ function Content({ m, chat, out }: { m: any; chat: any; out: boolean }) {
   }
 }
 
+/** Telegram-style album grid (rows 2 · 1+2 · 2+2 · 2+3 · 3+3 · 3+4 · 2+3+3 · 3+3+3 · 3+3+4). */
+const ALBUM_ROWS: Record<number, number[]> = { 1: [1], 2: [2], 3: [1, 2], 4: [2, 2], 5: [2, 3], 6: [3, 3], 7: [3, 4], 8: [2, 3, 3], 9: [3, 3, 3], 10: [3, 3, 4] };
+function Album({ items }: { items: any[] }) {
+  const w = Math.min(W * 0.7, 300);
+  const rows = ALBUM_ROWS[items.length] || [items.length];
+  let k = 0;
+  return (
+    <View style={{ width: w, gap: 2, borderRadius: 12, overflow: 'hidden' }}>
+      {rows.map((cnt, r) => (
+        <View key={r} style={{ flexDirection: 'row', gap: 2, height: cnt === 1 ? w * 0.66 : (w - (cnt - 1) * 2) / cnt * (cnt === 2 ? 0.95 : 1) }}>
+          {items.slice(k, (k += cnt)).map((it, i) => (
+            <Pressable key={i} style={{ flex: 1, backgroundColor: '#111' }} onPress={() => router.push({ pathname: '/media', params: { url: it.url, kind: it.kind } })}>
+              {it.kind === 'video' ? <AlbumVideo url={it.url} /> : <Image source={{ uri: mediaUrl(it.url) }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={120} />}
+            </Pressable>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+function AlbumVideo({ url }: { url: string }) {
+  const player = useVideoPlayer(mediaUrl(url) || null, (p) => { p.muted = true; });
+  return (
+    <>
+      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} pointerEvents="none" />
+      <View style={[st.playBadge, { width: 36, height: 36, marginLeft: -18, marginTop: -18, borderRadius: 18 }]}><Play size={16} color="#fff" fill="#fff" style={{ marginLeft: 2 }} /></View>
+    </>
+  );
+}
+
 /** Video in a bubble: first frame + play badge; tap opens the full-screen player. */
 function VideoThumb({ md }: { md: any }) {
   const player = useVideoPlayer(mediaUrl(md.url) || null, (p) => { p.muted = true; });
@@ -178,7 +209,7 @@ const Bubble = React.memo(function Bubble({ m, chat, meId, grouped, groupedNext,
   const isChannel = chat.type === 'channel';
   const group = chat.type === 'group';
   const sticker = (m.type === 'sticker' || (m.type === 'video' && m.media?.round)) && !m.deleted;
-  const mediaOnly = ['image', 'gif'].includes(m.type) && !m.text && !m.replyTo && !m.deleted;
+  const mediaOnly = ['image', 'gif', 'album'].includes(m.type) && !m.text && !m.replyTo && !m.deleted;
   const read = out && chat.peerReadId >= m.id;
   const showTicks = out && chat.type !== 'saved';
   const metaText = `${m.edited && !m.deleted ? 'изменено · ' : ''}${isChannel ? `👁 ${m.views || 0}  ` : ''}${timeHM(m.createdAt)}${showTicks ? '   ' : ''}`;
@@ -313,9 +344,18 @@ export default function ChatScreen() {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], quality: 0.85, allowsMultipleSelection: true, selectionLimit: 10 });
     if (r.canceled) return;
     setBusy(true);
-    for (const a of r.assets) {
-      try { const up = await upload(a.uri, a.fileName || (a.type === 'video' ? 'video.mp4' : 'photo.jpg'), a.mimeType || (a.type === 'video' ? 'video/mp4' : 'image/jpeg')); await sendMedia({ ...up, width: a.width, height: a.height }); } catch (e: any) { alert(e.message); }
-    }
+    // up to 10 photos / videos go out as one Telegram-style album; the typed text becomes its caption
+    try {
+      const items: any[] = [];
+      for (const a of r.assets.slice(0, 10)) {
+        const up = await upload(a.uri, a.fileName || (a.type === 'video' ? 'video.mp4' : 'photo.jpg'), a.mimeType || (a.type === 'video' ? 'video/mp4' : 'image/jpeg'));
+        items.push({ ...up, width: a.width, height: a.height, duration: a.duration ? Math.round(a.duration / 1000) : undefined });
+      }
+      const caption = text.trim();
+      sentAt.current = Date.now();
+      await send(chat, { media: items.length === 1 ? items[0] : { kind: 'album', items }, text: caption || undefined, replyTo: reply?.id });
+      playSend(); setReply(null); if (caption) setText(''); toBottom();
+    } catch (e: any) { alert(e.message); }
     setBusy(false);
   };
   const startRec = async () => {

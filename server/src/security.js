@@ -108,7 +108,7 @@ export function deleteMessageFiles(mediaJson) {
   let m = null;
   try { m = typeof mediaJson === 'string' ? JSON.parse(mediaJson) : mediaJson; } catch {}
   if (!m) return;
-  for (const url of [m.url, m.preview]) {
+  for (const url of [m.url, m.preview, ...(Array.isArray(m.items) ? m.items.map((i) => i?.url) : [])]) {
     const p = uploadPath(url);
     if (!p) continue;
     const used = db.prepare("SELECT COUNT(*) c FROM messages WHERE media LIKE ? AND deleted = 0").get(`%${path.basename(p)}%`).c;

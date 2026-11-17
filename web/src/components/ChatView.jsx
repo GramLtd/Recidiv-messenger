@@ -28,6 +28,39 @@ function RoundVideo({ url }) {
   );
 }
 
+/** Width / height of a picked photo or video (for the album layout). */
+function mediaSize(f) {
+  return new Promise((res) => {
+    const url = URL.createObjectURL(f);
+    const done = (w, h) => { URL.revokeObjectURL(url); res(w && h ? { width: w, height: h } : {}); };
+    if (f.type.startsWith('video/')) { const v = document.createElement('video'); v.preload = 'metadata'; v.onloadedmetadata = () => done(v.videoWidth, v.videoHeight); v.onerror = () => done(); v.src = url; }
+    else { const i = new Image(); i.onload = () => done(i.naturalWidth, i.naturalHeight); i.onerror = () => done(); i.src = url; }
+    setTimeout(() => done(), 4000);
+  });
+}
+
+/** Rows for an album of n items, like Telegram: 2 · 1+2 · 2+2 · 2+3 · 3+3 · 3+4 · 2+3+3 · 3+3+3 · 3+3+4. */
+export const albumRows = (n) => ({ 1: [1], 2: [2], 3: [1, 2], 4: [2, 2], 5: [2, 3], 6: [3, 3], 7: [3, 4], 8: [2, 3, 3], 9: [3, 3, 3], 10: [3, 3, 4] })[n] || [n];
+function Album({ items, onOpen }) {
+  const rows = albumRows(items.length);
+  let k = 0;
+  return (
+    <div className="album">
+      {rows.map((cnt, r) => (
+        <div key={r} className="album-row" style={{ height: cnt === 1 ? 220 : cnt === 2 ? 150 : cnt === 3 ? 110 : 90 }}>
+          {items.slice(k, (k += cnt)).map((it, i) => (
+            <button key={i} className="album-cell" onClick={() => onOpen(it)}>
+              {it.kind === 'video'
+                ? <><video src={`${mediaUrl(it.url)}#t=0.1`} muted playsInline preload="metadata" /><span className="album-play">▶</span></>
+                : <img src={mediaUrl(it.url)} alt="" loading="lazy" />}
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MessageContent({ m, chat, onOpenMedia }) {
   const openModal = useStore((s) => s.openModal);
   if (m.deleted) return <span className="deleted-text">Сообщение удалено</span>;
@@ -35,6 +68,7 @@ function MessageContent({ m, chat, onOpenMedia }) {
   return (
     <>
       {m.type === 'image' && media && <img className="media-img" src={mediaUrl(media.url)} alt="" onClick={() => onOpenMedia(media)} loading="lazy" />}
+      {m.type === 'album' && media?.items && <Album items={media.items} onOpen={onOpenMedia} />}
       {m.type === 'video' && media && (media.round
         ? <RoundVideo url={media.url} />
         : <video src={mediaUrl(media.url)} controls preload="metadata" playsInline />)}
@@ -110,7 +144,7 @@ function Message({ m, chat, me, grouped, groupedNext, onContext, onOpenMedia, hi
   const showSender = !out && !grouped && (chat.type === 'group');
   const showAvatar = chat.type === 'group' && !out && !groupedNext;
   const sticker = m.type === 'sticker' && !m.deleted;
-  const mediaOnly = (m.type === 'image' || m.type === 'video' || m.type === 'gif') && !m.text && !m.replyTo && !m.deleted;
+  const mediaOnly = (m.type === 'image' || m.type === 'video' || m.type === 'gif' || m.type === 'album') && !m.text && !m.replyTo && !m.deleted;
   const roundVid = m.type === 'video' && m.media?.round && !m.deleted;
   const read = out && chat.peerReadId >= m.id;
   const react = (emoji) => api(`/messages/${m.id}/react`, { body: { emoji } }).then((r) => useStore.getState().patchMessage(r.message));
@@ -272,7 +306,30 @@ function Composer({ chat }) {
     }
   };
 
-  const sendFiles = async (files) => {
+  const sendFiles = async (all) => {
+    // photos & videos go out as Telegram-style albums (up to 10 per message), everything else one by one
+    const visual = all.filter((f) => /^(image\/(?!svg)|video\/)/.test(f.type));
+    let files = all.filter((f) => !visual.includes(f));
+    if (visual.length === 1) files = [visual[0], ...files];
+    else if (visual.length > 1) {
+      for (let i = 0; i < visual.length; i += 10) {
+        const chunk = visual.slice(i, i + 10);
+        try {
+          setProgress(0);
+          const items = [];
+          for (let k = 0; k < chunk.length; k++) {
+            const m = await upload(chunk[k], (p) => setProgress((k + p) / chunk.length));
+            items.push({ url: m.url, kind: m.kind, ...(await mediaSize(chunk[k])) });
+          }
+          window.__sentAt = Date.now();
+          playSend();
+          await sendMessage(chat.id, { media: { kind: 'album', items }, text: i === 0 ? text.trim() : '', replyTo: reply?.id });
+          if (i === 0) { setText(''); drafts.current[chat.id] = ''; }
+        } catch (e) {
+          toast(e.message, 'error');
+        }
+      }
+    }
     for (const f of files) {
       try {
         setProgress(0);
@@ -282,8 +339,8 @@ function Composer({ chat }) {
         if (isMusic) Object.assign(media, { kind: 'audio', duration, ...titleFromFile(f.name) });
         window.__sentAt = Date.now();
         playSend();
-        await sendMessage(chat.id, { media, text: files.length === 1 ? text.trim() : '', replyTo: reply?.id });
-        if (files.length === 1) { setText(''); drafts.current[chat.id] = ''; }
+        await sendMessage(chat.id, { media, text: files.length === 1 && visual.length <= 1 ? text.trim() : '', replyTo: reply?.id });
+        if (files.length === 1 && visual.length <= 1) { setText(''); drafts.current[chat.id] = ''; }
       } catch (e) {
         toast(e.message, 'error');
       }
@@ -658,7 +715,7 @@ export default function ChatView() {
       )}
       {lightbox && (
         <div className="lightbox" onClick={() => setLightbox(null)}>
-          <img src={mediaUrl(lightbox.url)} alt="" />
+          {lightbox.kind === 'video' ? <video src={mediaUrl(lightbox.url)} autoPlay controls playsInline onClick={(e) => e.stopPropagation()} /> : <img src={mediaUrl(lightbox.url)} alt="" />}
         </div>
       )}
     </div>

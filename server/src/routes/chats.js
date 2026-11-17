@@ -280,7 +280,7 @@ r.post('/chats/:id/messages', (req, res) => {
   const media = sanitizeMedia(req.body.media);
   if (!text.trim() && !media && !req.body.e2e) fail(400, 'Пустое сообщение');
   let type = 'text';
-  if (media) type = ['image', 'video', 'voice', 'audio', 'file', 'sticker', 'gif'].includes(media.kind) ? media.kind : 'file';
+  if (media) type = ['image', 'video', 'voice', 'audio', 'file', 'sticker', 'gif', 'album'].includes(media.kind) ? media.kind : 'file';
   if (req.body.e2e && c.type === 'private') {
     // end-to-end encrypted: server stores only {n: nonce, c: ciphertext}; text is opaque
     const e = req.body.e2e;
