@@ -832,3 +832,4 @@ body { font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe
 .chan-panel .action-grid button { background: rgba(255, 255, 255, .09); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .22), inset 0 1px 0 rgba(255, 255, 255, .14), 0 4px 14px rgba(0, 0, 0, .25); backdrop-filter: blur(24px) saturate(1.9); -webkit-backdrop-filter: blur(24px) saturate(1.9); border-radius: 18px; color: var(--text); }
 .chan-panel .action-grid button svg { color: var(--text); }
 .chan-panel .info-row, .chan-panel .list-item, .chan-panel .section-title { position: relative; z-index: 1; }
+.pv-blur-inner.static { animation: blurFade 1.1s cubic-bezier(.2, .8, .2, 1) both; }

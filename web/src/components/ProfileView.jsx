@@ -320,8 +320,8 @@ export function ProfileView({ userId, onClose }) {
     <div className={`pv ${blurOn ? 'blurred' : ''}`}>
       {blurOn && (
         <div className="pv-blurbg" aria-hidden>
-          <div className="pv-blur-inner" key={blurSrc?.url || u.id}>
-            {blurSrc?.type === 'video' ? <video src={mediaUrl(blurSrc.url)} autoPlay muted loop playsInline />
+          <div className={`pv-blur-inner ${blur.mode === 'banner' ? 'static' : ''}`} key={blurSrc?.url || u.id}>
+            {blurSrc?.type === 'video' ? <video src={`${mediaUrl(blurSrc.url)}#t=0.1`} muted playsInline preload="metadata" />
               : blurSrc ? <img src={mediaUrl(blurSrc.url)} alt="" />
                 : <div style={{ width: '100%', height: '100%', background: `radial-gradient(circle at 50% 30%, ${colorFor(u.id)}, #000 75%)` }} />}
           </div>
