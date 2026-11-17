@@ -46,10 +46,13 @@ jobs:
           java-version: 21
           cache: gradle
 
-      - uses: android-actions/setup-android@v3
-
+      # ubuntu runners ship the Android SDK (ANDROID_HOME); just add what Capacitor 7 needs
       - name: Install Android platform
-        run: sdkmanager "platforms;android-35" "build-tools;34.0.0"
+        run: |
+          SDKM=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin | sort -V | tail -1)/sdkmanager
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-35" "build-tools;35.0.0"
+          echo "sdk.dir=$ANDROID_HOME" > web/android/local.properties
 
       - name: Build web app
         working-directory: web
