@@ -11,51 +11,34 @@ function audio() {
   return ctx;
 }
 
-function noiseBuffer(ac, seconds) {
-  const len = Math.floor(ac.sampleRate * seconds);
-  const buf = ac.createBuffer(1, len, ac.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-  return buf;
+// Send sound: /sounds/sent.mp3, decoded once and played through Web Audio (instant, works on iOS).
+let sentBuf = null;
+let sentLoading = null;
+function loadSent(ac) {
+  if (sentBuf || sentLoading) return sentLoading;
+  sentLoading = fetch('/sounds/sent.mp3')
+    .then((r) => r.arrayBuffer())
+    .then((b) => new Promise((res, rej) => ac.decodeAudioData(b, res, rej)))
+    .then((buf) => { sentBuf = buf; })
+    .catch(() => { sentLoading = null; });
+  return sentLoading;
 }
+// warm up on the first tap so the very first message already has sound
+document.addEventListener('pointerdown', () => { const ac = audio(); if (ac) loadSent(ac); }, { once: true, passive: true });
 
-/** Soft, short "bloop" — a rounded sine glide with a quick fade, quiet by design. */
 export function playSend() {
   if (loadTheme().sendSound === false) return;
   const ac = audio();
   if (!ac) return;
-  const t = ac.currentTime + 0.005;
-  const out = ac.createGain();
-  out.gain.value = 0.9;
-  const lp = ac.createBiquadFilter();
-  lp.type = 'lowpass';
-  lp.frequency.value = 2400;
-  out.connect(lp).connect(ac.destination);
-  const o = ac.createOscillator();
-  const g = ac.createGain();
-  o.type = 'sine';
-  o.frequency.setValueAtTime(420, t);
-  o.frequency.exponentialRampToValueAtTime(760, t + 0.07);
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(0.07, t + 0.012);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
-  o.connect(g).connect(out);
-  o.start(t);
-  o.stop(t + 0.15);
-  // a faint airy tail so it doesn't sound like a beep
-  const n = ac.createBufferSource();
-  n.buffer = noiseBuffer(ac, 0.08);
-  const bp = ac.createBiquadFilter();
-  bp.type = 'bandpass';
-  bp.frequency.value = 1800;
-  bp.Q.value = 0.8;
-  const ng = ac.createGain();
-  ng.gain.setValueAtTime(0.0001, t);
-  ng.gain.exponentialRampToValueAtTime(0.012, t + 0.015);
-  ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
-  n.connect(bp).connect(ng).connect(out);
-  n.start(t);
-  n.stop(t + 0.09);
+  const play = () => {
+    if (!sentBuf) return;
+    const src = ac.createBufferSource();
+    src.buffer = sentBuf;
+    src.connect(ac.destination);
+    src.start();
+  };
+  if (sentBuf) play();
+  else loadSent(ac)?.then(play);
 }
 
 export function playIncoming() {
