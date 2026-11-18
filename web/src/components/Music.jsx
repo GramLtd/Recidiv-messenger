@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Music2, Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Plus, Search, Trash2, ListMusic, Moon, Heart, X, Mic, Check,
+  Volume, Volume1, Volume2, VolumeX,
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, upload, mediaUrl, API_ORIGIN, getToken } from '../api.js';
@@ -39,6 +40,30 @@ function Progress() {
         <span>{fmtTime(v)}</span>
         <span>{fmtTime(duration)}</span>
       </div>
+    </div>
+  );
+}
+
+/** Volume: icon toggles mute, slider sets the level, mouse wheel over it nudges ±5%. Keys: ↑/↓ on the slider. */
+export function VolumeControl({ compact = false }) {
+  const volume = usePlayer((s) => s.volume);
+  const muted = usePlayer((s) => s.muted);
+  const { setVolume, toggleMute } = usePlayer.getState();
+  const v = muted ? 0 : volume;
+  const Icon = v === 0 ? VolumeX : v < 0.34 ? Volume : v < 0.67 ? Volume1 : Volume2;
+  const wheel = (e) => { e.preventDefault(); setVolume(Math.round((volume - Math.sign(e.deltaY) * 0.05) * 100) / 100); };
+  const ref = useRef();
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    el.addEventListener('wheel', wheel, { passive: false });
+    return () => el.removeEventListener('wheel', wheel);
+  });
+  return (
+    <div ref={ref} className={`vol ${compact ? 'compact' : ''}`} onClick={(e) => e.stopPropagation()} title={`Громкость ${Math.round(v * 100)}%`}>
+      <button className="icon-btn vol-btn" onClick={toggleMute} aria-label={muted ? 'Включить звук' : 'Выключить звук'}><Icon size={compact ? 18 : 20} /></button>
+      <input type="range" min={0} max={1} step={0.01} value={v} style={{ '--pct': `${v * 100}%` }} aria-label="Громкость"
+        onChange={(e) => setVolume(Number(e.target.value))} />
     </div>
   );
 }
@@ -102,6 +127,7 @@ export function NowPlaying() {
         <button className="icon-btn big" onClick={() => p.next()}><SkipForward size={28} fill="currentColor" /></button>
         <button className={`icon-btn ${p.repeat !== 'off' ? 'active' : ''}`} onClick={p.cycleRepeat}>{p.repeat === 'one' ? <Repeat1 size={22} /> : <Repeat size={22} />}</button>
       </div>
+      <VolumeControl />
       <div className="row" style={{ gap: 10, marginTop: 6 }}>
         <button className={`glass-btn grow ${showQueue ? 'on' : ''}`} onClick={() => setShowQueue(!showQueue)}>
           <ListMusic size={18} /><span><small>Очередь</small>{upNext.length} {upNext.length === 1 ? 'трек' : 'треков'}</span>
@@ -378,6 +404,7 @@ export function MiniPlayer({ onOpen }) {
       </div>
       <button className="icon-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}>{playing ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" />}</button>
       <button className="icon-btn" onClick={(e) => { e.stopPropagation(); next(); }}><SkipForward size={20} fill="currentColor" /></button>
+      <VolumeControl compact />
       <button className="icon-btn" onClick={(e) => { e.stopPropagation(); stop(); }}><X size={18} /></button>
     </div>
   );

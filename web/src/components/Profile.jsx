@@ -120,9 +120,9 @@ export function RightPanel() {
     <aside className="right-panel chan-panel" key={chat.id}>
       {chat.type !== 'saved' && (
         <div className="pv-blurbg chan-blur" aria-hidden>
-        <div className="pv-blur-inner">
+        <div className="pv-blur-inner"><div className="pv-blur-pic">
           {chat.avatar ? <img src={mediaUrl(chat.avatar)} alt="" /> : <div style={{ width: '100%', height: '100%', background: `radial-gradient(circle at 50% 30%, ${colorFor(chat.id)}, #000 75%)` }} />}
-        </div>
+        </div></div>
         <i className="pv-blur-shade" />
       </div>
       )}

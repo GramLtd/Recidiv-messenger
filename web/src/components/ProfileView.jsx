@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   X, Pencil, Shield, MessageCircle, Gift, Send, Pin, Eye, CalendarDays, Hash, Filter, Play, Pause, ChevronRight, Music2, Megaphone, Check, Phone,
   MoreHorizontal, UserPlus, UserMinus, UserCheck, Ban, Link2, MapPin, Coins, AtSign, Copy, Store,
@@ -30,36 +30,46 @@ function useInView(ref) {
   return v;
 }
 
-export function GiftTile({ ug, onClick, index = 0, canPin, onPin }) {
+const HOVER = typeof matchMedia !== 'undefined' && matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+export const GiftTile = memo(function GiftTile({ ug, onClick, index = 0, canPin, onPin }) {
   const col = ug.collectible;
   const ref = useRef();
-  const inView = useInView(ref);
+  // grids show still art; the animation plays only for the card under the cursor (dozens of Lottie players at once lagged)
+  const [hover, setHover] = useState(false);
+  const raf = useRef(0);
   // 3D tilt + glare that follow the finger / cursor
   const move = (e) => {
     const el = ref.current;
-    if (!el || e.pointerType === 'mouse' && e.buttons === 0 && !matchMedia('(hover: hover)').matches) return;
-    const r = el.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width;
-    const y = (e.clientY - r.top) / r.height;
-    el.classList.add('tilting');
-    el.style.transform = `perspective(600px) rotateY(${(x - 0.5) * 16}deg) rotateX(${(0.5 - y) * 14}deg) scale(1.03)`;
-    el.style.setProperty('--gx', `${x * 100}%`);
-    el.style.setProperty('--gy', `${y * 100}%`);
+    if (!el || e.pointerType === 'mouse' && e.buttons === 0 && !HOVER) return;
+    const { clientX, clientY } = e;
+    cancelAnimationFrame(raf.current);
+    raf.current = requestAnimationFrame(() => {
+      const r = el.getBoundingClientRect();
+      const x = (clientX - r.left) / r.width;
+      const y = (clientY - r.top) / r.height;
+      el.classList.add('tilting');
+      el.style.transform = `perspective(600px) rotateY(${(x - 0.5) * 16}deg) rotateX(${(0.5 - y) * 14}deg) scale(1.03)`;
+      el.style.setProperty('--gx', `${x * 100}%`);
+      el.style.setProperty('--gy', `${y * 100}%`);
+    });
   };
   const leave = () => {
     const el = ref.current;
+    cancelAnimationFrame(raf.current);
+    setHover(false);
     if (!el) return;
     el.classList.remove('tilting');
     el.style.transform = '';
   };
   return (
-    <div ref={ref} className={`gift-card ${col ? 'is-col' : ''}`} onClick={onClick} onPointerMove={move} onPointerLeave={leave} onPointerUp={leave} onPointerCancel={leave}
+    <div ref={ref} className={`gift-card ${col ? 'is-col' : ''}`} onClick={onClick} onPointerMove={move} onPointerEnter={() => HOVER && setHover(true)} onPointerLeave={leave} onPointerUp={(e) => e.pointerType !== 'mouse' && leave()} onPointerCancel={leave}
       style={{ animationDelay: `${Math.min(index, 20) * 45}ms`, opacity: ug.hidden ? 0.45 : undefined }}>
       <span className="glare" />
       {col ? (
-        <GiftArt userGift={ug} size="100%" height="100%" rounded={0} animated={inView} loop={false} style={{ position: 'absolute', inset: 0 }} />
+        <GiftArt userGift={ug} size="100%" height="100%" rounded={0} animated={hover} loop={false} style={{ position: 'absolute', inset: 0 }} />
       ) : (
-        <div className="gift-card-art"><GiftArt userGift={ug} size="78%" height="78%" animated={inView} loop={false} /></div>
+        <div className="gift-card-art"><GiftArt userGift={ug} size="78%" height="78%" animated={hover} loop={false} /></div>
       )}
       {col && <span className="gift-num">#{col.number}</span>}
       {ug.listing && <span className="gift-sale">продаётся</span>}
@@ -75,7 +85,7 @@ export function GiftTile({ ug, onClick, index = 0, canPin, onPin }) {
       {!col && <div className="gift-card-name ellipsis">{ug.gift.name}</div>}
     </div>
   );
-}
+});
 
 const FILTERS = [
   ['all', 'Все подарки'],
@@ -105,10 +115,11 @@ export function GiftsGrid({ userId, onlyCollectible, filter = onlyCollectible ? 
       </div>
     );
   }
+  const ids = gifts.map((g) => g.id);
   return (
     <div className="gift-cards pv-grid">
       {gifts.map((ug, i) => (
-        <GiftTile key={ug.id} ug={ug} index={i} canPin={userId === me.id} onPin={pin} onClick={() => openModal('giftDetails', { userGiftId: ug.id, list: gifts.map((g) => g.id) })} />
+        <GiftTile key={ug.id} ug={ug} index={i} canPin={userId === me.id} onPin={pin} onClick={() => openModal('giftDetails', { userGiftId: ug.id, list: ids })} />
       ))}
     </div>
   );
@@ -375,9 +386,11 @@ export function ProfileView({ userId, onClose }) {
       {blurOn && (
         <div className="pv-blurbg" aria-hidden>
           <div className={`pv-blur-inner ${blur.mode === 'banner' ? 'static' : ''}`} key={blurSrc?.url || u.id}>
-            {blurSrc?.type === 'video' ? <video src={`${mediaUrl(blurSrc.url)}#t=0.1`} muted playsInline preload="metadata" />
-              : blurSrc ? <img src={mediaUrl(blurSrc.url)} alt="" />
-                : <div style={{ width: '100%', height: '100%', background: `radial-gradient(circle at 50% 30%, ${colorFor(u.id)}, #000 75%)` }} />}
+            <div className="pv-blur-pic">
+              {blurSrc?.type === 'video' ? <video src={`${mediaUrl(blurSrc.url)}#t=0.1`} muted playsInline preload="metadata" />
+                : blurSrc ? <img src={mediaUrl(blurSrc.url)} alt="" />
+                  : <div style={{ width: '100%', height: '100%', background: `radial-gradient(circle at 50% 30%, ${colorFor(u.id)}, #000 75%)` }} />}
+            </div>
           </div>
           <i className="pv-blur-shade" />
         </div>

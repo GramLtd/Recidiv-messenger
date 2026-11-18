@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TgsPlayer, isTgs } from './Tgs.jsx';
 
 /** Fluent Emoji 3D asset for any emoji, shipped in /public/emoji3d (MIT, Microsoft). */
@@ -27,15 +27,15 @@ export function GiftModel({ emoji, image, animation, filter, size, animated = fa
 }
 
 /** Regular gift or collectible, depending on the user gift. */
-export function GiftArt({ userGift, gift, size = 80, height, rounded = 16, animated = false, loop = true, style }) {
+export function GiftArt({ userGift, gift, size = 80, height, rounded = 16, animated = false, loop = true, float = false, style }) {
   const g = gift || userGift?.gift;
   const col = userGift?.collectible;
-  if (col) return <CollectibleArt col={col} size={size} height={height} rounded={rounded} animated={animated} loop={loop} style={style} />;
+  if (col) return <CollectibleArt col={col} size={size} height={height} rounded={rounded} animated={animated} loop={loop} float={float} style={style} />;
   const h = height || size;
   const modelSize = typeof h === 'number' ? h * 0.82 : '82%';
   return (
     <div className="center" style={{ width: size, height: h, ...style }}>
-      <GiftModel emoji={g?.emoji} image={g?.image} animation={g?.animation} size={modelSize} animated={animated} loop={loop} className="floaty" />
+      <GiftModel emoji={g?.emoji} image={g?.image} animation={g?.animation} size={modelSize} animated={animated} loop={loop} className={float ? 'floaty' : ''} />
     </div>
   );
 }
@@ -54,7 +54,69 @@ const PATTERN = RINGS.flatMap((ring, ri) =>
   }),
 );
 
-export function CollectibleArt({ col, size = 200, height, rounded = 16, animated = false, loop = true, tilt = false, style, children }) {
+/*
+ * The pattern used to be 48 CSS-masked elements per card — masks are expensive to composite and a grid of cards
+ * had thousands of them. Now it is drawn once per (symbol, colour, aspect) into a canvas, cached as a blob URL and
+ * shown as one background image.
+ */
+const patternCache = new Map();
+const imgCache = new Map();
+const loadImg = (src) => {
+  if (!imgCache.has(src)) {
+    imgCache.set(src, new Promise((res, rej) => { const im = new Image(); im.decoding = 'async'; im.onload = () => res(im); im.onerror = rej; im.src = src; }));
+  }
+  return imgCache.get(src);
+};
+function patternUrl(emoji, color, aspect) {
+  const key = `${emoji}|${color}|${aspect}`;
+  if (!patternCache.has(key)) {
+    patternCache.set(key, loadImg(emoji3d(emoji)).then(async (im) => {
+      const W = 480; const H = Math.round(W / aspect);
+      const c = document.createElement('canvas'); c.width = W; c.height = H;
+      const g = c.getContext('2d');
+      for (const p of PATTERN) {
+        const s = (p.s / 100) * W;
+        g.globalAlpha = p.o;
+        g.drawImage(im, (p.x / 100) * W - s / 2, (p.y / 100) * H - s / 2, s, s);
+      }
+      g.globalAlpha = 1;
+      g.globalCompositeOperation = 'source-in';
+      g.fillStyle = color;
+      g.fillRect(0, 0, W, H);
+      const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+      return blob ? URL.createObjectURL(blob) : c.toDataURL();
+    }).catch(() => { patternCache.delete(key); return null; }));
+  }
+  return patternCache.get(key);
+}
+const cssColor = (() => {
+  let ctx;
+  return (c) => { try { ctx ||= document.createElement('canvas').getContext('2d'); ctx.fillStyle = '#000'; ctx.fillStyle = c; return ctx.fillStyle; } catch { return '#000'; } };
+})();
+const mixBlack = (hex, k) => {
+  const h = cssColor(hex);
+  if (!/^#[0-9a-f]{6}$/i.test(h)) return '#000';
+  const n = parseInt(h.slice(1), 16);
+  const f = (v) => Math.round(v * k).toString(16).padStart(2, '0');
+  return `#${f(n >> 16 & 255)}${f(n >> 8 & 255)}${f(n & 255)}`;
+};
+
+function Pattern({ symbol, backdrop }) {
+  const ref = useRef();
+  const [url, setUrl] = useState(null);
+  const color = backdrop?.pattern ? mixBlack(backdrop.edge, 0.55) : '#000';
+  useEffect(() => {
+    if (!symbol?.emoji || !ref.current) return undefined;
+    const r = ref.current.getBoundingClientRect();
+    const aspect = r.width && r.height ? Math.round((r.width / r.height) * 10) / 10 : 1;
+    let alive = true;
+    patternUrl(symbol.emoji, color, aspect || 1).then((u) => alive && setUrl(u));
+    return () => { alive = false; };
+  }, [symbol?.emoji, color]);
+  return <div ref={ref} className="pattern" style={url ? { backgroundImage: `url(${url})`, backgroundSize: '100% 100%' } : undefined} />;
+}
+
+export function CollectibleArt({ col, size = 200, height, rounded = 16, animated = false, loop = true, tilt = false, float = false, style, children }) {
   const { backdrop, symbol, model } = col;
   const ref = useRef();
   const h = height || size;
@@ -70,7 +132,6 @@ export function CollectibleArt({ col, size = 200, height, rounded = 16, animated
     ref.current?.style.setProperty('--rx', '0deg');
     ref.current?.style.setProperty('--ry', '0deg');
   };
-  const mask = symbol ? `url(${emoji3d(symbol.emoji)})` : 'none';
   return (
     <div
       ref={ref}
@@ -85,24 +146,9 @@ export function CollectibleArt({ col, size = 200, height, rounded = 16, animated
         ...style,
       }}
     >
-      <div className="pattern">
-        {PATTERN.map((p, i) => (
-          <i
-            key={i}
-            style={{
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              width: `${p.s}%`,
-              opacity: p.o,
-              background: backdrop?.pattern ? `color-mix(in srgb, ${backdrop.edge} 55%, #000)` : '#000',
-              WebkitMaskImage: mask,
-              maskImage: mask,
-            }}
-          />
-        ))}
-      </div>
+      <Pattern symbol={symbol} backdrop={backdrop} />
       <div className="model-wrap">
-        <GiftModel emoji={model?.emoji} image={model?.image} animation={model?.animation} filter={model?.filter} size="100%" animated={animated} loop={loop} className="floaty" />
+        <GiftModel emoji={model?.emoji} image={model?.image} animation={model?.animation} filter={model?.filter} size="100%" animated={animated} loop={loop} className={float ? 'floaty' : ''} />
       </div>
       {children}
     </div>

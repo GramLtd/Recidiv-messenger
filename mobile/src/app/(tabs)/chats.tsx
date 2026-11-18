@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { stripFormatting } from '../../lib/richtext';
 import { ActionSheetIOS, Alert, FlatList, Platform, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -80,7 +81,7 @@ const ChatRow = React.memo(function ChatRow({ c, index, meId, editing, onAction 
           <View style={st.bottom}>
             <T size={14} dim numberOfLines={1} style={{ flex: 1 }}>
               {typing ? <T size={14} color={C.accent}>печатает…</T> : lm ? (
-                <>{c.type === 'group' && lm.senderName && lm.type !== 'system' ? <T size={14}>{own ? 'Вы' : lm.senderName.split(' ')[0]}: </T> : null}{lm.type === 'secret' ? '🔒 Зашифрованное сообщение' : lm.text || (lm.type === 'image' ? 'Фото' : lm.type === 'album' ? 'Альбом' : lm.type === 'voice' ? 'Голосовое сообщение' : lm.type === 'sticker' ? 'Стикер' : lm.type === 'gif' ? 'GIF' : lm.type === 'gift' ? 'Подарок' : 'Медиа')}</>
+                <>{c.type === 'group' && lm.senderName && lm.type !== 'system' ? <T size={14}>{own ? 'Вы' : lm.senderName.split(' ')[0]}: </T> : null}{lm.type === 'secret' ? '🔒 Зашифрованное сообщение' : stripFormatting(lm.text) || (lm.type === 'image' ? 'Фото' : lm.type === 'album' ? 'Альбом' : lm.type === 'voice' ? 'Голосовое сообщение' : lm.type === 'sticker' ? 'Стикер' : lm.type === 'gif' ? 'GIF' : lm.type === 'gift' ? 'Подарок' : 'Медиа')}</>
               ) : c.type === 'saved' ? 'Сохраняйте сюда сообщения' : 'Нет сообщений'}
             </T>
             {c.pinned && !c.unread && <Pin size={14} color={C.text3} />}

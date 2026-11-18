@@ -24,6 +24,7 @@ import { mediaUrl } from '../../lib/config';
 import { usePerf } from '../../lib/perf';
 import { usePlayer, fmtTime } from '../../lib/player';
 import { AudioMsg } from '../../components/Music';
+import { richText, stripFormatting } from '../../lib/richtext';
 import { useFont, fontStyle } from '../../lib/fonts';
 import { colorFor, dayLabel, fileSize, lastSeen, membersLabel, timeHM } from '../../lib/util';
 import { C, webSpring } from '../../lib/theme';
@@ -221,7 +222,7 @@ const Bubble = React.memo(function Bubble({ m, chat, meId, grouped, groupedNext,
       {showTicks && (read ? <CheckCheck size={15} color={mediaOnly || sticker ? '#fff' : metaColor} /> : <Check size={15} color={mediaOnly || sticker ? '#fff' : metaColor} />)}
     </View>
   );
-  const text = m.type === 'secret' ? <SecretText m={m} peerId={chat.peer?.id} /> : m.type !== 'gift' && !m.deleted ? m.text : '';
+  const text = m.type === 'secret' ? <SecretText m={m} peerId={chat.peer?.id} /> : m.type !== 'gift' && !m.deleted && m.text ? richText(m.text) : '';
   const onPress = () => {
     const now = Date.now();
     if (now - lastTap.current < 280 && !m.deleted) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onReact(m, '❤️'); }
@@ -237,7 +238,7 @@ const Bubble = React.memo(function Bubble({ m, chat, meId, grouped, groupedNext,
         {group && !out && !grouped && m.sender && <T w={600} size={13.2} color={colorFor(m.sender.id)} style={{ marginBottom: 2 }}>{m.sender.displayName}</T>}
         {m.forwardFrom && <T size={12.8} color={C.accent} style={{ marginBottom: 2 }}>Переслано от {m.forwardFrom.displayName}</T>}
         {m.replyTo && (
-          <View style={st.quote}><T w={700} size={12.5} color={C.accent} numberOfLines={1}>{m.replyTo.senderName || 'Сообщение'}</T><T size={12.5} dim numberOfLines={1}>{m.replyTo.text || (m.replyTo.type !== 'text' ? 'Медиа' : '')}</T></View>
+          <View style={st.quote}><T w={700} size={12.5} color={C.accent} numberOfLines={1}>{m.replyTo.senderName || 'Сообщение'}</T><T size={12.5} dim numberOfLines={1}>{stripFormatting(m.replyTo.text) || (m.replyTo.type !== 'text' ? 'Медиа' : '')}</T></View>
         )}
         <Content m={m} chat={chat} out={out} />
         {text ? (

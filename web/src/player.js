@@ -5,6 +5,11 @@ import { mediaUrl, api } from './api.js';
 const audio = typeof Audio !== 'undefined' ? new Audio() : null;
 if (audio) audio.preload = 'metadata';
 
+// volume (0…1) + mute, remembered between sessions
+const readVol = () => { try { const v = parseFloat(localStorage.getItem('player.volume')); return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1; } catch { return 1; } };
+const readMuted = () => { try { return localStorage.getItem('player.muted') === '1'; } catch { return false; } };
+if (audio) { audio.volume = readVol(); audio.muted = readMuted(); }
+
 let sleepTimer = null;
 
 const shuffled = (n, keep) => {
@@ -26,6 +31,22 @@ export const usePlayer = create((set, get) => ({
   shuffle: false,
   repeat: 'off', // off | all | one
   sleepAt: null,
+  volume: audio ? audio.volume : 1,
+  muted: audio ? audio.muted : false,
+
+  setVolume(v) {
+    const vol = Math.min(1, Math.max(0, Number(v) || 0));
+    if (audio) { audio.volume = vol; if (vol > 0 && audio.muted) audio.muted = false; }
+    set({ volume: vol, muted: audio ? audio.muted : false });
+    try { localStorage.setItem('player.volume', String(vol)); localStorage.setItem('player.muted', audio?.muted ? '1' : '0'); } catch {}
+  },
+  toggleMute() {
+    if (!audio) return;
+    audio.muted = !audio.muted;
+    if (!audio.muted && audio.volume === 0) audio.volume = 0.5;
+    set({ muted: audio.muted, volume: audio.volume });
+    try { localStorage.setItem('player.muted', audio.muted ? '1' : '0'); localStorage.setItem('player.volume', String(audio.volume)); } catch {}
+  },
 
   current() {
     const { queue, order, pos } = get();

@@ -179,8 +179,12 @@ function expiryFor(chatId, type) {
   return s ? now() + s * 1000 : null;
 }
 
+/** Chat-list / notification preview: spoilers hidden, markdown markers removed. */
+const hideSpoilers = (t) => (typeof t === 'string' ? t.replace(/\|\|[\s\S]+?\|\|/g, '▒▒▒▒').replace(/\*\*([\s\S]+?)\*\*/g, '$1').replace(/~~([\s\S]+?)~~/g, '$1').replace(/```[a-z0-9+#-]*\n?/gi, '').replace(/`/g, '') : t);
+
 export function messagePreview(m) {
   if (!m) return null;
+  if (m.text) m = { ...m, text: hideSpoilers(m.text) };
   if (m.deleted) return 'Сообщение удалено';
   const labels = { album: '🖼 Альбом', secret: '🔒 Зашифрованное сообщение', gif: 'GIF', post: '📰 Пост', audio: '🎵 Музыка', transfer: '💸 Перевод', image: '🖼 Фото', video: '🎬 Видео', file: '📎 Файл', voice: '🎤 Голосовое', gift: '🎁 Подарок', sticker: 'Стикер' };
   if (m.type === 'text' || m.type === 'system') return m.text;

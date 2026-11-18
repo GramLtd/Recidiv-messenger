@@ -11,6 +11,7 @@ import { fmtNum } from '../../lib/util';
 import { C, webSpring } from '../../lib/theme';
 import { Avatar, Btn, Glass, Press, Rise, Spark, T } from '../../components/ui';
 import { CollectibleArt, GiftModel } from '../../components/GiftArt';
+import { UpgradeReveal } from '../../components/UpgradeReveal';
 
 /** Gift details sheet — web `.gift-sheet`: collectible backdrop hero, model, title, actions, attribute table. */
 export default function GiftSheet() {
@@ -21,6 +22,11 @@ export default function GiftSheet() {
   useEffect(() => { api(`/user-gifts/${id}`).then((r) => setUg(r.userGift)).catch((e) => { if (!ug) { Alert.alert(e.message); router.back(); } }); }, [id]);
   // refresh after returning from «продать» / «передать»
   useFocusEffect(useCallback(() => { api(`/user-gifts/${id}`).then((r) => setUg(r.userGift)).catch(() => {}); }, [id]));
+  const [attrs, setAttrs] = useState<any>(null);
+  const [upg, setUpg] = useState<Promise<any> | null>(null);
+  useEffect(() => {
+    if (ug && !ug.collectible && ug.gift?.upgradable && !attrs) api(`/gifts/${ug.gift.id}/attributes`).then(setAttrs).catch(() => {});
+  }, [ug?.gift?.id, !!ug?.collectible]);
   const m = useSharedValue(0.3);
   useEffect(() => { if (ug) m.value = withSpring(1, webSpring); }, [!!ug]);
   const ms = useAnimatedStyle(() => ({ opacity: Math.min(1, m.value * 1.5), transform: [{ scale: m.value }, { translateY: (1 - m.value) * 30 }] }));
@@ -32,6 +38,7 @@ export default function GiftSheet() {
   const unlist = async () => { try { await api.del(`/market/listings/${ug.listing.id}`); setUg({ ...ug, listing: null }); } catch (e: any) { Alert.alert(e.message); } };
   const upgrade = async () => {
     Alert.alert('Улучшить подарок?', `Подарок станет коллекционным за ${fmtNum(ug.gift.upgradePrice)} ✦: уникальный номер, случайные модель, фон и узор.`, [{ text: 'Отмена' }, { text: 'Улучшить', onPress: async () => {
+      if (attrs?.models?.length && attrs.backdrops?.length && attrs.symbols?.length) { setUpg(api(`/user-gifts/${ug.id}/upgrade`, { body: {} })); return; }
       try { const r = await api(`/user-gifts/${ug.id}/upgrade`, { body: {} }); m.value = 0.3; setUg(r.userGift); m.value = withSpring(1, webSpring); } catch (e: any) { Alert.alert(e.message); }
     } }]);
   };
@@ -50,6 +57,12 @@ export default function GiftSheet() {
   const sub = ug.listing ? `В продаже за ${fmtNum(ug.listing.price)} ✦` : col ? 'Коллекционный подарок' : ug.gift.limited ? `Лимитированный · тираж ${fmtNum(ug.gift.supply)}` : 'Подарок';
   const supply = ug.gift?.supply;
   return (
+    <>
+    {upg && attrs && (
+      <UpgradeReveal attrs={attrs} gift={ug.gift} request={upg}
+        onDone={(r) => { setUpg(null); if (r) { m.value = 0.6; setUg(r); m.value = withSpring(1, webSpring); } }}
+        onError={(e) => { setUpg(null); Alert.alert(e.message); }} />
+    )}
     <ScrollView contentInsetAdjustmentBehavior="never" style={{ flex: 1, backgroundColor: C.bg2 }} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={st.hero}>
         {col ? <CollectibleArt col={{ ...col, model: null }} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: '#1d1d22' }]} />}
@@ -106,6 +119,7 @@ export default function GiftSheet() {
         <Btn height={50} title="OK" onPress={() => router.back()} />
       </View>
     </ScrollView>
+    </>
   );
 }
 const Chip = ({ children }: { children: React.ReactNode }) => <View style={st.chip}><T size={11.5} w={600} dim>{children}</T></View>;

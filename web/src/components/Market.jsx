@@ -34,7 +34,7 @@ function ListingDetails({ l, onBack, onChanged }) {
     <Modal title="Лот" back={onBack}>
       <div className="col" style={{ gap: 12 }}>
         {l.kind === 'gift' ? (
-          <div style={{ cursor: 'pointer' }} onClick={() => openModal('giftDetails', { userGiftId: l.userGift.id })}><GiftArt userGift={l.userGift} size="100%" height={240} /></div>
+          <div style={{ cursor: 'pointer' }} onClick={() => openModal('giftDetails', { userGiftId: l.userGift.id })}><GiftArt userGift={l.userGift} size="100%" height={240} float /></div>
         ) : (
           <div className="username-art" style={{ height: 180, borderRadius: 16, fontSize: '1.6em' }}>@{l.username}</div>
         )}

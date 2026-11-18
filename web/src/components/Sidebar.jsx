@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { stripFormatting } from '../richtext.jsx';
 import {
   Search, Users, Megaphone, User, Bookmark, LogOut, Plus, Pin, VolumeX, Volume2, CheckCheck, Check, X, SquarePen, Trash2,
 } from 'lucide-react';
@@ -67,7 +68,7 @@ export function ChatRow({ chat, active, onClick, onContext, index = 0, editing, 
             ) : lm ? (
               <>
                 {chat.type === 'group' && lm.senderName && lm.type !== 'system' && <span className="who">{own ? 'Вы' : lm.senderName.split(' ')[0]}: </span>}
-                {lm.text}
+                {stripFormatting(lm.text)}
               </>
             ) : (
               <span>{chat.type === 'saved' ? 'Сохраняйте сюда сообщения' : 'Нет сообщений'}</span>

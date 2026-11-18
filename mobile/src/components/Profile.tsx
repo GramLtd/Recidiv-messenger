@@ -76,7 +76,7 @@ const CLOCK_RUN = () => { 'worklet'; return withRepeat(withTiming(60, { duration
 const wave = (t: number, period: number, offset: number) => { 'worklet'; const ph = (((t + offset) % period) + period) % period / period; return ph < 0.5 ? ph * 2 : (1 - ph) * 2; };
 
 /* ---------------------------------------------------------------- hero sparkles (web .pv-sparks) */
-const SPARKS = Array.from({ length: 18 }, (_, i) => {
+const SPARKS = Array.from({ length: 14 }, (_, i) => {
   const a = (i * 137.5 * Math.PI) / 180;
   const r = 38 + ((i * 29) % 14);
   return { x: 50 + Math.cos(a) * r, y: 48 + Math.sin(a) * r * 0.85, s: 7 + ((i * 7) % 8), d: ((i * 0.37) % 3) * 1000 };
@@ -141,7 +141,7 @@ const ScatterGift = React.memo(function ScatterGift({ ug, i, x, y, size, rot, de
     <Animated.View style={[{ position: 'absolute', left: x - size / 2, top: y - size / 2, width: size, height: size }, a]}>
       <Press onPress={onPress} scale={0.85} style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
         {!low && <Radial inner="rgba(255,255,255,0.26)" mid={hexA(gc, 0.38)} midStop={0.38} outer={hexA(gc, 0)} stop={1} r="50%" style={{ position: 'absolute', left: (size - size * 2.1) / 2, top: (size - size * 2.1) / 2, width: size * 2.1, height: size * 2.1 }} />}
-        {!low && Array.from({ length: 3 }, (_, k) => (
+        {!low && i < 6 && Array.from({ length: 2 }, (_, k) => (
           <Twinkle key={k} kind="cross" x={50 + Math.cos(k * 2.1 + i) * 62} y={50 + Math.sin(k * 2.1 + i) * 62} s={9 * (0.6 + (k % 3) * 0.25)} d={((k * 0.9 + delay / 1000) % 3) * 1000} color="#fff" />
         ))}
         <Animated.View style={b}>

@@ -1,7 +1,7 @@
 import { useContext, useState } from 'react';
 import { PushLayer } from './Push.jsx';
 import {
-  Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone, User as UserIcon, AtSign, Bookmark, Gift, CreditCard, Wallet as WalletIcon,
+  Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone, User as UserIcon, AtSign, Bookmark, Music2, Gift, CreditCard, Wallet as WalletIcon,
   Globe, Hand, MonitorSmartphone, Contrast, Type, HardDrive, Shield, MapPin,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -259,6 +259,7 @@ function SettingsHome({ open }) {
       <Group>
         <Row icon={UserIcon} color="#ff3b30" title={t('Мой профиль')} onClick={() => setTab('profile')} />
         <Row icon={AtSign} color="#0a84ff" title={t('Юзернеймы')} value={me.username ? `@${me.username}` : ''} onClick={() => open('usernames')} />
+        <Row icon={Music2} color="#ff2d55" title={t('Музыка')} onClick={() => setTab('music')} />
         {saved && <Row icon={Bookmark} color="#5ac8fa" title={t('Избранное')} onClick={() => { setTab('chats'); openChat(saved.id); }} />}
       </Group>
       <Group>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { QuickSwitcher } from '../components/QuickSwitcher.jsx';
 import { X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from '../store.js';
@@ -140,6 +141,7 @@ export default function Main() {
       </main>
       <ModalHost />
       <Toasts />
+      <QuickSwitcher />
     </div>
   );
 }

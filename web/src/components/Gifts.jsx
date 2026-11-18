@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { UpgradeReveal } from './UpgradeReveal.jsx';
 import { Sparkles, Send, Tag, Tag as TagIcon, EyeOff, Eye, Repeat, Pin, ArrowUpCircle, Info, Search, X, Link2, Gem, Crown, MoreHorizontal, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, PUBLIC_ORIGIN } from '../api.js';
@@ -69,7 +70,7 @@ export function GiftShopModal({ toUser: initialTo, toChat }) {
       >
         <div className="col" style={{ alignItems: 'center', gap: 12 }}>
           <div className="card center gift-hero-card" style={{ width: '100%', flexDirection: 'column', gap: 8 }}>
-            <GiftArt gift={picked} size={170} animated />
+            <GiftArt gift={picked} size={170} animated float />
             <div className="bold" style={{ fontSize: '1.15em' }}>{picked.name}</div>
             <SupplyBar gift={picked} />
           </div>
@@ -183,6 +184,7 @@ function GiftSheet({ userGiftId, dir, nav }) {
   const [run, busy] = useAction();
   const [revealing, setRevealing] = useState(false);
   const [justUpgraded, setJustUpgraded] = useState(false);
+  const [upg, setUpg] = useState(null);
   const [menu, setMenu] = useState(false);
   const modelRef = useRef();
   const touch = useRef(null);
@@ -192,14 +194,24 @@ function GiftSheet({ userGiftId, dir, nav }) {
   const col = ug.collectible;
   const m = col?.model;
 
-  const upgrade = () =>
-    run(async () => {
+  const upgrade = () => {
+    if (attrs.data?.models?.length && attrs.data.backdrops?.length && attrs.data.symbols?.length) {
+      setUpg({ request: api(`/user-gifts/${ug.id}/upgrade`, { body: {} }) });
+      return;
+    }
+    return run(async () => {
       setRevealing(true);
       const [r] = await Promise.all([api(`/user-gifts/${ug.id}/upgrade`, { body: {} }), new Promise((res) => setTimeout(res, 1600))]);
       setData({ userGift: r.userGift });
       setJustUpgraded(true);
       document.querySelector('.gift-sheet .modal-body')?.scrollTo({ top: 0, behavior: 'smooth' });
     }).finally(() => setRevealing(false));
+  };
+  const upgradeDone = (userGift) => {
+    setUpg(null);
+    if (userGift) { setData({ userGift }); setJustUpgraded(true); }
+    document.querySelector('.gift-sheet .modal-body')?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const convert = () => {
     if (!confirm(`Конвертировать подарок в ${ug.gift.convertValue} ${useStore.getState().currency.symbol}? Подарок исчезнет из профиля.`)) return;
     run(async () => { await api(`/user-gifts/${ug.id}/convert`, { body: {} }); close(); }, 'Подарок конвертирован');
@@ -246,6 +258,7 @@ function GiftSheet({ userGiftId, dir, nav }) {
 
   return (
     <Modal title={null} className={`gift-sheet ${dir}`}>
+      {upg && <UpgradeReveal attrs={attrs.data} gift={ug.gift} request={upg.request} onDone={upgradeDone} onError={(e) => { setUpg(null); toast(e.message, 'error'); }} />}
       <div className={`gs-hero ${col ? '' : 'gs-plain'}`} onPointerMove={tilt} onPointerLeave={untilt} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
         style={justUpgraded ? { animation: 'reveal .9s cubic-bezier(.2,.8,.2,1)' } : undefined}>
         {col && <CollectibleArt col={col} size="100%" height="100%" rounded={0} />}

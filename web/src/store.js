@@ -187,6 +187,16 @@ export const useStore = create((set, get) => ({
     set({ modals: [...get().modals, { type, props, key: Math.random() }] });
   },
   closeModal() {
+    // macOS / iOS-like dismissal: let the top sheet animate out, then unmount it
+    const ovs = typeof document !== 'undefined' ? document.querySelectorAll('.modal-overlay') : [];
+    const top = ovs[ovs.length - 1];
+    if (top?.classList.contains('closing')) return;
+    const calm = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (top && !calm && !document.documentElement.classList.contains('perf')) {
+      top.classList.add('closing');
+      setTimeout(() => set({ modals: get().modals.slice(0, -1) }), 230);
+      return;
+    }
     set({ modals: get().modals.slice(0, -1) });
   },
   closeAllModals() {

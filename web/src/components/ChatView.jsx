@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { RichText, stripFormatting, wrapSelection } from '../richtext.jsx';
 import {
   ArrowLeft, Timer, Search, MoreVertical, Paperclip, Smile, Send, Mic, X, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck,
   FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square, ChevronLeft,
@@ -101,7 +102,7 @@ function MessageContent({ m, chat, onOpenMedia }) {
           <div className="small muted">Перевод</div>
         </div>
       )}
-      {m.text && m.type !== 'gift' && <span>{linkify(m.text)}</span>}
+      {m.text && m.type !== 'gift' && <span><RichText text={m.text} plain={linkify} /></span>}
       {m.media?.buttons?.length > 0 && (
         <div className="bot-buttons">
           {m.media.buttons.map((b) => (
@@ -171,7 +172,7 @@ function Message({ m, chat, me, grouped, groupedNext, onContext, onOpenMedia, hi
         {m.replyTo && (
           <div className="reply-quote" onClick={() => onJump(m.replyTo.id)}>
             <b>{m.replyTo.senderName || 'Сообщение'}</b>
-            <span>{m.replyTo.text || (m.replyTo.type !== 'text' ? 'Медиа' : '')}</span>
+            <span>{stripFormatting(m.replyTo.text) || (m.replyTo.type !== 'text' ? 'Медиа' : '')}</span>
           </div>
         )}
         <MessageContent m={m} chat={chat} onOpenMedia={onOpenMedia} />
@@ -421,6 +422,29 @@ function Composer({ chat }) {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); }
                     if (e.key === 'Escape') { setReply(null); setEdit(null); }
+                    // Telegram Desktop formatting shortcuts
+                    const mod = e.ctrlKey || e.metaKey;
+                    const k = e.key.toLowerCase();
+                    const mark = mod && !e.altKey && (
+                      !e.shiftKey && (k === 'b' || k === 'и') ? '**'
+                        : !e.shiftKey && (k === 'i' || k === 'ш') ? '__'
+                          : e.shiftKey && (k === 'x' || k === 'ч') ? '~~'
+                            : e.shiftKey && (k === 'm' || k === 'ь') ? '`'
+                              : e.shiftKey && (k === 'p' || k === 'з') ? '||' : null);
+                    if (mark) {
+                      e.preventDefault();
+                      const r = wrapSelection(e.currentTarget, mark);
+                      onChange(r.value);
+                      const ta = e.currentTarget;
+                      requestAnimationFrame(() => ta.setSelectionRange(r.start, r.end));
+                    }
+                    // ↑ in an empty composer edits your last message (Telegram / Discord)
+                    if (e.key === 'ArrowUp' && !text && !edit && !mod) {
+                      const list = useStore.getState().messages[chat.id] || [];
+                      const meId = useStore.getState().me?.id;
+                      const last = [...list].reverse().find((x) => x.sender?.id === meId && x.type === 'text' && !x.deleted);
+                      if (last) { e.preventDefault(); setEdit(last); }
+                    }
                   }}
                   onPaste={(e) => { const files = [...e.clipboardData.files]; if (files.length) { e.preventDefault(); sendFiles(files); } }}
                 />
