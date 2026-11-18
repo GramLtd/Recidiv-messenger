@@ -129,6 +129,63 @@ r.post('/login', (req, res) => {
   res.json({ token: signToken(user.id, req), user: meUser(user) });
 });
 
+// ---------- login by QR code (desktop / web shows a code, a signed-in phone confirms it) ----------
+// Codes live in memory for 2 minutes, are single use and carry the waiting device's headers so the new
+// session gets that device's name. The waiting side long-polls instead of hammering the endpoint.
+const qrLogins = new Map();
+const QR_TTL = 120_000;
+const sweepQr = () => { const t = Date.now(); for (const [k, v] of qrLogins) if (t - v.created > QR_TTL + 30_000) qrLogins.delete(k); };
+const qrDevice = (q) => ({ headers: q.headers });
+
+r.post('/qr', (req, res) => {
+  sweepQr();
+  if (qrLogins.size > 5000) fail(429, 'Слишком много запросов, попробуйте позже');
+  const id = crypto.randomBytes(24).toString('base64url');
+  qrLogins.set(id, { created: Date.now(), headers: { 'user-agent': req.headers['user-agent'] || '', 'x-device': req.headers['x-device'] || '' }, token: null, user: null, waiters: [] });
+  res.json({ id, expiresIn: QR_TTL / 1000, url: `recidivist://qr-login?id=${id}` });
+});
+
+r.get('/qr/:id', (req, res) => {
+  const q = qrLogins.get(String(req.params.id));
+  if (!q || Date.now() - q.created > QR_TTL) { if (q && !q.token) qrLogins.delete(req.params.id); return res.json({ state: 'expired' }); }
+  const done = () => {
+    if (!q.token) return res.json({ state: q.scanned ? 'scanned' : 'waiting' });
+    qrLogins.delete(req.params.id);
+    res.json({ state: 'approved', token: q.token, user: q.user });
+  };
+  if (q.token) return done();
+  // long-poll up to 25 s
+  const timer = setTimeout(() => { q.waiters = q.waiters.filter((w) => w !== wake); done(); }, 25_000);
+  const wake = () => { clearTimeout(timer); done(); };
+  q.waiters.push(wake);
+  req.on('close', () => { clearTimeout(timer); q.waiters = q.waiters.filter((w) => w !== wake); });
+});
+
+const qrInfo = (q) => {
+  const ua = q.headers['user-agent'] || '';
+  const dev = String(q.headers['x-device'] || '').trim();
+  const os = /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'macOS' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Linux/.test(ua) ? 'Linux' : '';
+  const app = /Electron\//.test(ua) ? 'Recidivist для компьютера' : dev ? 'Recidivist' : 'Браузер';
+  return { device: dev || [app, os].filter(Boolean).join(' · ') };
+};
+
+r.get('/qr/:id/info', requireAuth, (req, res) => {
+  const q = qrLogins.get(String(req.params.id));
+  if (!q || q.token || Date.now() - q.created > QR_TTL) fail(404, 'Код устарел — обновите его на компьютере');
+  q.scanned = true;
+  q.waiters.splice(0).forEach((w) => w());
+  res.json(qrInfo(q));
+});
+
+r.post('/qr/:id/approve', requireAuth, (req, res) => {
+  const q = qrLogins.get(String(req.params.id));
+  if (!q || q.token || Date.now() - q.created > QR_TTL) fail(404, 'Код устарел — обновите его на компьютере');
+  q.token = signToken(req.user.id, qrDevice(q));
+  q.user = meUser(req.user);
+  q.waiters.splice(0).forEach((w) => w());
+  res.json({ ok: true, ...qrInfo(q) });
+});
+
 r.get('/me', requireAuth, (req, res) => {
   res.json({ user: meUser(req.user) });
 });

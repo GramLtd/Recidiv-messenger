@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ShieldAlert, Copy, Eye, ArrowLeft, Mail, KeyRound, Check, Gift, Lock, Store, Phone } from 'lucide-react';
+import { ShieldAlert, Copy, Eye, ArrowLeft, Mail, KeyRound, Check, Gift, Lock, Store, Phone, QrCode } from 'lucide-react';
+import { QrLogin } from '../components/QrLogin.jsx';
 import { api } from '../api.js';
 import { useStore } from '../store.js';
 import { newMnemonic, isValidMnemonic, deriveAuthKey, normalizeMnemonic } from '../seed.js';
@@ -188,7 +189,24 @@ export default function Auth() {
             <button className="btn secondary block" onClick={() => setMode('login')}>
               <KeyRound size={18} /> Войти по сид-фразе
             </button>
+            <button className="btn ghost block" onClick={() => setMode('qr')}>
+              <QrCode size={18} /> Войти по QR-коду
+            </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === 'qr') {
+    return (
+      <div className="auth-page">
+        <Backdrop />
+        <div className="auth-card step" key="qr">
+          {back(() => setMode('welcome'))}
+          <h1>Вход по QR-коду</h1>
+          <p className="lead">Без сид-фразы — подтвердите вход на телефоне, где вы уже вошли.</p>
+          <QrLogin />
         </div>
       </div>
     );

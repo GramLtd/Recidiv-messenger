@@ -6,7 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import {
-  ArrowDownLeft, ArrowUpRight, Tag, ScanFace, Timer, EyeOff, Shield, MapPinOff, Network, Camera, Check, Crown, Eye, HardDrive, KeyRound, Lock, MapPin, Monitor, Plus, Send, ShieldCheck, Smartphone, Sparkles, Trash2,
+  ArrowDownLeft, ArrowUpRight, Tag, ScanFace, Timer, EyeOff, Shield, MapPinOff, Network, Camera, Check, Crown, Eye, HardDrive, KeyRound, Lock, MapPin, Monitor, Plus, Send, ShieldCheck, Smartphone, Sparkles, Trash2, QrCode,
 } from 'lucide-react-native';
 import { api, upload } from '../../lib/api';
 import { useCached } from '../../lib/useCached';
@@ -223,6 +223,9 @@ function DevicesPage() {
   const when = (ts: number) => new Date(ts).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   return (
     <>
+      <Group footer="Отсканируйте QR-код на экране входа Recidivist на компьютере или в браузере — вход без сид-фразы.">
+        <Row icon={QrCode} color="#0a84ff" title="Подключить устройство" onPress={() => router.push('/qr-scan')} />
+      </Group>
       <Group title="Это устройство">
         <Row icon={cur ? icon(cur.device) : Smartphone} color="#34c759" title={cur?.device || 'Это устройство'} sub="в сети" />
       </Group>
