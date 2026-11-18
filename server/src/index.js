@@ -5,14 +5,15 @@ import fs from 'node:fs';
 import cors from 'cors';
 import compression from 'compression';
 import { config, ROOT } from './config.js';
-import './db.js';
+import { db } from './db.js';
 import { requireAuth, requireAdmin } from './auth.js';
 import { securityHeaders, rateLimit, startExpirySweeper } from './security.js';
 import { emitToChat } from './services.js';
+import { emitToUser } from './realtime.js';
 import { initRealtime } from './realtime.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
-import chatRoutes from './routes/chats.js';
+import chatRoutes, { sendMessageAs } from './routes/chats.js';
 import storyRoutes from './routes/stories.js';
 import giftRoutes from './routes/gifts.js';
 import marketRoutes from './routes/market.js';
@@ -77,4 +78,17 @@ app.use((err, _req, res, _next) => {
 const server = http.createServer(app);
 initRealtime(server);
 startExpirySweeper(emitToChat);
+
+// scheduled messages: deliver the due ones every 10 s (a failed one is dropped and the author is told why)
+setInterval(() => {
+  const due = db.prepare('SELECT * FROM scheduled_messages WHERE send_at <= ? ORDER BY send_at LIMIT 50').all(Date.now());
+  for (const x of due) {
+    db.prepare('DELETE FROM scheduled_messages WHERE id = ?').run(x.id);
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(x.sender_id);
+    if (!user || user.is_banned) continue;
+    try { sendMessageAs(user, x.chat_id, JSON.parse(x.payload)); } catch (e) {
+      emitToUser(user.id, 'toast', { text: `Отложенное сообщение не отправлено: ${e.message}` });
+    }
+  }
+}, 10_000).unref();
 server.listen(config.port, () => console.log(`🔴 Recidivist server on http://localhost:${config.port}`));

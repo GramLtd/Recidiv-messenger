@@ -25,6 +25,15 @@ r.patch('/me', (req, res) => {
   res.json({ user: meUser(getUser(u.id)) });
 });
 
+// emoji status with optional text and expiry («🎧 слушаю музыку · до 18:00»)
+r.post('/me/status', (req, res) => {
+  const emoji = req.body.emoji ? String(req.body.emoji).trim().slice(0, 16) : null;
+  const text = emoji && req.body.text ? String(req.body.text).trim().slice(0, 70) : null;
+  const until = emoji && Number(req.body.until) > Date.now() ? Math.min(Number(req.body.until), Date.now() + 366 * 86400_000) : null;
+  db.prepare('UPDATE users SET emoji_status = ?, status_text = ?, status_until = ? WHERE id = ?').run(emoji, text, until, req.user.id);
+  res.json({ user: meUser(getUser(req.user.id)) });
+});
+
 const MAX_BANNER = 10 * 1024 * 1024;
 const uploadedSize = (url) => {
   try { return fs.statSync(path.join(config.uploadDir, path.basename(url))).size; } catch { return -1; }

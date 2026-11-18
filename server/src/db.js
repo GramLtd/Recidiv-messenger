@@ -468,6 +468,19 @@ addColumn('users', 'e2e_key', 'TEXT');
 addColumn('users', 'deleted_at', 'INTEGER');
 addColumn('chats', 'auto_delete', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('messages', 'expires_at', 'INTEGER');
+addColumn('messages', 'silent', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('chat_members', 'archived', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('users', 'status_text', 'TEXT');
+addColumn('users', 'status_until', 'INTEGER');
+db.exec(`CREATE TABLE IF NOT EXISTS scheduled_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  chat_id INTEGER NOT NULL,
+  sender_id INTEGER NOT NULL,
+  payload TEXT NOT NULL,
+  send_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_scheduled_due ON scheduled_messages(send_at);`);
 db.exec('CREATE INDEX IF NOT EXISTS idx_messages_expires ON messages(expires_at) WHERE expires_at IS NOT NULL');
 db.exec(`
 CREATE TABLE IF NOT EXISTS sessions (

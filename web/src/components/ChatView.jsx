@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { RichText, stripFormatting, wrapSelection } from '../richtext.jsx';
+import { StatusBadge } from './StatusModal.jsx';
 import {
   ArrowLeft, Timer, Search, MoreVertical, Paperclip, Smile, Send, Mic, X, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck,
-  FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square, ChevronLeft,
+  FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square, ChevronLeft, Clock,
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, upload, mediaUrl } from '../api.js';
@@ -226,6 +227,30 @@ function MessageMenu({ m, x, y, chat, me, onClose, onReply, onEdit }) {
   );
 }
 
+/** Pick a time for a scheduled message: quick presets + date/time field. */
+function ScheduleModal({ onClose, onPick }) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const local = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const [val, setVal] = useState(() => local(new Date(Date.now() + 60 * 60 * 1000)));
+  const [silent, setSilent] = useState(false);
+  const tomorrow9 = () => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d.getTime(); };
+  const tonight = () => { const d = new Date(); d.setHours(20, 0, 0, 0); if (d.getTime() < Date.now() + 60_000) d.setDate(d.getDate() + 1); return d.getTime(); };
+  const presets = [['Через час', Date.now() + 3600_000], ['Сегодня в 20:00', tonight()], ['Завтра в 9:00', tomorrow9()]];
+  return (
+    <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 380 }}>
+        <div className="modal-head"><h3>Отложить сообщение</h3><button className="icon-btn" onClick={onClose}><X size={20} /></button></div>
+        <div className="modal-body col" style={{ gap: 10 }}>
+          {presets.map(([l, at]) => <button key={l} className="btn secondary block" onClick={() => onPick(at, silent)}>{l}</button>)}
+          <div className="field"><label>Своё время</label><input className="input" type="datetime-local" value={val} min={local(new Date(Date.now() + 60_000))} onChange={(e) => setVal(e.target.value)} /></div>
+          <label className="row" style={{ gap: 8, cursor: 'pointer' }}><input type="checkbox" checked={silent} onChange={(e) => setSilent(e.target.checked)} /> Без звука</label>
+          <button className="btn block" onClick={() => { const at = new Date(val).getTime(); if (at > Date.now() + 30_000) onPick(at, silent); }}>Запланировать</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Composer({ chat }) {
   const sendMessage = useStore((s) => s.sendMessage);
   const emitTyping = useStore((s) => s.emitTyping);
@@ -271,6 +296,38 @@ function Composer({ chat }) {
     if (Date.now() - lastTyping.current > 3000) {
       lastTyping.current = Date.now();
       emitTyping(chat.id);
+    }
+  };
+
+  // send options (Telegram): silent / scheduled
+  const [sendMenu, setSendMenu] = useState(false);
+  const [schedOpen, setSchedOpen] = useState(false);
+  const [scheduled, setScheduled] = useState([]);
+  const [schedList, setSchedList] = useState(false);
+  const loadScheduled = () => api(`/chats/${chat.id}/scheduled`).then((r) => setScheduled(r.scheduled || [])).catch(() => setScheduled([]));
+  useEffect(() => { setScheduled([]); setSchedList(false); loadScheduled(); }, [chat.id]);
+  const pressTimer = useRef(null);
+  const sendPressStart = () => { clearTimeout(pressTimer.current); pressTimer.current = setTimeout(() => { pressTimer.current = 'fired'; setSendMenu(true); }, 450); };
+  const sendPressEnd = () => { if (pressTimer.current === 'fired') { pressTimer.current = null; return true; } clearTimeout(pressTimer.current); pressTimer.current = null; return false; };
+  const sendWith = async (opts) => {
+    const t = text.trim();
+    if (!t) return;
+    try {
+      if (opts.scheduleAt) {
+        await api(`/chats/${chat.id}/messages`, { body: { text: t, replyTo: reply?.id, scheduleAt: opts.scheduleAt, silent: opts.silent } });
+        toast(`Сообщение будет отправлено ${new Date(opts.scheduleAt).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`);
+        loadScheduled();
+      } else {
+        window.__sentAt = Date.now();
+        setFire((x) => x + 1);
+        playSend();
+        await sendMessage(chat.id, { text: t, replyTo: reply?.id, silent: opts.silent });
+      }
+      setReply(null);
+      setText('');
+      drafts.current[chat.id] = '';
+    } catch (e) {
+      toast(e.message, 'error');
     }
   };
 
@@ -386,6 +443,26 @@ function Composer({ chat }) {
   const quote = edit || reply;
   return (
     <div className="composer-wrap" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files.length) sendFiles([...e.dataTransfer.files]); }}>
+      {schedOpen && <ScheduleModal onClose={() => setSchedOpen(false)} onPick={(at, silent) => { setSchedOpen(false); sendWith({ scheduleAt: at, silent }); }} />}
+      {scheduled.length > 0 && (
+        <div className="sched-bar">
+          <button className="sched-chip" onClick={() => setSchedList(!schedList)}><Clock size={14} /> Отложенные: {scheduled.length}</button>
+          {schedList && (
+            <div className="sched-list">
+              {scheduled.map((x) => (
+                <div key={x.id} className="sched-item">
+                  <div className="grow" style={{ minWidth: 0 }}>
+                    <div className="tiny muted">{new Date(x.sendAt).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}{x.silent ? ' · без звука' : ''}</div>
+                    <div className="ellipsis small">{stripFormatting(x.text) || 'Медиа'}</div>
+                  </div>
+                  <button className="icon-btn" title="Отправить сейчас" onClick={async () => { try { await api(`/scheduled/${x.id}/send-now`, { body: {} }); loadScheduled(); } catch (e) { toast(e.message, 'error'); } }}><Send size={16} /></button>
+                  <button className="icon-btn" title="Удалить" onClick={async () => { await api.del(`/scheduled/${x.id}`); loadScheduled(); }}><X size={16} /></button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {emoji && (
         <MediaPanel emojis={EMOJIS} onEmoji={(e) => onChange(text + e)} onSend={sendMedia} onClose={() => setEmoji(false)} />
       )}
@@ -455,7 +532,23 @@ function Composer({ chat }) {
           </div>
         </div>
         {text.trim() || edit ? (
-          <button key={`s${fire}`} className={`send-btn ${fire ? 'fire' : ''}`} onPointerDown={(e) => e.preventDefault()} onClick={submit}>{edit ? <Check size={24} /> : <Send size={22} style={{ marginLeft: 2 }} />}</button>
+          <div className="send-wrap">
+            <button key={`s${fire}`} className={`send-btn ${fire ? 'fire' : ''}`}
+              onPointerDown={(e) => { e.preventDefault(); if (!edit) sendPressStart(); }}
+              onPointerUp={() => { if (!edit) sendPressEnd(); }}
+              onPointerLeave={() => { if (pressTimer.current !== 'fired') { clearTimeout(pressTimer.current); pressTimer.current = null; } }}
+              onContextMenu={(e) => { e.preventDefault(); if (!edit) setSendMenu(true); }}
+              onClick={() => { if (!sendMenu) submit(); }}>{edit ? <Check size={24} /> : <Send size={22} style={{ marginLeft: 2 }} />}</button>
+            {sendMenu && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 60 }} onClick={() => setSendMenu(false)} />
+                <div className="ctx-menu send-menu" style={{ '--origin': 'bottom right' }}>
+                  <button className="menu-item" onClick={() => { setSendMenu(false); sendWith({ silent: true }); }}><BellOff size={18} /> Отправить без звука</button>
+                  <button className="menu-item" onClick={() => { setSendMenu(false); setSchedOpen(true); }}><Clock size={18} /> Отложить…</button>
+                </div>
+              </>
+            )}
+          </div>
         ) : rec ? (
           <button className="send-btn recording" onClick={() => stopRec(false)}><Send size={22} /></button>
         ) : (
@@ -530,7 +623,7 @@ export default function ChatView() {
     const last = messages?.[messages.length - 1];
     if (!last) return;
     const meId = useStore.getState().me?.id;
-    if (lastSeenId.current && last.id > lastSeenId.current && last.sender?.id !== meId && !document.hidden && !chat?.muted) playIncoming();
+    if (lastSeenId.current && last.id > lastSeenId.current && last.sender?.id !== meId && !document.hidden && !chat?.muted && !last.silent) playIncoming();
     lastSeenId.current = last.id;
   }, [messages]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { lastSeenId.current = null; }, [chatId]);
@@ -630,6 +723,7 @@ export default function ChatView() {
               <span className="ellipsis">{chat.title}</span>
               {chat.peer?.verified && <Verified size={15} />}
               {chat.peer?.premium && <PremiumStar size={14} />}
+              <StatusBadge user={chat.peer} size={15} />
               {chat.peer?.wornGift && <WornGift gift={chat.peer.wornGift} size={18} />}
               {chat.muted && <BellOff size={13} className="muted" />}
             </span>

@@ -43,7 +43,9 @@ export function publicUser(u) {
     interactive: u.id === NUMBERS_BOT_ID,
     isAdmin: !!u.is_admin,
     anonNumber: u.anon_number ? `+${u.anon_number.slice(0, 3)} ${u.anon_number.slice(3, 7)} ${u.anon_number.slice(7)}` : null,
-    emojiStatus: u.emoji_status,
+    emojiStatus: u.emoji_status && (!u.status_until || u.status_until > Date.now()) ? u.emoji_status : null,
+    statusText: u.emoji_status && u.status_text && (!u.status_until || u.status_until > Date.now()) ? u.status_text : null,
+    statusUntil: u.emoji_status && u.status_until > Date.now() ? u.status_until : null,
     wornGift: wornGift(u),
     ...presenceFor(u),
     premium: isPremium(u),
@@ -153,18 +155,21 @@ export function serializeMessage(m) {
     reactions,
     createdAt: m.created_at,
     expiresAt: m.expires_at || undefined,
+    silent: m.silent ? true : undefined,
   };
 }
 
-export function createMessage({ chatId, senderId, type = 'text', text = '', media = null, replyTo = null, forwardFrom = null, userGiftId = null }) {
+export function createMessage({ chatId, senderId, type = 'text', text = '', media = null, replyTo = null, forwardFrom = null, userGiftId = null, silent = false }) {
   const r = db
     .prepare(
-      `INSERT INTO messages (chat_id, sender_id, type, text, media, reply_to, forward_from, user_gift_id, created_at, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO messages (chat_id, sender_id, type, text, media, reply_to, forward_from, user_gift_id, created_at, expires_at, silent)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(chatId, senderId, type, text, media ? JSON.stringify(media) : null, replyTo, forwardFrom, userGiftId, now(), expiryFor(chatId, type));
+    .run(chatId, senderId, type, text, media ? JSON.stringify(media) : null, replyTo, forwardFrom, userGiftId, now(), expiryFor(chatId, type), silent ? 1 : 0);
   const id = Number(r.lastInsertRowid);
   if (senderId) db.prepare('UPDATE chat_members SET last_read_id = ? WHERE chat_id = ? AND user_id = ?').run(id, chatId, senderId);
+  // like Telegram: an archived chat that isn't muted comes back to the main list when someone writes
+  db.prepare('UPDATE chat_members SET archived = 0 WHERE chat_id = ? AND archived = 1 AND muted = 0 AND user_id IS NOT ?').run(chatId, senderId || null);
   const msg = serializeMessage(db.prepare('SELECT * FROM messages WHERE id = ?').get(id));
   for (const uid of chatMemberIds(chatId)) {
     emitToUser(uid, 'message:new', { message: msg, chat: serializeChat(chatId, uid) });
@@ -264,6 +269,7 @@ export function serializeChat(chatOrId, viewerId) {
     isMember: !!member,
     pinned: !!member?.pinned,
     muted: !!member?.muted,
+    archived: !!member?.archived,
     unread,
     lastReadId: member?.last_read_id || 0,
     peerReadId,

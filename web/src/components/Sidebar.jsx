@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { stripFormatting } from '../richtext.jsx';
 import {
-  Search, Users, Megaphone, User, Bookmark, LogOut, Plus, Pin, VolumeX, Volume2, CheckCheck, Check, X, SquarePen, Trash2,
+  Search, Users, Megaphone, User, Bookmark, LogOut, Plus, Pin, VolumeX, Volume2, CheckCheck, Check, X, SquarePen, Trash2, Archive, ArchiveRestore, ChevronLeft,
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api } from '../api.js';
@@ -53,6 +53,7 @@ export function ChatRow({ chat, active, onClick, onContext, index = 0, editing, 
             {chat.peer ? <StyledName user={{ ...chat.peer, displayName: chat.title }} /> : <span className="ellipsis">{chat.title}</span>}
             {chat.peer?.verified && <Verified size={15} />}
             {chat.peer?.premium && <PremiumStar size={14} />}
+            {chat.peer?.emojiStatus && <span className="emoji-status" title={chat.peer.statusText || ''}>{chat.peer.emojiStatus}</span>}
             {chat.peer?.wornGift && <WornGift gift={chat.peer.wornGift} size={18} />}
             {chat.muted && <VolumeX size={14} className="muted" />}
           </div>
@@ -81,6 +82,7 @@ export function ChatRow({ chat, active, onClick, onContext, index = 0, editing, 
         <div className="chat-edit-actions" onClick={(e) => e.stopPropagation()}>
           <button className="lg" title={chat.pinned ? 'Открепить' : 'Закрепить'} onClick={() => onAction('pin')}><Pin size={17} /></button>
           <button className="lg" title={chat.muted ? 'Включить звук' : 'Без звука'} onClick={() => onAction('mute')}>{chat.muted ? <Volume2 size={17} /> : <VolumeX size={17} />}</button>
+          {chat.type !== 'saved' && <button className="lg" title={chat.archived ? 'Из архива' : 'В архив'} onClick={() => onAction('archive')}>{chat.archived ? <ArchiveRestore size={17} /> : <Archive size={17} />}</button>}
           {chat.type !== 'saved' && chat.peer?.isBot !== true && <button className="lg danger-lg" title="Удалить" onClick={() => onAction('leave')}><Trash2 size={17} /></button>}
         </div>
       )}
@@ -109,6 +111,7 @@ function ChatContextMenu({ chat, x, y, onClose }) {
       <div className="ctx-menu" style={{ left: Math.min(x, innerWidth - 220), top: Math.min(y, innerHeight - 180) }}>
         <button className="menu-item" onClick={() => set({ pinned: !chat.pinned })}><Pin size={18} /> {chat.pinned ? 'Открепить' : 'Закрепить'}</button>
         <button className="menu-item" onClick={() => set({ muted: !chat.muted })}><VolumeX size={18} /> {chat.muted ? 'Включить звук' : 'Без звука'}</button>
+        {chat.type !== 'saved' && <button className="menu-item" onClick={() => set({ archived: !chat.archived })}>{chat.archived ? <ArchiveRestore size={18} /> : <Archive size={18} />} {chat.archived ? 'Вернуть из архива' : 'В архив'}</button>}
         {chat.type !== 'saved' && chat.peer?.isBot !== true && (
           <button className="menu-item danger" onClick={leave}><LogOut size={18} className="danger" /> {chat.type === 'private' ? 'Удалить чат' : 'Покинуть'}</button>
         )}
@@ -150,6 +153,11 @@ function ChatsPage() {
   const [compose, setCompose] = useState(false);
   const [editing, setEditing] = useState(false);
   const [ctx, setCtx] = useState(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const archived = chats.filter((c) => c.archived);
+  const mainChats = chats.filter((c) => !c.archived);
+  const archUnread = archived.reduce((n, c) => n + (c.unread || 0), 0);
+  const listChats = archiveOpen ? archived : mainChats;
 
   useEffect(() => {
     if (q.trim().length < 2) return setResults(null);
@@ -171,7 +179,7 @@ function ChatsPage() {
       removeChat(chat.id);
       return;
     }
-    const body = kind === 'pin' ? { pinned: !chat.pinned } : { muted: !chat.muted };
+    const body = kind === 'pin' ? { pinned: !chat.pinned } : kind === 'archive' ? { archived: !chat.archived } : { muted: !chat.muted };
     const { chat: c } = await api(`/chats/${chat.id}/settings`, { body });
     upsertChat(c);
   };
@@ -209,7 +217,24 @@ function ChatsPage() {
       )}
 
       <div className="chat-list">
-        {!q && <StoriesBar />}
+        {!q && !archiveOpen && <StoriesBar />}
+        {!q && archiveOpen && (
+          <div className="archive-head">
+            <button className="lg ios-round" onClick={() => setArchiveOpen(false)} aria-label="Назад"><ChevronLeft size={20} /></button>
+            <b>Архив</b>
+            <span className="muted small">{archived.length ? 'Чаты без звука остаются здесь; остальные вернутся при новом сообщении' : ''}</span>
+          </div>
+        )}
+        {!q && !archiveOpen && archived.length > 0 && (
+          <div className="chat-item archive-row" onClick={() => setArchiveOpen(true)}>
+            <span className="archive-ico"><Archive size={24} /></span>
+            <div className="grow">
+              <div className="top"><div className="name">Архив</div></div>
+              <div className="bottom"><div className="preview ellipsis">{archived.map((c) => c.title).join(', ')}</div>{archUnread > 0 && <span className="badge muted-badge">{archUnread}</span>}</div>
+            </div>
+          </div>
+        )}
+        {!q && archiveOpen && !archived.length && <div className="muted center small" style={{ padding: 30 }}>Архив пуст</div>}
         {q ? (
           <>
             {localMatches.length > 0 && <div className="section-title">{t('Чаты')}</div>}
@@ -236,7 +261,7 @@ function ChatsPage() {
             {results && !results.users.length && !results.chats.length && !localMatches.length && <div className="muted center" style={{ padding: 30 }}>{t('Ничего не найдено')}</div>}
           </>
         ) : (
-          chats.map((c, i) => (
+          listChats.map((c, i) => (
             <ChatRow
               key={c.id}
               index={i}

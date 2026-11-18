@@ -221,7 +221,8 @@ r.post('/chats/:id/settings', (req, res) => {
   const m = requireMember(c.id, req.user.id);
   const pinned = req.body.pinned !== undefined ? (req.body.pinned ? 1 : 0) : m.pinned;
   const muted = req.body.muted !== undefined ? (req.body.muted ? 1 : 0) : m.muted;
-  db.prepare('UPDATE chat_members SET pinned = ?, muted = ? WHERE chat_id = ? AND user_id = ?').run(pinned, muted, c.id, req.user.id);
+  const archived = req.body.archived !== undefined ? (req.body.archived ? 1 : 0) : m.archived || 0;
+  db.prepare('UPDATE chat_members SET pinned = ?, muted = ?, archived = ? WHERE chat_id = ? AND user_id = ?').run(archived ? 0 : pinned, muted, archived, c.id, req.user.id);
   res.json({ chat: serializeChat(c.id, req.user.id) });
 });
 
@@ -249,55 +250,95 @@ r.get('/chats/:id/messages', (req, res) => {
   res.json({ messages: rows.reverse().map(serializeMessage), hasMore: rows.length === limit });
 });
 
-r.post('/chats/:id/messages', (req, res) => {
-  const c = loadChat(req.params.id);
-  const m = requireMember(c.id, req.user.id);
+/** Send a message as `user` (used by the API and by the scheduled-messages sweeper). */
+export function sendMessageAs(user, chatId, body) {
+  const c = loadChat(chatId);
+  const m = requireMember(c.id, user.id);
   if (!canPost(c, m)) fail(403, 'Только администраторы могут публиковать в канале');
   if (c.type === 'private') {
-    const peer = db.prepare('SELECT u.* FROM chat_members m JOIN users u ON u.id = m.user_id WHERE m.chat_id = ? AND m.user_id != ?').get(c.id, req.user.id);
+    const peer = db.prepare('SELECT u.* FROM chat_members m JOIN users u ON u.id = m.user_id WHERE m.chat_id = ? AND m.user_id != ?').get(c.id, user.id);
     if (peer?.is_bot && !INTERACTIVE_BOTS.has(peer.id)) fail(403, 'Этот аккаунт не принимает сообщения');
-    if (peer && peer.id !== req.user.id) {
-      if (isBlocked(peer.id, req.user.id)) fail(403, 'Пользователь ограничил вам отправку сообщений');
-      if (isBlocked(req.user.id, peer.id)) fail(403, 'Вы заблокировали этого пользователя — разблокируйте его в профиле');
+    if (peer && peer.id !== user.id) {
+      if (isBlocked(peer.id, user.id)) fail(403, 'Пользователь ограничил вам отправку сообщений');
+      if (isBlocked(user.id, peer.id)) fail(403, 'Вы заблокировали этого пользователя — разблокируйте его в профиле');
       // the peer's "who can message me" setting; once they wrote to you, the chat is open
       const p = privacyOf(peer);
       const replied = !!db.prepare('SELECT 1 FROM messages WHERE chat_id = ? AND sender_id = ? LIMIT 1').get(c.id, peer.id);
-      if (!replied && !isContact(peer.id, req.user.id) && !req.user.is_admin) {
+      if (!replied && !isContact(peer.id, user.id) && !user.is_admin) {
         if (p.messages === 'contacts') fail(403, 'Пользователь принимает сообщения только от контактов');
-        if (p.messages === 'premium' && !isPremium(req.user)) fail(403, 'Пользователь принимает сообщения только от Premium');
-        if (p.messages === 'paid' && !isPremium(req.user)) {
+        if (p.messages === 'premium' && !isPremium(user)) fail(403, 'Пользователь принимает сообщения только от Premium');
+        if (p.messages === 'paid' && !isPremium(user)) {
           const price = Math.max(1, Number(p.messagePrice) || 1);
           tx(() => {
-            changeBalance(req.user.id, -price, 'paid_message', `Платное сообщение ${peer.display_name}`, `user:${peer.id}`);
-            changeBalance(peer.id, price, 'paid_message_in', `Платное сообщение от ${req.user.display_name}`, `user:${req.user.id}`);
+            changeBalance(user.id, -price, 'paid_message', `Платное сообщение ${peer.display_name}`, `user:${peer.id}`);
+            changeBalance(peer.id, price, 'paid_message_in', `Платное сообщение от ${user.display_name}`, `user:${user.id}`);
           });
-          pushBalance(req.user.id, peer.id);
+          pushBalance(user.id, peer.id);
         }
       }
     }
   }
-  const text = String(req.body.text || '').slice(0, 4096);
-  const media = sanitizeMedia(req.body.media);
-  if (!text.trim() && !media && !req.body.e2e) fail(400, 'Пустое сообщение');
+  const text = String(body.text || '').slice(0, 4096);
+  const media = sanitizeMedia(body.media);
+  if (!text.trim() && !media && !body.e2e) fail(400, 'Пустое сообщение');
   let type = 'text';
   if (media) type = ['image', 'video', 'voice', 'audio', 'file', 'sticker', 'gif', 'album'].includes(media.kind) ? media.kind : 'file';
-  if (req.body.e2e && c.type === 'private') {
+  if (body.e2e && c.type === 'private') {
     // end-to-end encrypted: server stores only {n: nonce, c: ciphertext}; text is opaque
-    const e = req.body.e2e;
+    const e = body.e2e;
     if (typeof e.n !== 'string' || typeof e.c !== 'string' || e.n.length > 64 || e.c.length > 12000) fail(400, 'Некорректное зашифрованное сообщение');
     type = 'secret';
-    req.body.text = '';
-    req.body._media = { kind: 'secret', n: e.n, c: e.c, k: String(e.k || '').slice(0, 64) };
+    body.text = '';
+    body._media = { kind: 'secret', n: e.n, c: e.c, k: String(e.k || '').slice(0, 64) };
   }
-  let replyTo = req.body.replyTo ? Number(req.body.replyTo) : null;
+  let replyTo = body.replyTo ? Number(body.replyTo) : null;
   if (replyTo && !db.prepare('SELECT 1 FROM messages WHERE id = ? AND chat_id = ?').get(replyTo, c.id)) replyTo = null;
-  const msg = createMessage({ chatId: c.id, senderId: req.user.id, type, text: type === 'secret' ? '' : text, media: type === 'secret' ? req.body._media : media, replyTo });
-  res.json({ message: msg });
+  const msg = createMessage({ chatId: c.id, senderId: user.id, type, text: type === 'secret' ? '' : text, media: type === 'secret' ? body._media : media, replyTo, silent: !!body.silent });
   if (c.type === 'private') {
-    const peerId = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').get(c.id, req.user.id)?.user_id;
+    const peerId = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').get(c.id, user.id)?.user_id;
     const bot = INTERACTIVE_BOTS.get(peerId);
-    if (bot) setTimeout(() => { try { bot(req.user.id, text); } catch (e) { console.error(e); } }, 350);
+    if (bot) setTimeout(() => { try { bot(user.id, text); } catch (e) { console.error(e); } }, 350);
   }
+  return msg;
+}
+
+r.post('/chats/:id/messages', (req, res) => {
+  const at = Number(req.body.scheduleAt) || 0;
+  if (at) {
+    // scheduled: validate now (membership / rights), store, send later
+    const c = loadChat(req.params.id);
+    const m = requireMember(c.id, req.user.id);
+    if (!canPost(c, m)) fail(403, 'Нет прав на публикацию');
+    if (req.body.e2e) fail(400, 'Зашифрованные сообщения нельзя отложить');
+    if (at < Date.now() + 30_000 || at > Date.now() + 366 * 86400_000) fail(400, 'Выберите время от минуты до года вперёд');
+    if (!String(req.body.text || '').trim() && !req.body.media) fail(400, 'Пустое сообщение');
+    const cnt = db.prepare('SELECT COUNT(*) n FROM scheduled_messages WHERE sender_id = ?').get(req.user.id).n;
+    if (cnt >= 100) fail(400, 'Слишком много отложенных сообщений');
+    const payload = { text: String(req.body.text || '').slice(0, 4096), media: req.body.media || null, replyTo: req.body.replyTo || null, silent: !!req.body.silent };
+    const r2 = db.prepare('INSERT INTO scheduled_messages (chat_id, sender_id, payload, send_at, created_at) VALUES (?, ?, ?, ?, ?)').run(c.id, req.user.id, JSON.stringify(payload), at, Date.now());
+    return res.json({ scheduled: { id: Number(r2.lastInsertRowid), chatId: c.id, sendAt: at, ...payload } });
+  }
+  res.json({ message: sendMessageAs(req.user, req.params.id, req.body) });
+});
+
+r.get('/chats/:id/scheduled', (req, res) => {
+  const c = loadChat(req.params.id);
+  requireMember(c.id, req.user.id);
+  const list = db.prepare('SELECT * FROM scheduled_messages WHERE chat_id = ? AND sender_id = ? ORDER BY send_at').all(c.id, req.user.id)
+    .map((x) => ({ id: x.id, chatId: x.chat_id, sendAt: x.send_at, ...JSON.parse(x.payload) }));
+  res.json({ scheduled: list });
+});
+
+r.delete('/scheduled/:id', (req, res) => {
+  db.prepare('DELETE FROM scheduled_messages WHERE id = ? AND sender_id = ?').run(Number(req.params.id), req.user.id);
+  res.json({ ok: true });
+});
+
+r.post('/scheduled/:id/send-now', (req, res) => {
+  const x = db.prepare('SELECT * FROM scheduled_messages WHERE id = ? AND sender_id = ?').get(Number(req.params.id), req.user.id);
+  if (!x) fail(404, 'Сообщение не найдено');
+  db.prepare('DELETE FROM scheduled_messages WHERE id = ?').run(x.id);
+  res.json({ message: sendMessageAs(req.user, x.chat_id, JSON.parse(x.payload)) });
 });
 
 r.post('/messages/:id/forward', (req, res) => {

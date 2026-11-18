@@ -15,6 +15,7 @@ import { SettingsModal } from '../components/Settings.jsx';
 import { StoryCreateModal, StoryViewer } from '../components/Stories.jsx';
 import { PostModal, SharePostModal, LightboxModal, CreatePostModal } from '../components/Feed.jsx';
 import { UserListModal, GiftPremiumModal } from '../components/ProfileView.jsx';
+import { StatusModal } from '../components/StatusModal.jsx';
 
 const MODALS = {
   userProfile: UserProfileModal,
@@ -23,6 +24,7 @@ const MODALS = {
   forward: ForwardModal,
   transfer: TransferModal,
   giftShop: GiftShopModal,
+  status: StatusModal,
   giftDetails: GiftDetailsModal,
   transferGift: TransferGiftModal,
   sell: SellModal,

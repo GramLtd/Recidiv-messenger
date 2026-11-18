@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from 'react';
 import { PushLayer } from './Push.jsx';
 import {
-  Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone, User as UserIcon, AtSign, Bookmark, Music2, RefreshCw, Gift, CreditCard, Wallet as WalletIcon,
+  Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone, User as UserIcon, AtSign, Bookmark, Music2, RefreshCw, Smile, Gift, CreditCard, Wallet as WalletIcon,
   Globe, Hand, MonitorSmartphone, Contrast, Type, HardDrive, Shield, MapPin,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +23,7 @@ function ProfileTab() {
   const [avatar, setAvatar] = useState(me.avatar);
   const [cropFile, setCropFile] = useState(null);
   const [run, busy] = useAction();
-  const save = () => run(async () => setMe((await api.patch('/me', { displayName: name, bio, avatar, emojiStatus: null })).user), 'Профиль сохранён');
+  const save = () => run(async () => setMe((await api.patch('/me', { displayName: name, bio, avatar })).user), 'Профиль сохранён');
   return (
     <div className="col" style={{ gap: 14 }}>
       <label style={{ cursor: 'pointer', position: 'relative', alignSelf: 'center' }}>
@@ -277,6 +277,7 @@ function SettingsHome({ open }) {
       </button>
       <Group>
         <Row icon={UserIcon} color="#ff3b30" title={t('Мой профиль')} onClick={() => setTab('profile')} />
+        <Row icon={Smile} color="#ff9f0a" title="Статус" value={me.emojiStatus ? `${me.emojiStatus} ${me.statusText || ''}`.trim() : 'не задан'} onClick={() => openModal('status')} />
         <Row icon={AtSign} color="#0a84ff" title={t('Юзернеймы')} value={me.username ? `@${me.username}` : ''} onClick={() => open('usernames')} />
         <Row icon={Music2} color="#ff2d55" title={t('Музыка')} onClick={() => setTab('music')} />
         {saved && <Row icon={Bookmark} color="#5ac8fa" title={t('Избранное')} onClick={() => { setTab('chats'); openChat(saved.id); }} />}

@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { StatusBadge } from './StatusModal.jsx';
 import {
   X, Pencil, Shield, MessageCircle, Gift, Send, Pin, Eye, CalendarDays, Hash, Filter, Play, Pause, ChevronRight, Music2, Megaphone, Check, Phone,
   MoreHorizontal, UserPlus, UserMinus, UserCheck, Ban, Link2, MapPin, Coins, AtSign, Copy, Store,
@@ -352,7 +353,7 @@ export function ProfileView({ userId, onClose }) {
 
   if (!data) return <div className="center" style={{ padding: 60 }}><Spinner /></div>;
   const isMe = data.user.id === me.id;
-  const u = isMe ? { ...data.user, displayName: me.displayName, avatar: me.avatar, nameStyle: me.nameStyle, premium: me.premium, profileBg: me.profileBg, banner: me.banner, blurBg: me.blurBg, links: me.links, location: me.location, username: me.username, anonNumber: me.anonNumber, bio: me.bio } : data.user;
+  const u = isMe ? { ...data.user, displayName: me.displayName, avatar: me.avatar, nameStyle: me.nameStyle, premium: me.premium, profileBg: me.profileBg, banner: me.banner, blurBg: me.blurBg, links: me.links, location: me.location, username: me.username, anonNumber: me.anonNumber, bio: me.bio, emojiStatus: me.emojiStatus, statusText: me.statusText, statusUntil: me.statusUntil } : data.user;
   const worn = u.wornGift;
   const glow = worn?.center || 'var(--accent)';
   const balance = isMe ? me.balance : null;
@@ -417,6 +418,7 @@ export function ProfileView({ userId, onClose }) {
           <StyledName user={u} />
           {u.verified && <Verified size={20} />}
           {u.premium && <PremiumStar size={20} />}
+          <StatusBadge user={u} size={20} onClick={isMe ? () => openModal('status') : undefined} />
           {worn && (
             <span className="pv-worn">
               <button className="pv-worn-bubble" onClick={() => openModal('giftDetails', { userGiftId: worn.id })}>{worn.name} #{worn.number}</button>

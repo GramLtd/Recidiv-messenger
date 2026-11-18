@@ -63,6 +63,7 @@ export const useStore = create((set, get) => ({
     socket = io(API_ORIGIN || undefined, { auth: { token: getToken() }, transports: ['websocket', 'polling'] });
     const s = socket;
     s.on('connect', () => get().loadChats());
+    s.on('toast', ({ text }) => text && get().toast(text, 'error'));
     s.on('message:new', ({ message, chat }) => {
       get().upsertChat(chat);
       const list = get().messages[message.chatId];
@@ -71,7 +72,7 @@ export const useStore = create((set, get) => ({
       }
       if (message.sender) get().clearTyping(message.chatId, message.sender.id);
       const me = get().me;
-      if (message.sender?.id !== me?.id && !chat.muted) {
+      if (message.sender?.id !== me?.id && !chat.muted && !message.silent) {
         if (document.hidden || get().activeChatId !== message.chatId) notifyBrowser(chat, message);
       }
       if (get().activeChatId === message.chatId && !document.hidden) get().markRead(message.chatId);
