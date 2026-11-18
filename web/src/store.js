@@ -75,6 +75,13 @@ export const useStore = create((set, get) => ({
       if (list && !list.some((m) => m.id === message.id)) {
         set({ messages: { ...get().messages, [message.chatId]: [...list, message] } });
       }
+      // forum groups: the open topic gets it too, and «General» shows the newest line
+      if (chat?.forum) {
+        const tk = `${message.chatId}:${message.topicId || 0}`;
+        const tl = get().messages[tk];
+        if (tl && !tl.some((m) => m.id === message.id)) set({ messages: { ...get().messages, [tk]: [...tl, message] } });
+        if (!message.topicId) get().patchTopic(message.chatId, { id: 0, lastMessage: { id: message.id, text: message.text || 'Вложение', senderName: message.sender?.displayName, createdAt: message.createdAt } });
+      }
       if (message.sender) get().clearTyping(message.chatId, message.sender.id);
       const me = get().me;
       if (message.sender?.id !== me?.id && !chat.muted && !message.silent) {
@@ -84,11 +91,17 @@ export const useStore = create((set, get) => ({
     });
     s.on('message:update', ({ message }) => get().patchMessage(message));
     s.on('message:delete', ({ chatId, messageId }) => {
-      const list = get().messages[chatId];
-      if (list) set({ messages: { ...get().messages, [chatId]: list.map((m) => (m.id === messageId ? { ...m, deleted: true, text: '', media: null } : m)) } });
+      const all = { ...get().messages };
+      for (const k of Object.keys(all)) if (k === String(chatId) || k.startsWith(`${chatId}:`)) all[k] = all[k].map((m) => (m.id === messageId ? { ...m, deleted: true, text: '', media: null } : m));
+      set({ messages: all });
       get().refreshChat(chatId);
     });
     s.on('chat:update', ({ chat }) => get().upsertChat(chat));
+    s.on('topic:update', ({ topic }) => get().patchTopic(topic.chatId, topic, true));
+    s.on('topic:delete', ({ chatId, topicId }) => {
+      set({ topics: { ...get().topics, [chatId]: (get().topics[chatId] || []).filter((t) => t.id !== topicId) } });
+      if (get().topicOf[chatId] === topicId) get().openTopic(chatId, undefined);
+    });
     s.on('chat:removed', ({ chatId }) => get().removeChat(chatId));
     s.on('read', ({ chatId, messageId }) => {
       const c = get().chats.find((x) => x.id === chatId);
@@ -156,10 +169,35 @@ export const useStore = create((set, get) => ({
     await get().openChat(chat.id);
     set({ modals: [] });
   },
-  async loadMessages(chatId, before) {
-    const { messages, hasMore } = await api(`/chats/${chatId}/messages${before ? `?before=${before}` : ''}`);
-    const prev = before ? get().messages[chatId] || [] : [];
-    set({ messages: { ...get().messages, [chatId]: [...messages, ...prev] }, hasMore: { ...get().hasMore, [chatId]: hasMore } });
+  async loadMessages(chatId, before, topic) {
+    const q = new URLSearchParams();
+    if (before) q.set('before', before);
+    if (topic !== undefined && topic !== null) q.set('topic', topic);
+    const key = topic !== undefined && topic !== null ? `${chatId}:${topic}` : chatId;
+    const { messages, hasMore } = await api(`/chats/${chatId}/messages${q.toString() ? `?${q}` : ''}`);
+    const prev = before ? get().messages[key] || [] : [];
+    set({ messages: { ...get().messages, [key]: [...messages, ...prev] }, hasMore: { ...get().hasMore, [key]: hasMore } });
+  },
+  // ---------- forum topics ----------
+  topics: {},
+  topicOf: {},
+  async loadTopics(chatId) {
+    try { const { topics } = await api(`/chats/${chatId}/topics`); set({ topics: { ...get().topics, [chatId]: topics } }); } catch {}
+  },
+  patchTopic(chatId, topic, add) {
+    const list = get().topics[chatId];
+    if (!list) return;
+    const has = list.some((t) => t.id === topic.id);
+    if (!has && !add) return;
+    const next = has ? list.map((t) => (t.id === topic.id ? { ...t, ...topic } : t)) : [list[0], topic, ...list.slice(1)];
+    const [general, ...rest] = next;
+    rest.sort((a, b) => (b.pinned - a.pinned) || ((b.lastMessage?.id || 0) - (a.lastMessage?.id || 0)) || b.id - a.id);
+    set({ topics: { ...get().topics, [chatId]: [general, ...rest] } });
+  },
+  async openTopic(chatId, topicId) {
+    set({ topicOf: { ...get().topicOf, [chatId]: topicId } });
+    if (topicId === undefined) return get().loadTopics(chatId);
+    if (!get().messages[`${chatId}:${topicId}`]) await get().loadMessages(chatId, undefined, topicId);
   },
   markRead(chatId) {
     const c = get().chats.find((x) => x.id === chatId);
@@ -173,11 +211,17 @@ export const useStore = create((set, get) => ({
   patchMessage(message) {
     const list = get().messages[message.chatId];
     if (list) set({ messages: { ...get().messages, [message.chatId]: list.map((m) => (m.id === message.id ? message : m)) } });
+    const tk = `${message.chatId}:${message.topicId || 0}`;
+    const tl = get().messages[tk];
+    if (tl) set({ messages: { ...get().messages, [tk]: tl.map((m) => (m.id === message.id ? message : m)) } });
   },
   async sendMessage(chatId, payload) {
-    const { message } = await api(`/chats/${chatId}/messages`, { body: payload });
-    const list = get().messages[chatId] || [];
-    if (!list.some((m) => m.id === message.id)) set({ messages: { ...get().messages, [chatId]: [...list, message] } });
+    const chat = get().chats.find((c) => c.id === chatId);
+    const topic = chat?.forum ? get().topicOf[chatId] : undefined;
+    const { message } = await api(`/chats/${chatId}/messages`, { body: topic ? { ...payload, topicId: topic } : payload });
+    const key = topic !== undefined ? `${chatId}:${topic}` : chatId;
+    const list = get().messages[key] || [];
+    if (!list.some((m) => m.id === message.id)) set({ messages: { ...get().messages, [key]: [...list, message] } });
     return message;
   },
 

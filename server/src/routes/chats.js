@@ -6,7 +6,7 @@ import { fail, requestContext } from '../auth.js';
 import { isPremium, isContact, isBlocked, privacyOf } from '../privacy.js';
 import { INTERACTIVE_BOTS } from '../bots.js';
 import {
-  serializeChat, serializeMessage, getOrCreatePrivateChat, getMember, getUser, createMessage, canPost,
+  serializeChat, serializeMessage, getOrCreatePrivateChat, getMember, getUser, createMessage, messagePreview, canPost,
   assertUsernameFree, emitToUser, emitToChat, chatMemberIds, publicUser, now, sanitizeMedia, safeUploadUrl, changeBalance, pushBalance,
 } from '../services.js';
 
@@ -252,7 +252,13 @@ r.get('/chats/:id/messages', (req, res) => {
   if (!getMember(c.id, req.user.id) && !c.is_public) fail(403, 'Нет доступа');
   const before = Number(req.query.before) || Number.MAX_SAFE_INTEGER;
   const limit = Math.min(Number(req.query.limit) || 50, 100);
-  const rows = db.prepare('SELECT * FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT ?').all(c.id, before, limit);
+  // forum groups: ?topic=<id> for one topic, ?topic=0 for «General» (messages without a topic)
+  const topic = req.query.topic;
+  const rows = topic === undefined || topic === ''
+    ? db.prepare('SELECT * FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT ?').all(c.id, before, limit)
+    : Number(topic)
+      ? db.prepare('SELECT * FROM messages WHERE chat_id = ? AND topic_id = ? AND id < ? ORDER BY id DESC LIMIT ?').all(c.id, Number(topic), before, limit)
+      : db.prepare('SELECT * FROM messages WHERE chat_id = ? AND topic_id IS NULL AND id < ? ORDER BY id DESC LIMIT ?').all(c.id, before, limit);
   res.json({ messages: rows.reverse().map(serializeMessage), hasMore: rows.length === limit });
 });
 
@@ -301,7 +307,16 @@ export function sendMessageAs(user, chatId, body) {
   if (replyTo && !db.prepare('SELECT 1 FROM messages WHERE id = ? AND chat_id = ?').get(replyTo, c.id)) replyTo = null;
   // «delete after reading»: 5 s … 1 week, the countdown starts when the other side reads it
   const ttl = [5, 10, 30, 60, 300, 3600, 86400, 604800].includes(Number(body.ttl)) && c.type !== 'channel' ? Number(body.ttl) : 0;
-  const msg = createMessage({ chatId: c.id, senderId: user.id, type, text: type === 'secret' ? '' : text, media: type === 'secret' ? body._media : media, replyTo, silent: !!body.silent, ttl });
+  let topicId = null;
+  if (c.forum && body.topicId) {
+    const t = db.prepare('SELECT * FROM topics WHERE id = ? AND chat_id = ?').get(Number(body.topicId), c.id);
+    if (!t) fail(404, 'Тема не найдена');
+    const mm = getMember(c.id, user.id);
+    if (t.closed && mm?.role === 'member') fail(403, 'Тема закрыта');
+    topicId = t.id;
+  }
+  const msg = createMessage({ chatId: c.id, senderId: user.id, type, text: type === 'secret' ? '' : text, media: type === 'secret' ? body._media : media, replyTo, silent: !!body.silent, ttl, topicId });
+  if (topicId) pushTopic(c.id, topicId);
   if (c.type === 'private') {
     const peerId = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').get(c.id, user.id)?.user_id;
     const bot = INTERACTIVE_BOTS.get(peerId);
@@ -322,7 +337,7 @@ r.post('/chats/:id/messages', (req, res) => {
     if (!String(req.body.text || '').trim() && !req.body.media) fail(400, 'Пустое сообщение');
     const cnt = db.prepare('SELECT COUNT(*) n FROM scheduled_messages WHERE sender_id = ?').get(req.user.id).n;
     if (cnt >= 100) fail(400, 'Слишком много отложенных сообщений');
-    const payload = { text: String(req.body.text || '').slice(0, 4096), media: req.body.media || null, replyTo: req.body.replyTo || null, silent: !!req.body.silent };
+    const payload = { text: String(req.body.text || '').slice(0, 4096), media: req.body.media || null, replyTo: req.body.replyTo || null, silent: !!req.body.silent, topicId: req.body.topicId || null };
     const r2 = db.prepare('INSERT INTO scheduled_messages (chat_id, sender_id, payload, send_at, created_at) VALUES (?, ?, ?, ?, ?)').run(c.id, req.user.id, JSON.stringify(payload), at, Date.now());
     return res.json({ scheduled: { id: Number(r2.lastInsertRowid), chatId: c.id, sendAt: at, ...payload } });
   }
@@ -440,6 +455,104 @@ r.delete('/messages/:id', (req, res) => {
 
 /** Disappearing messages: 0 (off), 1 hour, 1 day, 1 week, 1 month. Private chats — either side; groups/channels — admins. */
 // protected content: no forwarding / copying / screenshots (enforced by the server for forwards, by clients for the rest)
+// ---------------- topics (forum groups) ----------------
+const TOPIC_COLORS = ['#6fb9f0', '#ffd67e', '#cb86db', '#8eee98', '#ff93b2', '#fb6f5f'];
+function serializeTopic(t) {
+  const last = db.prepare('SELECT * FROM messages WHERE chat_id = ? AND topic_id = ? AND deleted = 0 ORDER BY id DESC LIMIT 1').get(t.chat_id, t.id);
+  const count = db.prepare('SELECT COUNT(*) n FROM messages WHERE chat_id = ? AND topic_id = ? AND deleted = 0').get(t.chat_id, t.id).n;
+  const sender = last?.sender_id ? db.prepare('SELECT display_name FROM users WHERE id = ?').get(last.sender_id) : null;
+  return {
+    id: t.id, chatId: t.chat_id, title: t.title, icon: t.icon || null, color: t.color || TOPIC_COLORS[t.id % TOPIC_COLORS.length],
+    closed: !!t.closed, pinned: !!t.pinned, createdBy: t.created_by, createdAt: t.created_at, count,
+    lastMessage: last ? { id: last.id, text: messagePreview(last), senderName: sender?.display_name, createdAt: last.created_at } : null,
+  };
+}
+function generalTopic(chatId) {
+  const last = db.prepare('SELECT * FROM messages WHERE chat_id = ? AND topic_id IS NULL AND deleted = 0 ORDER BY id DESC LIMIT 1').get(chatId);
+  const sender = last?.sender_id ? db.prepare('SELECT display_name FROM users WHERE id = ?').get(last.sender_id) : null;
+  return { id: 0, chatId, title: 'Общее', icon: '#', color: '#8e8e93', general: true, closed: false, pinned: true,
+    lastMessage: last ? { id: last.id, text: messagePreview(last), senderName: sender?.display_name, createdAt: last.created_at } : null };
+}
+function pushTopic(chatId, topicId) {
+  const t = db.prepare('SELECT * FROM topics WHERE id = ?').get(topicId);
+  if (t) emitToChat(chatId, 'topic:update', { topic: serializeTopic(t) });
+}
+function topicAdmin(c, user, t) {
+  const m = requireMember(c.id, user.id);
+  if (m.role === 'member' && (!t || t.created_by !== user.id)) fail(403, 'Только администраторы или автор темы');
+  return m;
+}
+
+r.post('/chats/:id/forum', (req, res) => {
+  const c = loadChat(req.params.id);
+  if (c.type !== 'group') fail(400, 'Темы доступны только в группах');
+  const m = requireMember(c.id, req.user.id);
+  if (m.role === 'member') fail(403, 'Только администраторы могут включать темы');
+  const on = req.body.on ? 1 : 0;
+  db.prepare('UPDATE chats SET forum = ? WHERE id = ?').run(on, c.id);
+  systemMessage(c.id, on ? `${req.user.display_name} включил(а) темы в группе` : `${req.user.display_name} выключил(а) темы`);
+  for (const uid of chatMemberIds(c.id)) emitToUser(uid, 'chat:update', { chat: serializeChat(c.id, uid) });
+  res.json({ chat: serializeChat(c.id, req.user.id) });
+});
+
+r.get('/chats/:id/topics', (req, res) => {
+  const c = loadChat(req.params.id);
+  if (!getMember(c.id, req.user.id) && !c.is_public) fail(403, 'Нет доступа');
+  const list = db.prepare('SELECT * FROM topics WHERE chat_id = ?').all(c.id).map(serializeTopic);
+  list.sort((a, b) => (b.pinned - a.pinned) || ((b.lastMessage?.id || 0) - (a.lastMessage?.id || 0)) || b.id - a.id);
+  res.json({ topics: [generalTopic(c.id), ...list] });
+});
+
+r.post('/chats/:id/topics', (req, res) => {
+  const c = loadChat(req.params.id);
+  if (!c.forum) fail(400, 'В группе выключены темы');
+  requireMember(c.id, req.user.id);
+  const title = String(req.body.title || '').trim().slice(0, 64);
+  if (!title) fail(400, 'Введите название темы');
+  if (db.prepare('SELECT COUNT(*) n FROM topics WHERE chat_id = ?').get(c.id).n >= 200) fail(400, 'Слишком много тем');
+  const icon = req.body.icon ? [...String(req.body.icon)].slice(0, 2).join('') : null;
+  const color = TOPIC_COLORS.includes(req.body.color) ? req.body.color : null;
+  const id = Number(db.prepare('INSERT INTO topics (chat_id, title, icon, color, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(c.id, title, icon, color, req.user.id, Date.now()).lastInsertRowid);
+  const t = db.prepare('SELECT * FROM topics WHERE id = ?').get(id);
+  createMessage({ chatId: c.id, senderId: null, type: 'system', text: `${req.user.display_name} создал(а) тему «${title}»`, topicId: id });
+  pushTopic(c.id, id);
+  res.json({ topic: serializeTopic(t) });
+});
+
+r.patch('/topics/:id', (req, res) => {
+  const t = db.prepare('SELECT * FROM topics WHERE id = ?').get(Number(req.params.id));
+  if (!t) fail(404, 'Тема не найдена');
+  const c = loadChat(t.chat_id);
+  const m = topicAdmin(c, req.user, t);
+  if (req.body.title !== undefined) {
+    const title = String(req.body.title || '').trim().slice(0, 64);
+    if (!title) fail(400, 'Введите название темы');
+    db.prepare('UPDATE topics SET title = ? WHERE id = ?').run(title, t.id);
+  }
+  if (req.body.icon !== undefined) db.prepare('UPDATE topics SET icon = ? WHERE id = ?').run(req.body.icon ? [...String(req.body.icon)].slice(0, 2).join('') : null, t.id);
+  if (req.body.closed !== undefined) db.prepare('UPDATE topics SET closed = ? WHERE id = ?').run(req.body.closed ? 1 : 0, t.id);
+  if (req.body.pinned !== undefined) {
+    if (m.role === 'member') fail(403, 'Закреплять темы могут только администраторы');
+    db.prepare('UPDATE topics SET pinned = ? WHERE id = ?').run(req.body.pinned ? 1 : 0, t.id);
+  }
+  pushTopic(c.id, t.id);
+  res.json({ topic: serializeTopic(db.prepare('SELECT * FROM topics WHERE id = ?').get(t.id)) });
+});
+
+r.delete('/topics/:id', (req, res) => {
+  const t = db.prepare('SELECT * FROM topics WHERE id = ?').get(Number(req.params.id));
+  if (!t) fail(404, 'Тема не найдена');
+  const c = loadChat(t.chat_id);
+  topicAdmin(c, req.user, t);
+  const ids = db.prepare('SELECT id FROM messages WHERE chat_id = ? AND topic_id = ?').all(c.id, t.id).map((x) => x.id);
+  tx(() => {
+    db.prepare("UPDATE messages SET deleted = 1, text = '', media = NULL WHERE chat_id = ? AND topic_id = ?").run(c.id, t.id);
+    db.prepare('DELETE FROM topics WHERE id = ?').run(t.id);
+  });
+  emitToChat(c.id, 'topic:delete', { chatId: c.id, topicId: t.id, messageIds: ids });
+  res.json({ ok: true });
+});
+
 r.post('/chats/:id/protect', (req, res) => {
   const c = loadChat(req.params.id);
   const m = getMember(c.id, req.user.id);

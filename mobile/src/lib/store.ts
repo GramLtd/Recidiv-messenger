@@ -28,7 +28,12 @@ type State = {
   logout: () => Promise<void>;
   refreshChats: () => Promise<void>;
   openChat: (id: number | null) => void;
-  loadMessages: (chatId: number, older?: boolean) => Promise<void>;
+  loadMessages: (chatId: number, older?: boolean, topic?: number | null) => Promise<void>;
+  activeTopic: number | null;
+  topics: Record<number, any[]>;
+  hasMoreTopic: Record<string, boolean>;
+  loadTopics: (chatId: number) => Promise<void>;
+  patchTopic: (chatId: number, topic: any, add?: boolean) => void;
   send: (chat: Chat, payload: { text?: string; replyTo?: number; media?: any; secret?: boolean; silent?: boolean; ttl?: number }) => Promise<void>;
   upsertMessage: (m: Msg) => void;
   setMe: (u: any) => void;
@@ -44,6 +49,22 @@ export const useStore = create<State>((set, get) => ({
   chats: loadChats(),
   messages: {},
   hasMore: {},
+  activeTopic: null,
+  topics: {},
+  hasMoreTopic: {},
+  async loadTopics(chatId) {
+    try { const r = await api(`/chats/${chatId}/topics`); set({ topics: { ...get().topics, [chatId]: r.topics } }); } catch {}
+  },
+  patchTopic(chatId, topic, add) {
+    const list = get().topics[chatId];
+    if (!list) return;
+    const has = list.some((t) => t.id === topic.id);
+    if (!has && !add) return;
+    const next = has ? list.map((t) => (t.id === topic.id ? { ...t, ...topic } : t)) : [list[0], topic, ...list.slice(1)];
+    const [general, ...rest] = next;
+    rest.sort((a: any, b: any) => (b.pinned - a.pinned) || ((b.lastMessage?.id || 0) - (a.lastMessage?.id || 0)) || b.id - a.id);
+    set({ topics: { ...get().topics, [chatId]: [general, ...rest] } });
+  },
   activeChatId: null,
   typing: {},
 
@@ -101,7 +122,18 @@ export const useStore = create<State>((set, get) => ({
       if (c?.unread) set({ chats: get().chats.map((x) => (x.id === id ? { ...x, unread: 0 } : x)) });
     }
   },
-  async loadMessages(chatId, older) {
+  async loadMessages(chatId, older, topic) {
+    if (topic !== undefined && topic !== null) {
+      // forum topic: fetch only that topic; merged into the chat's cache, the screen filters by topicId
+      const cur = get().messages[chatId] || [];
+      const mine = cur.filter((m: any) => (m.topicId || 0) === topic);
+      const before = older && mine.length ? mine[0].id : undefined;
+      const r = await api(`/chats/${chatId}/messages?topic=${topic}${before ? `&before=${before}` : ''}`);
+      set({ messages: { ...get().messages, [chatId]: mergeById(get().messages[chatId] || [], r.messages) }, hasMoreTopic: { ...get().hasMoreTopic, [`${chatId}:${topic}`]: r.hasMore } });
+      const last = r.messages[r.messages.length - 1];
+      if (last && !older) api(`/chats/${chatId}/read`, { body: { messageId: Math.max(last.id, get().chats.find((c) => c.id === chatId)?.lastMessage?.id || 0) } }).catch(() => {});
+      return;
+    }
     if (!older && !get().messages[chatId]) set({ messages: { ...get().messages, [chatId]: loadMessages(chatId) } });
     const cur = get().messages[chatId] || [];
     const before = older && cur.length ? cur[0].id : undefined;
@@ -115,6 +147,7 @@ export const useStore = create<State>((set, get) => ({
   async send(chat, p) {
     let body: any = { text: p.text, replyTo: p.replyTo, media: p.media, silent: p.silent || undefined, ttl: p.ttl || undefined };
     if (p.secret && chat.type === 'private' && chat.peer) body = { e2e: await encryptFor(chat.peer.id, p.text || ''), replyTo: p.replyTo };
+    if ((chat as any).forum && get().activeTopic) body.topicId = get().activeTopic;
     const { message } = await api(`/chats/${chat.id}/messages`, { body });
     get().upsertMessage(message);
   },
@@ -168,6 +201,7 @@ function afterLogin() {
     const chats = s.chats.some((c) => c.id === chat.id) ? s.chats.map((c) => (c.id === chat.id ? chat : c)) : [chat, ...s.chats];
     useStore.setState({ chats: sortChats(chats) });
     s.upsertMessage(message);
+    if (chat.forum && !message.topicId) s.patchTopic(chat.id, { id: 0, lastMessage: { id: message.id, text: message.text || 'Вложение', senderName: message.sender?.displayName, createdAt: message.createdAt } });
     if (message.sender?.id !== s.me?.id && !chat.muted) {
       if (s.activeChatId === message.chatId) api(`/chats/${chat.id}/read`, { body: { messageId: message.id } }).catch(() => {});
       if (!message.silent) notifyMessage(chat.title, message.type === 'secret' ? '🔒 Зашифрованное сообщение' : message.text || 'Новое сообщение', chat.id);
@@ -180,6 +214,8 @@ function afterLogin() {
     if (st().chats.find((c) => c.id === chatId)?.lastMessage?.id === messageId) st().refreshChats().catch(() => {});
   });
   on('chat:update', ({ chat }) => st().upsertChat(chat));
+  on('topic:update', ({ topic }) => st().patchTopic(topic.chatId, topic, true));
+  on('topic:delete', ({ chatId, topicId }) => useStore.setState({ topics: { ...st().topics, [chatId]: (st().topics[chatId] || []).filter((t) => t.id !== topicId) } }));
   on('chat:removed', ({ chatId }) => useStore.setState({ chats: st().chats.filter((c) => c.id !== chatId) }));
   on('typing', ({ chatId }) => useStore.setState({ typing: { ...st().typing, [chatId]: Date.now() + 4000 } }));
   on('balance', ({ balance }) => st().setMe({ balance }));

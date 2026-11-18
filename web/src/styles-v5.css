@@ -788,7 +788,7 @@ body { font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe
 .chat-main .messages { padding-top: 70px; }
 .tg-back { display: flex; align-items: center; gap: 2px; height: 46px; padding: 0 12px 0 8px; border-radius: 23px; flex-shrink: 0; color: var(--text); }
 .tg-back-count { min-width: 26px; height: 24px; padding: 0 7px; border-radius: 12px; background: var(--text); color: var(--bg); font-size: .82em; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-@media (min-width: 769px) { .tg-back { display: none; } }
+@media (min-width: 769px) { .tg-back { display: none; } .tg-back.in-topic { display: flex; } .tg-back.in-topic .tg-back-count { display: none; } }
 .tg-title { flex: 1; min-width: 0; height: 46px; border-radius: 23px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 16px; line-height: 1.15; }
 .tg-name { display: flex; align-items: center; gap: 5px; max-width: 100%; font-weight: 700; color: var(--text); }
 .tg-title .status { font-size: .78em; color: var(--text-2); }
@@ -1409,3 +1409,24 @@ html.perf .modal-body > *, html.perf .page-body > *, html.perf .post, html.perf 
 .speak-ring.on { box-shadow: 0 0 0 2px #34c759, 0 0 12px rgba(52, 199, 89, .6); }
 .room-audio { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 @media (max-width: 520px) { .hide-narrow { display: none !important; } .call-self { width: 110px; } }
+
+/* ---------- forum topics ---------- */
+.chat-main .messages.topics-pane { display: flex; flex-direction: column; padding-bottom: 0; }
+.topics-list { position: relative; z-index: 1; max-width: 760px; width: 100%; margin: 0 auto; padding: 0 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+.topic-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: color-mix(in srgb, var(--bg2, #1c1c1e) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); cursor: pointer; transition: transform .18s cubic-bezier(.2,.8,.2,1), background .15s; animation: topicIn .38s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(min(var(--i), 12) * 28ms); }
+.topic-row:hover { background: color-mix(in srgb, var(--bg2, #1c1c1e) 95%, var(--accent) 5%); }
+.topic-row:active { transform: scale(.985); }
+@keyframes topicIn { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+.topic-ico { width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; font-size: 22px; font-weight: 800; color: #fff; background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--tc) 100%, #fff 25%), color-mix(in srgb, var(--tc) 75%, #000 25%)); box-shadow: 0 4px 14px color-mix(in srgb, var(--tc) 35%, transparent); }
+.topic-ico.sm { width: 22px; height: 22px; font-size: 12px; box-shadow: none; }
+.topic-ico.lg { width: 72px; height: 72px; font-size: 36px; }
+.topic-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.topic-who { color: var(--text); }
+.topic-more { background: none; border: 0; color: var(--text2, #8e8e93); padding: 6px; border-radius: 10px; cursor: pointer; }
+.topic-more:hover { background: rgba(127,127,127,.15); }
+.topic-new { position: sticky; z-index: 3; align-self: center; margin-top: auto; margin-bottom: calc(18px + env(safe-area-inset-bottom)); bottom: calc(18px + env(safe-area-inset-bottom)); flex-shrink: 0; border-radius: 999px; padding: 12px 22px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+.topic-preview { display: grid; place-items: center; margin: 4px 0 14px; }
+.topic-icons { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 12px; }
+.topic-icons button { font-size: 22px; height: 44px; border-radius: 12px; border: 1px solid transparent; background: rgba(127,127,127,.12); cursor: pointer; transition: transform .15s; }
+.topic-icons button:hover { transform: scale(1.08); }
+.topic-icons button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }

@@ -516,6 +516,22 @@ db.exec(`CREATE TABLE IF NOT EXISTS comment_likes (comment_id INTEGER NOT NULL, 
 CREATE TABLE IF NOT EXISTS subscriptions (subscriber_id INTEGER NOT NULL, author_id INTEGER NOT NULL, until INTEGER NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (subscriber_id, author_id));`);
 addColumn('users', 'daily_last', 'TEXT');
 addColumn('gifts', 'sale_until', 'INTEGER');
+// group topics (forum mode)
+addColumn('chats', 'forum', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('messages', 'topic_id', 'INTEGER');
+db.exec(`CREATE TABLE IF NOT EXISTS topics (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  chat_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  icon TEXT,
+  color TEXT,
+  created_by INTEGER,
+  closed INTEGER NOT NULL DEFAULT 0,
+  pinned INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_topics_chat ON topics(chat_id);
+CREATE INDEX IF NOT EXISTS idx_messages_topic ON messages(chat_id, topic_id, id);`);
 // seed price history from past market sales (once)
 if (!db.prepare('SELECT 1 FROM price_points LIMIT 1').get()) {
   db.prepare(`INSERT INTO price_points (gift_id, price, source, created_at)

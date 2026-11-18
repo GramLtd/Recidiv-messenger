@@ -5,7 +5,7 @@ import { Poll, PollModal, LinkPreview, Translation, translateMessage } from './M
 import { startCall, joinRoom, leaveRoom, useRoom, useRoomCounts } from './Calls.jsx';
 import {
   ArrowLeft, Timer, Search, MoreVertical, Paperclip, Smile, Send, Mic, X, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck,
-  FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square, ChevronLeft, Clock, Languages, BarChart3, Image as ImageIcon, Flame, ShieldCheck, Phone, Video, Headphones,
+  FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square, ChevronLeft, Clock, Languages, BarChart3, Image as ImageIcon, Flame, ShieldCheck, Phone, Video, Headphones, Hash, Lock, Pin, Plus, MoreHorizontal,
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, upload, mediaUrl } from '../api.js';
@@ -344,7 +344,7 @@ function Composer({ chat }) {
     if (!t) return;
     try {
       if (opts.scheduleAt) {
-        await api(`/chats/${chat.id}/messages`, { body: { text: t, replyTo: reply?.id, scheduleAt: opts.scheduleAt, silent: opts.silent } });
+        await api(`/chats/${chat.id}/messages`, { body: { text: t, replyTo: reply?.id, scheduleAt: opts.scheduleAt, silent: opts.silent, topicId: chat.forum ? useStore.getState().topicOf[chat.id] || undefined : undefined } });
         toast(`Сообщение будет отправлено ${new Date(opts.scheduleAt).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`);
         loadScheduled();
       } else {
@@ -609,13 +609,99 @@ function Composer({ chat }) {
   );
 }
 
+const TOPIC_ICONS = ['💬', '🎁', '😂', '🎧', '🎮', '📢', '💡', '🔥', '📸', '💰', '⚽', '❓'];
+function TopicList({ chat, topics }) {
+  const [creating, setCreating] = useState(null);
+  const [menu, setMenu] = useState(null);
+  const openTopic = useStore((s) => s.openTopic);
+  const toast = useStore((s) => s.toast);
+  const isAdmin = chat.role === 'owner' || chat.role === 'admin';
+  const meId = useStore((s) => s.me?.id);
+  const create = async () => {
+    try {
+      const { topic } = await api(`/chats/${chat.id}/topics`, { body: creating });
+      setCreating(null);
+      useStore.getState().patchTopic(chat.id, topic, true);
+      openTopic(chat.id, topic.id);
+    } catch (e) { toast(e.message, 'error'); }
+  };
+  const act = async (t, body) => {
+    setMenu(null);
+    try {
+      if (body === 'delete') {
+        if (!confirm(`Удалить тему «${t.title}» вместе со всеми сообщениями?`)) return;
+        await api(`/topics/${t.id}`, { method: 'DELETE' });
+      } else useStore.getState().patchTopic(chat.id, (await api(`/topics/${t.id}`, { method: 'PATCH', body })).topic);
+    } catch (e) { toast(e.message, 'error'); }
+  };
+  return (
+    <div className="messages topics-pane">
+      <div className="topics-list">
+        {!topics && <div className="center" style={{ padding: 40 }}><div className="spinner" /></div>}
+        {topics?.map((t, i) => (
+          <div key={t.id} className="topic-row" style={{ '--i': i }} onClick={() => openTopic(chat.id, t.id)} onContextMenu={(e) => { if (t.general) return; e.preventDefault(); setMenu({ t, x: e.clientX, y: e.clientY }); }}>
+            <span className="topic-ico" style={{ '--tc': t.color }}>{t.icon || t.title[0]}</span>
+            <div className="grow" style={{ minWidth: 0 }}>
+              <div className="topic-title">
+                <b className="ellipsis">{t.title}</b>
+                {t.closed && <Lock size={13} className="muted" />}
+                {t.pinned && !t.general && <Pin size={13} className="muted" />}
+                {t.lastMessage && <span className="tiny muted" style={{ marginLeft: 'auto' }}>{dayLabel(t.lastMessage.createdAt)}</span>}
+              </div>
+              <div className="small muted ellipsis">{t.lastMessage ? <>{t.lastMessage.senderName && <span className="topic-who">{t.lastMessage.senderName}: </span>}{t.lastMessage.text}</> : 'Сообщений пока нет'}</div>
+            </div>
+            {!t.general && (isAdmin || t.createdBy === meId) && (
+              <button className="topic-more" onClick={(e) => { e.stopPropagation(); setMenu({ t, x: e.clientX, y: e.clientY }); }} aria-label="Ещё"><MoreHorizontal size={18} /></button>
+            )}
+          </div>
+        ))}
+      </div>
+      {chat.isMember && <button className="btn topic-new" onClick={() => setCreating({ title: '', icon: '💬' })}><Plus size={18} /> Новая тема</button>}
+      {menu && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMenu(null)} />
+          <div className="ctx-menu" style={{ position: 'fixed', left: Math.min(menu.x, innerWidth - 230), top: Math.min(menu.y, innerHeight - 200), zIndex: 41, minWidth: 210 }}>
+            {isAdmin && <button className="menu-item" onClick={() => act(menu.t, { pinned: !menu.t.pinned })}><Pin size={17} /> {menu.t.pinned ? 'Открепить' : 'Закрепить'}</button>}
+            <button className="menu-item" onClick={() => act(menu.t, { closed: !menu.t.closed })}><Lock size={17} /> {menu.t.closed ? 'Открыть тему' : 'Закрыть тему'}</button>
+            <button className="menu-item danger" onClick={() => act(menu.t, 'delete')}><Trash2 size={17} /> Удалить тему</button>
+          </div>
+        </>
+      )}
+      {creating && (
+        <div className="modal-overlay" onClick={() => setCreating(null)}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head"><h3>Новая тема</h3><button className="icon-btn" onClick={() => setCreating(null)}><X size={20} /></button></div>
+            <div className="modal-body">
+            <div className="topic-preview"><span className="topic-ico lg" style={{ '--tc': '#6fb9f0' }}>{creating.icon}</span></div>
+            <input className="input" autoFocus maxLength={64} placeholder="Название темы" value={creating.title} onChange={(e) => setCreating({ ...creating, title: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && create()} />
+            <div className="topic-icons">
+              {TOPIC_ICONS.map((ic) => <button key={ic} className={creating.icon === ic ? 'on' : ''} onClick={() => setCreating({ ...creating, icon: ic })}>{ic}</button>)}
+            </div>
+            <div className="row" style={{ gap: 8, marginTop: 14 }}>
+              <button className="btn ghost grow" onClick={() => setCreating(null)}>Отмена</button>
+              <button className="btn grow" disabled={!creating.title.trim()} onClick={create}>Создать</button>
+            </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ChatView() {
   const chatId = useStore((s) => s.activeChatId);
   const chat = useStore((s) => s.chats.find((c) => c.id === s.activeChatId));
-  const messages = useStore((s) => s.messages[s.activeChatId]);
+  const topic = useStore((s) => (chat?.forum ? s.topicOf[s.activeChatId] : undefined));
+  const topics = useStore((s) => s.topics[s.activeChatId]);
+  const inTopics = !!chat?.forum && topic === undefined;
+  const msgKey = chat?.forum && topic !== undefined ? `${chatId}:${topic}` : chatId;
+  const messages = useStore((s) => s.messages[msgKey]);
   const [timerMenu, setTimerMenu] = useState(false);
   const shown = useMemo(() => messages?.filter((m) => !m.deleted), [messages]);
-  const hasMore = useStore((s) => s.hasMore[s.activeChatId]);
+  const hasMore = useStore((s) => s.hasMore[msgKey]);
+  const curTopic = topics?.find((t) => t.id === topic);
+  useEffect(() => { if (chat?.forum && !topics) useStore.getState().loadTopics(chat.id); }, [chat?.id, chat?.forum]); // eslint-disable-line react-hooks/exhaustive-deps
   const me = useStore((s) => s.me);
   const typing = useStore((s) => s.typing[s.activeChatId]);
   const openChat = useStore((s) => s.openChat);
@@ -694,7 +780,7 @@ export default function ChatView() {
       el.scrollTop = el.scrollHeight - prevHeight.current;
       loadingOlder.current = false;
     } else if (stick.current) el.scrollTop = el.scrollHeight;
-  }, [messages, chatId]);
+  }, [messages, chatId, topic]);
 
   const onScroll = () => {
     const el = scrollRef.current;
@@ -704,7 +790,7 @@ export default function ChatView() {
     if (el.scrollTop < 200 && hasMore && !loadingOlder.current && messages?.length) {
       loadingOlder.current = true;
       prevHeight.current = el.scrollHeight;
-      loadMessages(chatId, messages[0].id).catch(() => (loadingOlder.current = false));
+      loadMessages(chatId, messages[0].id, chat?.forum ? topic : undefined).catch(() => (loadingOlder.current = false));
     }
   };
 
@@ -757,7 +843,7 @@ export default function ChatView() {
     <div ref={mainRef} className={`chat-main ${wallpaper ? 'has-wp' : ''}`}>
       <ChatWallpaper wp={wallpaper} />
       <div className="chat-header tg-head">
-        <button className="lg tg-back" onClick={closeChat} aria-label="Назад">
+        <button className={`lg tg-back ${chat.forum && topic !== undefined ? 'in-topic' : ''}`} onClick={() => (chat.forum && topic !== undefined ? useStore.getState().openTopic(chat.id, undefined) : closeChat())} aria-label="Назад">
           <ChevronLeft size={24} />
           {otherUnread > 0 && <span className="tg-back-count">{otherUnread > 999 ? '999+' : otherUnread}</span>}
         </button>
@@ -770,14 +856,15 @@ export default function ChatView() {
         ) : (
           <button className="lg tg-title" onClick={() => setRightPanel(!rightPanel)}>
             <span className="tg-name">
-              <span className="ellipsis">{chat.title}</span>
+              {curTopic && <span className="topic-ico sm" style={{ '--tc': curTopic.color }}>{curTopic.icon || curTopic.title[0]}</span>}
+              <span className="ellipsis">{curTopic ? curTopic.title : chat.title}</span>
               {chat.peer?.verified && <Verified size={15} />}
               {chat.peer?.premium && <PremiumStar size={14} />}
               <StatusBadge user={chat.peer} size={15} />
               {chat.peer?.wornGift && <WornGift gift={chat.peer.wornGift} size={18} />}
               {chat.muted && <BellOff size={13} className="muted" />}
             </span>
-            {status || <span className="status">{chat.type === 'saved' ? 'облако' : ''}</span>}
+            {curTopic ? <span className="status">{chat.title}{curTopic.closed ? ' · тема закрыта' : ''}</span> : inTopics ? <span className="status">{membersLabel(chat)} · {Math.max(0, (topics?.length || 1) - 1)} тем</span> : status || <span className="status">{chat.type === 'saved' ? 'облако' : ''}</span>}
           </button>
         )}
         {!searchOpen && (chat.type === 'private' || chat.type === 'saved' || chat.role === 'owner' || chat.role === 'admin') && (
@@ -798,6 +885,15 @@ export default function ChatView() {
                     <ShieldCheck size={18} /> Защита чата{chat.protected && <Check size={16} className="accent" style={{ marginLeft: 'auto' }} />}
                   </button>
                   <div className="tiny muted" style={{ padding: '0 12px 6px', maxWidth: 230 }}>Нельзя пересылать, копировать и делать скриншоты в приложении</div>
+                  {chat.type === 'group' && (
+                    <>
+                      <div className="menu-sep" />
+                      <button className="menu-item" onClick={async () => { setTimerMenu(false); try { upsertChat((await api(`/chats/${chat.id}/forum`, { body: { on: !chat.forum } })).chat); useStore.getState().openTopic(chat.id, undefined); } catch (e) { useStore.getState().toast(e.message, 'error'); } }}>
+                        <Hash size={18} /> Темы{chat.forum && <Check size={16} className="accent" style={{ marginLeft: 'auto' }} />}
+                      </button>
+                      <div className="tiny muted" style={{ padding: '0 12px 6px', maxWidth: 230 }}>Разделите группу на отдельные ветки обсуждений</div>
+                    </>
+                  )}
                 </div>
               </>
             )}
@@ -830,6 +926,7 @@ export default function ChatView() {
         </div>
       )}
 
+      {inTopics ? <TopicList chat={chat} topics={topics} /> : <>
       <div className="messages" ref={scrollRef} onScroll={onScroll}>
         <div className="chat-bg-pattern" />
         <div className="messages-inner">
@@ -870,7 +967,9 @@ export default function ChatView() {
         </button>
       )}
 
-      {canPost ? (
+      {canPost && curTopic?.closed && chat.role === 'member' ? (
+        <div className="channel-footer"><span className="muted small">Тема закрыта — писать могут только администраторы</span></div>
+      ) : canPost ? (
         <Composer chat={chat} />
       ) : (
         <div className="channel-footer">
@@ -883,6 +982,7 @@ export default function ChatView() {
           )}
         </div>
       )}
+      </>}
 
       {menu && (
         <MessageMenu

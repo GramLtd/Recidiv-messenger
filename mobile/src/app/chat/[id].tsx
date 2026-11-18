@@ -28,6 +28,7 @@ import { AudioMsg } from '../../components/Music';
 import { richText, stripFormatting } from '../../lib/richtext';
 import { PollView, LinkPreview, TranslationView, translateMessage } from '../../components/MessageExtras';
 import { startCall, joinRoom, leaveRoom, useRoom, useRoomCounts } from '../../lib/calls';
+import { TopicsView, TopicIcon } from '../../components/Topics';
 import { useFont, fontStyle } from '../../lib/fonts';
 import { colorFor, dayLabel, fileSize, lastSeen, membersLabel, timeHM } from '../../lib/util';
 import { C, webSpring } from '../../lib/theme';
@@ -272,15 +273,17 @@ const Bubble = React.memo(function Bubble({ m, chat, meId, grouped, groupedNext,
 
 /* ------------------------------------------------------------------ screen */
 export default function ChatScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, topic: topicParam } = useLocalSearchParams<{ id: string; topic?: string }>();
   const chatId = Number(id);
+  const topic = topicParam !== undefined && topicParam !== '' ? Number(topicParam) : null;
+  const curTopic = useStore((st) => (topic !== null ? st.topics[chatId]?.find((t: any) => t.id === topic) : undefined));
   const insets = useSafeAreaInsets();
   const font = useFont((s) => s.id);
   const me = useStore((st) => st.me);
   const chat = useStore((st) => st.chats.find((c) => c.id === chatId));
   const otherUnread = useStore((st) => st.chats.reduce((n, c) => n + (c.id !== chatId && !c.muted ? c.unread || 0 : 0), 0));
   const messages = useStore((st) => st.messages[chatId]);
-  const hasMore = useStore((st) => st.hasMore[chatId]);
+  const hasMore = useStore((st) => (topic !== null ? st.hasMoreTopic[`${chatId}:${topic}`] : st.hasMore[chatId]));
   const typingUntil = useStore((st) => st.typing[chatId] || 0);
   const { loadMessages, send, openChat, upsertMessage, ensureChat } = useStore.getState();
   const low = usePerf((p) => p.low);
@@ -309,7 +312,12 @@ export default function ChatScreen() {
   useEffect(() => { if (lastMine) listRef.current?.scrollToOffset({ offset: 0, animated: true }); }, [lastMine]);
   const [, force] = useState(0);
 
-  useEffect(() => { ensureChat(chatId).catch(() => {}); openChat(chatId); loadMessages(chatId).catch(() => {}); return () => openChat(null); }, [chatId]);
+  useEffect(() => {
+    ensureChat(chatId).catch(() => {}); openChat(chatId);
+    if (topic !== null) { useStore.setState({ activeTopic: topic }); if (!useStore.getState().topics[chatId]) useStore.getState().loadTopics(chatId); }
+    loadMessages(chatId, false, topic).catch(() => {});
+    return () => { openChat(null); if (topic !== null) useStore.setState({ activeTopic: null }); };
+  }, [chatId, topic]);
   useEffect(() => { if (chat?.type === 'private' && chat.peer && chat.peer.id !== me?.id) canEncryptTo(chat.peer.id).then((ok) => { setCanSecret(ok); if (ok && useLock.getState().e2eDefault) setSecret(true); }); }, [chat?.peer?.id]);
   useEffect(() => { if (!rec) return undefined; const t = setInterval(() => force((x) => x + 1), 500); return () => clearInterval(t); }, [rec]);
   useEffect(() => {
@@ -320,7 +328,7 @@ export default function ChatScreen() {
 
   // inverted list: newest first; date pills between days; grouping like the web (same sender, < 5 min, same day)
   const items = useMemo(() => {
-    const list = (messages || []).filter((m: any) => !m.deleted);
+    const list = (messages || []).filter((m: any) => !m.deleted && (topic === null || (m.topicId || 0) === topic));
     const same = (a: any, b: any) => a && b && a.type !== 'system' && b.type !== 'system' && a.sender?.id === b.sender?.id && Math.abs(b.createdAt - a.createdAt) < 300000 && new Date(a.createdAt).toDateString() === new Date(b.createdAt).toDateString();
     const out: any[] = [];
     for (let i = list.length - 1; i >= 0; i--) {
@@ -329,7 +337,7 @@ export default function ChatScreen() {
       if (!prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString()) out.push({ k: `d${m.id}`, day: dayLabel(m.createdAt) });
     }
     return out;
-  }, [messages]);
+  }, [topic, messages]);
 
   const toBottom = () => requestAnimationFrame(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }));
   const submit = async () => {
@@ -353,7 +361,7 @@ export default function ChatScreen() {
     const at = (h: number, m = 0, plusDays = 0) => { const d = new Date(); d.setDate(d.getDate() + plusDays); d.setHours(h, m, 0, 0); if (d.getTime() < Date.now() + 60_000) d.setDate(d.getDate() + 1); return d.getTime(); };
     const schedule = async (when: number) => {
       try {
-        await api(`/chats/${chat.id}/messages`, { body: { text: t, replyTo: reply?.id, scheduleAt: when } });
+        await api(`/chats/${chat.id}/messages`, { body: { text: t, replyTo: reply?.id, scheduleAt: when, topicId: topic || undefined } });
         setText(''); setReply(null);
         Alert.alert('Сообщение отложено', `Отправится ${new Date(when).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`);
       } catch (e: any) { Alert.alert(e.message); }
@@ -459,6 +467,7 @@ export default function ChatScreen() {
     return () => { ScreenCapture.allowScreenCaptureAsync(`chat-${chat.id}`).catch(() => {}); };
   }, [chat?.id, chat?.protected]);
   if (!chat || !me) return <View style={{ flex: 1, backgroundColor: C.bg }} />;
+  if (chat.forum && topic === null) return <TopicsView chat={chat} />;
   const typing = typingUntil > Date.now();
   const online = chat.type === 'private' && chat.peer?.online;
   const status = typing ? 'печатает…' : chat.type === 'private' ? lastSeen(chat.peer) : chat.type === 'saved' ? 'облако' : chat.memberCount ? membersLabel(chat) : '';
@@ -466,8 +475,9 @@ export default function ChatScreen() {
   const timerMenu = () => {
     const set = async (v: number) => { try { useStore.getState().upsertChat((await api(`/chats/${chat.id}/auto-delete`, { body: { seconds: v } })).chat); } catch (e: any) { alert(e.message); } };
     const protect = async () => { try { useStore.getState().upsertChat((await api(`/chats/${chat.id}/protect`, { body: { on: !chat.protected } })).chat); } catch (e: any) { alert(e.message); } };
-    const opts = [...TTL.map(([v, l]) => ((chat.autoDelete || 0) === v ? `✓ ${l}` : l)), chat.protected ? '🛡 Выключить защиту чата' : '🛡 Защитить чат (без пересылки и скриншотов)'];
-    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ title: 'Автоудаление и защита', message: 'Новые сообщения исчезнут у всех через выбранное время', options: [...opts, 'Отмена'], cancelButtonIndex: opts.length }, (i) => (i === TTL.length ? protect() : TTL[i] && set(TTL[i][0])));
+    const forum = async () => { try { useStore.getState().upsertChat((await api(`/chats/${chat.id}/forum`, { body: { on: !chat.forum } })).chat); } catch (e: any) { alert(e.message); } };
+    const opts = [...TTL.map(([v, l]) => ((chat.autoDelete || 0) === v ? `✓ ${l}` : l)), chat.protected ? '🛡 Выключить защиту чата' : '🛡 Защитить чат (без пересылки и скриншотов)', ...(chat.type === 'group' && chat.role !== 'member' ? [chat.forum ? '# Выключить темы' : '# Включить темы (форум)'] : [])];
+    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ title: 'Автоудаление и защита', message: 'Новые сообщения исчезнут у всех через выбранное время', options: [...opts, 'Отмена'], cancelButtonIndex: opts.length }, (i) => (i === TTL.length ? protect() : i === TTL.length + 1 ? forum() : TTL[i] && set(TTL[i][0])));
     else Alert.alert('Автоудаление сообщений', '', TTL.map(([v, l]) => ({ text: l, onPress: () => set(v) })));
   };
   const ttlLabel = TTL.find((t) => t[0] === chat.autoDelete)?.[1];
@@ -489,7 +499,7 @@ export default function ChatScreen() {
             : <Bubble m={item.m} chat={chat} meId={me.id} grouped={item.grouped} groupedNext={item.groupedNext} onLong={setMenu} onReact={react} fresh={Date.now() - sentAt.current < 4000 && item.m.sender?.id === me.id} />}
           contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.top + 70, paddingHorizontal: 12 }}
           ListEmptyComponent={messages ? <View style={[st.dayWrap, { transform: [{ scaleY: -1 }], marginTop: 80 }]}><View style={st.day}><T size={13.5} color="#fff">{chat.type === 'saved' ? 'Пересылайте сюда сообщения и сохраняйте файлы' : 'Сообщений пока нет — напишите первым!'}</T></View></View> : undefined}
-          onEndReached={() => hasMore && loadMessages(chatId, true).catch(() => {})}
+          onEndReached={() => hasMore && loadMessages(chatId, true, topic).catch(() => {})}
           onEndReachedThreshold={0.4}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
@@ -587,18 +597,19 @@ export default function ChatScreen() {
           <Press onPress={() => (chat.peer ? router.push(`/user/${chat.peer.id}`) : undefined)} style={{ flex: 1 }} scale={0.97}>
             <Glass radius={23} style={st.title}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, maxWidth: '100%' }}>
-                <T w={700} numberOfLines={1} style={{ flexShrink: 1 }}>{chat.title}</T>
+                {curTopic && <TopicIcon t={curTopic} size={20} />}
+                <T w={700} numberOfLines={1} style={{ flexShrink: 1 }}>{curTopic ? curTopic.title : chat.title}</T>
                 {chat.peer?.verified && <Verified size={15} />}
                 {chat.peer?.premium && <PremiumStar size={14} />}
                 {!!chat.peer?.emojiStatus && <T size={14}>{chat.peer.emojiStatus}</T>}
                 {chat.peer?.wornGift && <WornGift gift={chat.peer.wornGift} size={18} />}
                 {chat.muted && <BellOff size={13} color={C.text2} />}
               </View>
-              {!!(status || chat.autoDelete) && <T size={11.7} color={typing || online ? C.accent : C.text2} numberOfLines={1}>{status}{chat.autoDelete ? `${status ? ' · ' : ''}⏱ ${ttlLabel}` : ''}</T>}
+              {curTopic ? <T size={11.7} color={C.text2} numberOfLines={1}>{chat.title}{curTopic.closed ? ' · тема закрыта' : ''}</T> : !!(status || chat.autoDelete) && <T size={11.7} color={typing || online ? C.accent : C.text2} numberOfLines={1}>{status}{chat.autoDelete ? `${status ? ' · ' : ''}⏱ ${ttlLabel}` : ''}</T>}
             </Glass>
           </Press>
         )}
-        {search === null && (chat.type === 'private' || chat.type === 'saved' || chat.role === 'owner' || chat.role === 'admin') && (
+        {search === null && topic === null && (chat.type === 'private' || chat.type === 'saved' || chat.role === 'owner' || chat.role === 'admin') && (
           <Press onPress={timerMenu} scale={0.92}><Glass radius={21} style={st.round}><Timer size={19} color={chat.autoDelete ? C.accent : C.text} /></Glass></Press>
         )}
         {search === null && chat.type === 'private' && chat.peer && !chat.peer.isBot && (
@@ -606,7 +617,7 @@ export default function ChatScreen() {
             <Glass radius={21} style={st.round}><Phone size={18} color={C.text} /></Glass>
           </Press>
         )}
-        {search === null && chat.type === 'group' && (
+        {search === null && topic === null && chat.type === 'group' && (
           <Press onPress={() => (inRoom ? leaveRoom() : joinRoom(chat))} scale={0.92}>
             <Glass radius={21} style={[st.round, roomUsers.length > 0 && { width: 'auto', paddingHorizontal: 12, flexDirection: 'row', gap: 4 }]}><Headphones size={18} color={roomUsers.length || inRoom ? '#34c759' : C.text} />{roomUsers.length > 0 && <T w={700} size={13} color="#34c759">{roomUsers.length}</T>}</Glass>
           </Press>

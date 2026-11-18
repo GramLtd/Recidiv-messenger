@@ -175,16 +175,17 @@ export function serializeMessage(m) {
     expiresAt: m.expires_at || undefined,
     silent: m.silent ? true : undefined,
     ttl: m.ttl || undefined,
+    topicId: m.topic_id || undefined,
   };
 }
 
-export function createMessage({ chatId, senderId, type = 'text', text = '', media = null, replyTo = null, forwardFrom = null, userGiftId = null, silent = false, ttl = 0 }) {
+export function createMessage({ chatId, senderId, type = 'text', text = '', media = null, replyTo = null, forwardFrom = null, userGiftId = null, silent = false, ttl = 0, topicId = null }) {
   const r = db
     .prepare(
-      `INSERT INTO messages (chat_id, sender_id, type, text, media, reply_to, forward_from, user_gift_id, created_at, expires_at, silent, ttl)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO messages (chat_id, sender_id, type, text, media, reply_to, forward_from, user_gift_id, created_at, expires_at, silent, ttl, topic_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(chatId, senderId, type, text, media ? JSON.stringify(media) : null, replyTo, forwardFrom, userGiftId, now(), expiryFor(chatId, type), silent ? 1 : 0, ttl || 0);
+    .run(chatId, senderId, type, text, media ? JSON.stringify(media) : null, replyTo, forwardFrom, userGiftId, now(), expiryFor(chatId, type), silent ? 1 : 0, ttl || 0, topicId || null);
   const id = Number(r.lastInsertRowid);
   if (senderId) db.prepare('UPDATE chat_members SET last_read_id = ? WHERE chat_id = ? AND user_id = ?').run(id, chatId, senderId);
   // like Telegram: an archived chat that isn't muted comes back to the main list when someone writes
@@ -291,6 +292,7 @@ export function serializeChat(chatOrId, viewerId) {
     muted: !!member?.muted,
     archived: !!member?.archived,
     protected: !!c.protected,
+    forum: c.type === 'group' && !!c.forum,
     unread,
     lastReadId: member?.last_read_id || 0,
     peerReadId,
