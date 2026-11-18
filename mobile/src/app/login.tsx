@@ -14,11 +14,17 @@ export default function Login() {
   const [phrase, setPhrase] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pwStep, setPwStep] = useState<any>(null);
+  const [pw, setPw] = useState('');
   const go = async () => {
     setErr('');
     if (!isValid(phrase)) return setErr('Проверьте 12 слов и их порядок');
     setBusy(true);
-    try { await login(phrase); } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
+    try { const r = await login(phrase); if (r && (r as any).needPassword) setPwStep(r); } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
+  };
+  const goPw = async () => {
+    setErr(''); setBusy(true);
+    try { await pwStep.finish(pw); } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   };
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
@@ -28,18 +34,29 @@ export default function Login() {
         </Animated.View>
         <Animated.View entering={FadeInDown.delay(120).springify()}><T bold size={32} style={{ textAlign: 'center' }}>Recidivist</T></Animated.View>
         <Animated.View entering={FadeInDown.delay(200).springify()}><T dim style={{ textAlign: 'center' }}>Войдите по сид-фразе из 12 слов. Фраза не покидает устройство.</T></Animated.View>
-        <Animated.View entering={FadeInDown.delay(280).springify()}>
+        {pwStep ? (
+          <Animated.View entering={FadeInDown.springify()} style={{ gap: 10 }}>
+            <T w={700} size={18} center>Облачный пароль</T>
+            <T dim center>На аккаунте включена двухэтапная защита.</T>
+            <TextInput value={pw} onChangeText={setPw} placeholder="Пароль" placeholderTextColor={C.text3} secureTextEntry autoFocus style={[s.input, { minHeight: 52 }]} />
+            {!!pwStep.hint && <T dim center size={13}>Подсказка: {pwStep.hint}</T>}
+            {!!err && <T style={{ color: '#ff5a5f', textAlign: 'center' }}>{err}</T>}
+            <GlassButton title={busy ? 'Проверяем…' : 'Войти'} accent onPress={goPw} />
+            <GlassButton title="Назад" onPress={() => { setPwStep(null); setPw(''); setErr(''); }} />
+          </Animated.View>
+        ) : null}
+        {!pwStep && <Animated.View entering={FadeInDown.delay(280).springify()}>
           <TextInput
             value={phrase} onChangeText={setPhrase} placeholder="слово1 слово2 … слово12" placeholderTextColor={C.text3}
             autoCapitalize="none" autoCorrect={false} multiline secureTextEntry={false}
             style={s.input}
           />
-        </Animated.View>
-        {!!err && <T style={{ color: '#ff5a5f', textAlign: 'center' }}>{err}</T>}
-        <Animated.View entering={FadeInDown.delay(360).springify()} style={{ gap: 10 }}>
+        </Animated.View>}
+        {!pwStep && !!err && <T style={{ color: '#ff5a5f', textAlign: 'center' }}>{err}</T>}
+        {!pwStep && <Animated.View entering={FadeInDown.delay(360).springify()} style={{ gap: 10 }}>
           <GlassButton title={busy ? 'Проверяем…' : 'Войти'} accent onPress={go} />
           <GlassButton title="Создать аккаунт" onPress={() => Linking.openURL(API_URL)} />
-        </Animated.View>
+        </Animated.View>}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

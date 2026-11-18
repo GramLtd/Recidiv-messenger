@@ -8,6 +8,7 @@ import { BlurView } from 'expo-blur';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import * as ScreenCapture from 'expo-screen-capture';
 import { useAudioRecorder, RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -216,7 +217,8 @@ const Bubble = React.memo(function Bubble({ m, chat, meId, grouped, groupedNext,
   const mediaOnly = ['image', 'gif', 'album'].includes(m.type) && !m.text && !m.replyTo && !m.deleted;
   const read = out && chat.peerReadId >= m.id;
   const showTicks = out && chat.type !== 'saved';
-  const metaText = `${m.edited && !m.deleted ? 'изменено · ' : ''}${isChannel ? `👁 ${m.views || 0}  ` : ''}${timeHM(m.createdAt)}${showTicks ? '   ' : ''}`;
+  const burnLeft = m.ttl && !m.deleted ? (m.expiresAt ? Math.max(0, Math.ceil((m.expiresAt - Date.now()) / 1000)) : m.ttl) : 0;
+  const metaText = `${burnLeft ? `🔥 ${burnLeft >= 3600 ? `${Math.round(burnLeft / 3600)} ч` : burnLeft >= 60 ? `${Math.round(burnLeft / 60)} мин` : `${burnLeft} с`} · ` : ''}${m.edited && !m.deleted ? 'изменено · ' : ''}${isChannel ? `👁 ${m.views || 0}  ` : ''}${timeHM(m.createdAt)}${showTicks ? '   ' : ''}`;
   const metaColor = out ? OUT_META : C.text2;
   const meta = (
     <View style={[st.meta, (mediaOnly || sticker) && st.metaOver]} pointerEvents="none">
@@ -357,6 +359,8 @@ export default function ChatScreen() {
     };
     const items: [string, () => void][] = [
       ['Отправить без звука', async () => { setText(''); playSend(); try { await send(chat, { text: t, replyTo: reply?.id, silent: true }); setReply(null); toBottom(); } catch (e: any) { setText(t); Alert.alert(e.message); } }],
+      ['🔥 Удалить через 10 с после прочтения', async () => { setText(''); playSend(); try { await send(chat, { text: t, replyTo: reply?.id, ttl: 10 }); setReply(null); toBottom(); } catch (e: any) { setText(t); Alert.alert(e.message); } }],
+      ['🔥 Удалить через 1 мин после прочтения', async () => { setText(''); playSend(); try { await send(chat, { text: t, replyTo: reply?.id, ttl: 60 }); setReply(null); toBottom(); } catch (e: any) { setText(t); Alert.alert(e.message); } }],
       ['Отложить на час', () => schedule(Date.now() + 3600_000)],
       ['Отложить до 20:00', () => schedule(at(20))],
       ['Отложить до завтра, 9:00', () => schedule(at(9, 0, 1))],
@@ -446,6 +450,11 @@ export default function ChatScreen() {
     if (kind === 'delete') await api.del(`/messages/${m.id}`).catch((e) => alert(e.message));
   };
 
+  useEffect(() => {
+    if (!chat?.protected || Platform.OS === 'web') return undefined;
+    ScreenCapture.preventScreenCaptureAsync(`chat-${chat.id}`).catch(() => {});
+    return () => { ScreenCapture.allowScreenCaptureAsync(`chat-${chat.id}`).catch(() => {}); };
+  }, [chat?.id, chat?.protected]);
   if (!chat || !me) return <View style={{ flex: 1, backgroundColor: C.bg }} />;
   const typing = typingUntil > Date.now();
   const online = chat.type === 'private' && chat.peer?.online;
@@ -453,8 +462,9 @@ export default function ChatScreen() {
   const TTL: [number, string][] = [[0, 'Выключено'], [3600, '1 час'], [86400, '1 день'], [604800, '1 неделя'], [2592000, '1 месяц']];
   const timerMenu = () => {
     const set = async (v: number) => { try { useStore.getState().upsertChat((await api(`/chats/${chat.id}/auto-delete`, { body: { seconds: v } })).chat); } catch (e: any) { alert(e.message); } };
-    const opts = TTL.map(([v, l]) => ((chat.autoDelete || 0) === v ? `✓ ${l}` : l));
-    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ title: 'Автоудаление сообщений', message: 'Новые сообщения исчезнут у всех через выбранное время', options: [...opts, 'Отмена'], cancelButtonIndex: opts.length }, (i) => TTL[i] && set(TTL[i][0]));
+    const protect = async () => { try { useStore.getState().upsertChat((await api(`/chats/${chat.id}/protect`, { body: { on: !chat.protected } })).chat); } catch (e: any) { alert(e.message); } };
+    const opts = [...TTL.map(([v, l]) => ((chat.autoDelete || 0) === v ? `✓ ${l}` : l)), chat.protected ? '🛡 Выключить защиту чата' : '🛡 Защитить чат (без пересылки и скриншотов)'];
+    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ title: 'Автоудаление и защита', message: 'Новые сообщения исчезнут у всех через выбранное время', options: [...opts, 'Отмена'], cancelButtonIndex: opts.length }, (i) => (i === TTL.length ? protect() : TTL[i] && set(TTL[i][0])));
     else Alert.alert('Автоудаление сообщений', '', TTL.map(([v, l]) => ({ text: l, onPress: () => set(v) })));
   };
   const ttlLabel = TTL.find((t) => t[0] === chat.autoDelete)?.[1];
@@ -634,9 +644,9 @@ function MenuSheet({ m, own, chat, onReact, onAct }: any) {
   const canReply = chat.type !== 'channel' || chat.role !== 'member';
   const items = [
     canReply && !m.deleted && ['reply', 'Ответить', Reply],
-    m.text && !m.deleted && m.type !== 'secret' && ['copy', 'Копировать', Copy],
+    m.text && !m.deleted && m.type !== 'secret' && !chat.protected && !m.ttl && ['copy', 'Копировать', Copy],
     m.text && !m.deleted && m.type !== 'secret' && m.type !== 'poll' && ['translate', 'Перевести', Languages],
-    !m.deleted && m.type !== 'gift' && m.type !== 'transfer' && m.type !== 'secret' && ['forward', 'Переслать', Forward],
+    !m.deleted && m.type !== 'gift' && m.type !== 'transfer' && m.type !== 'secret' && !chat.protected && !m.ttl && ['forward', 'Переслать', Forward],
     own && !m.deleted && ['text', 'image', 'video', 'file'].includes(m.type) && ['edit', 'Изменить', Pencil],
     canDelete && !m.deleted && ['delete', 'Удалить', Trash2],
   ].filter(Boolean) as [string, string, any][];

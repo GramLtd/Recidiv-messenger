@@ -245,6 +245,46 @@ function DevicesPage() {
 }
 
 /* ---------------- security ---------------- */
+function CloudPassword() {
+  const me = useStore((s) => s.me);
+  const [form, setForm] = useState<any>(null);
+  const font = useFont((s) => s.id);
+  const save = async (remove = false) => {
+    if (!remove && form.password !== form.repeat) return Alert.alert('Пароли не совпадают');
+    try {
+      const r = await api('/me/password', { body: { current: form?.current || '', password: remove ? null : form.password, hint: form?.hint } });
+      useStore.getState().setMe(r.user); setForm(null);
+      Alert.alert(remove ? 'Облачный пароль выключен' : 'Облачный пароль сохранён');
+    } catch (e: any) { Alert.alert(e.message); }
+  };
+  const inp = [{ height: 46, borderRadius: 14, paddingHorizontal: 12, backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.border, color: C.text }, fontStyle(font, 400, 15)] as any;
+  return (
+    <Group title="Облачный пароль" footer="Второй шаг входа: после сид-фразы на новом устройстве понадобится этот пароль. На сервере хранится только стойкий хэш.">
+      {!form ? (
+        <>
+          <Row icon={KeyRound} color="#34c759" title={me?.hasPassword ? 'Сменить пароль' : 'Включить облачный пароль'} value={me?.hasPassword ? 'вкл.' : 'выкл.'} onPress={() => setForm({ current: '', password: '', repeat: '', hint: me?.passwordHint || '' })} />
+          {me?.hasPassword && <Row title="Выключить пароль" danger onPress={() => setForm({ current: '', remove: true })} />}
+        </>
+      ) : (
+        <View style={{ padding: 12, gap: 8 }}>
+          {me?.hasPassword && <TextInput secureTextEntry placeholder="Текущий пароль" placeholderTextColor={C.text3} value={form.current} onChangeText={(v) => setForm({ ...form, current: v })} style={inp} />}
+          {!form.remove && (
+            <>
+              <TextInput secureTextEntry placeholder="Новый пароль (от 6 символов)" placeholderTextColor={C.text3} value={form.password} onChangeText={(v) => setForm({ ...form, password: v })} style={inp} />
+              <TextInput secureTextEntry placeholder="Повторите пароль" placeholderTextColor={C.text3} value={form.repeat} onChangeText={(v) => setForm({ ...form, repeat: v })} style={inp} />
+              <TextInput placeholder="Подсказка (необязательно)" placeholderTextColor={C.text3} value={form.hint} onChangeText={(v) => setForm({ ...form, hint: v })} style={inp} />
+            </>
+          )}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Btn secondary title="Отмена" onPress={() => setForm(null)} style={{ flex: 1 }} />
+            <Btn title={form.remove ? 'Выключить' : 'Сохранить'} onPress={() => save(!!form.remove)} style={{ flex: 1 }} />
+          </View>
+        </View>
+      )}
+    </Group>
+  );
+}
+
 function SecurityPage() {
   const sec = useLock();
   const [bioOk, setBioOk] = useState(false);
@@ -283,6 +323,7 @@ function SecurityPage() {
         <Row index={1} icon={MapPinOff} color="#34c759" title="Метаданные фото удаляются" sub="GPS, модель камеры, дата съёмки" />
         <Row index={2} icon={Network} color="#5856d6" title="Прокси" onPress={() => router.push('/settings/proxy')} />
       </Group>
+      <CloudPassword />
       <Group title="Сид-фраза">
         <View style={st.warn}>
           <ShieldCheck size={18} color="#ffcc00" />

@@ -23,13 +23,13 @@ type State = {
   activeChatId: number | null;
   typing: Record<number, number>;
   boot: () => Promise<void>;
-  login: (mnemonic: string) => Promise<void>;
+  login: (mnemonic: string) => Promise<void | { needPassword: true; hint: string | null; finish: (password: string) => Promise<void> }>;
   finishAuth: (token: string, user: any, e2eSecret?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshChats: () => Promise<void>;
   openChat: (id: number | null) => void;
   loadMessages: (chatId: number, older?: boolean) => Promise<void>;
-  send: (chat: Chat, payload: { text?: string; replyTo?: number; media?: any; secret?: boolean; silent?: boolean }) => Promise<void>;
+  send: (chat: Chat, payload: { text?: string; replyTo?: number; media?: any; secret?: boolean; silent?: boolean; ttl?: number }) => Promise<void>;
   upsertMessage: (m: Msg) => void;
   setMe: (u: any) => void;
   upsertChat: (c: Chat) => void;
@@ -64,6 +64,12 @@ export const useStore = create<State>((set, get) => ({
   async login(mnemonic) {
     const { authKey, e2eSecret } = await deriveKeys(mnemonic);
     const r = await api('/auth/login', { body: { authKey } });
+    if (r.needPassword) {
+      return { needPassword: true, hint: r.hint, finish: async (password: string) => {
+        const x = await api('/auth/login/password', { body: { ticket: r.ticket, password } });
+        await get().finishAuth(x.token, x.user, e2eSecret);
+      } };
+    }
     await get().finishAuth(r.token, r.user, e2eSecret);
   },
   async finishAuth(token, user, e2eSecret) {
@@ -107,7 +113,7 @@ export const useStore = create<State>((set, get) => ({
     if (last && !older) api(`/chats/${chatId}/read`, { body: { messageId: last.id } }).catch(() => {});
   },
   async send(chat, p) {
-    let body: any = { text: p.text, replyTo: p.replyTo, media: p.media, silent: p.silent || undefined };
+    let body: any = { text: p.text, replyTo: p.replyTo, media: p.media, silent: p.silent || undefined, ttl: p.ttl || undefined };
     if (p.secret && chat.type === 'private' && chat.peer) body = { e2e: await encryptFor(chat.peer.id, p.text || ''), replyTo: p.replyTo };
     const { message } = await api(`/chats/${chat.id}/messages`, { body });
     get().upsertMessage(message);
