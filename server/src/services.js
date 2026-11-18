@@ -102,7 +102,7 @@ export function lightUser(u) {
 }
 
 export function meUser(u) {
-  return { ...publicUser(u), subPrice: u.sub_price || 0, email: u.email, balance: u.balance, isBanned: !!u.is_banned, createdAt: u.created_at, profileTrackId: u.profile_track_id, personalChannelId: u.personal_channel_id, isTester: !!u.is_tester, wallpaper: parseJson(u.wallpaper, null), premiumUntil: u.premium_until || null, privacy: privacyOf(u), showBalance: !!u.show_balance, ...presenceSelf(u) };
+  return { ...publicUser(u), subPrice: u.sub_price || 0, hasPassword: !!u.pw_hash, passwordHint: u.pw_hint || null, email: u.email, balance: u.balance, isBanned: !!u.is_banned, createdAt: u.created_at, profileTrackId: u.profile_track_id, personalChannelId: u.personal_channel_id, isTester: !!u.is_tester, wallpaper: parseJson(u.wallpaper, null), premiumUntil: u.premium_until || null, privacy: privacyOf(u), showBalance: !!u.show_balance, ...presenceSelf(u) };
 }
 
 // ---------------- ledger ----------------
@@ -174,16 +174,17 @@ export function serializeMessage(m) {
     createdAt: m.created_at,
     expiresAt: m.expires_at || undefined,
     silent: m.silent ? true : undefined,
+    ttl: m.ttl || undefined,
   };
 }
 
-export function createMessage({ chatId, senderId, type = 'text', text = '', media = null, replyTo = null, forwardFrom = null, userGiftId = null, silent = false }) {
+export function createMessage({ chatId, senderId, type = 'text', text = '', media = null, replyTo = null, forwardFrom = null, userGiftId = null, silent = false, ttl = 0 }) {
   const r = db
     .prepare(
-      `INSERT INTO messages (chat_id, sender_id, type, text, media, reply_to, forward_from, user_gift_id, created_at, expires_at, silent)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO messages (chat_id, sender_id, type, text, media, reply_to, forward_from, user_gift_id, created_at, expires_at, silent, ttl)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(chatId, senderId, type, text, media ? JSON.stringify(media) : null, replyTo, forwardFrom, userGiftId, now(), expiryFor(chatId, type), silent ? 1 : 0);
+    .run(chatId, senderId, type, text, media ? JSON.stringify(media) : null, replyTo, forwardFrom, userGiftId, now(), expiryFor(chatId, type), silent ? 1 : 0, ttl || 0);
   const id = Number(r.lastInsertRowid);
   if (senderId) db.prepare('UPDATE chat_members SET last_read_id = ? WHERE chat_id = ? AND user_id = ?').run(id, chatId, senderId);
   // like Telegram: an archived chat that isn't muted comes back to the main list when someone writes
@@ -289,6 +290,7 @@ export function serializeChat(chatOrId, viewerId) {
     pinned: !!member?.pinned,
     muted: !!member?.muted,
     archived: !!member?.archived,
+    protected: !!c.protected,
     unread,
     lastReadId: member?.last_read_id || 0,
     peerReadId,

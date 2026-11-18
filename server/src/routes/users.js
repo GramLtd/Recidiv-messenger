@@ -8,6 +8,8 @@ import { config } from '../config.js';
 import { isPremium, isContact, isBlocked, privacyOf } from '../privacy.js';
 import { meUser, publicUser, getUser, assertUsernameFree, changeBalance, pushBalance, serializeChat, now, safeUploadUrl, normalizeLink, LINK_KINDS } from '../services.js';
 
+import { hashPassword, checkPassword } from './auth.js';
+
 const r = Router();
 
 r.patch('/me', (req, res) => {
@@ -22,6 +24,23 @@ r.patch('/me', (req, res) => {
     emojiStatus !== undefined ? (emojiStatus ? String(emojiStatus).slice(0, 16) : null) : u.emoji_status,
     u.id,
   );
+  res.json({ user: meUser(getUser(u.id)) });
+});
+
+// two-step cloud password (asked after the seed phrase on a new device)
+r.post('/me/password', (req, res) => {
+  const u = getUser(req.user.id);
+  if (u.pw_hash && !checkPassword(String(req.body.current || ''), u.pw_hash)) fail(401, 'Текущий пароль неверен');
+  const pw = req.body.password == null ? '' : String(req.body.password);
+  if (!pw) {
+    db.prepare('UPDATE users SET pw_hash = NULL, pw_hint = NULL WHERE id = ?').run(u.id);
+  } else {
+    if (pw.length < 6) fail(400, 'Пароль — минимум 6 символов');
+    if (pw.length > 128) fail(400, 'Слишком длинный пароль');
+    const hint = req.body.hint ? String(req.body.hint).slice(0, 64) : null;
+    if (hint && hint.toLowerCase().includes(pw.toLowerCase())) fail(400, 'Подсказка не должна содержать сам пароль');
+    db.prepare('UPDATE users SET pw_hash = ?, pw_hint = ? WHERE id = ?').run(hashPassword(pw), hint, u.id);
+  }
   res.json({ user: meUser(getUser(u.id)) });
 });
 

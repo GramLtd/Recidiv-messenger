@@ -126,8 +126,43 @@ r.post('/login', (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE auth_hash = ?').get(hashAuthKey(authKey));
   if (!user) fail(401, 'Аккаунт с такой сид-фразой не найден');
   if (user.is_banned) fail(403, 'Аккаунт заблокирован');
+  if (user.pw_hash) {
+    // two-step: the seed phrase is right, now the cloud password (ticket lives 5 minutes)
+    const ticket = jwt.sign({ uid: user.id, step: 'pw' }, config.jwtSecret, { expiresIn: '5m' });
+    return res.json({ needPassword: true, hint: user.pw_hint || null, ticket });
+  }
   res.json({ token: signToken(user.id, req), user: meUser(user) });
 });
+
+const pwFails = new Map();
+r.post('/login/password', (req, res) => {
+  let p;
+  try { p = jwt.verify(String(req.body.ticket || ''), config.jwtSecret); } catch { fail(401, 'Время вышло — введите сид-фразу ещё раз'); }
+  if (p.step !== 'pw') fail(401, 'Некорректный запрос');
+  const f = pwFails.get(p.uid) || { n: 0, t: Date.now() };
+  if (Date.now() - f.t > 15 * 60_000) { f.n = 0; f.t = Date.now(); }
+  if (f.n >= 5) fail(429, 'Слишком много попыток — подождите 15 минут');
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(p.uid);
+  if (!user || user.is_banned) fail(403, 'Аккаунт недоступен');
+  if (!user.pw_hash || !checkPassword(String(req.body.password || ''), user.pw_hash)) {
+    f.n += 1; pwFails.set(p.uid, f);
+    fail(401, `Неверный пароль${5 - f.n > 0 ? ` · осталось попыток: ${5 - f.n}` : ''}`);
+  }
+  pwFails.delete(p.uid);
+  res.json({ token: signToken(user.id, req), user: meUser(user) });
+});
+
+/** Cloud password: scrypt with a random salt. */
+export function hashPassword(pw) {
+  const salt = crypto.randomBytes(16);
+  return `s1$${salt.toString('hex')}$${crypto.scryptSync(pw, salt, 32, { N: 16384 }).toString('hex')}`;
+}
+export function checkPassword(pw, stored) {
+  const [, salt, hash] = String(stored).split('$');
+  if (!salt || !hash) return false;
+  const h = crypto.scryptSync(pw, Buffer.from(salt, 'hex'), 32, { N: 16384 });
+  return crypto.timingSafeEqual(h, Buffer.from(hash, 'hex'));
+}
 
 // ---------- login by QR code (desktop / web shows a code, a signed-in phone confirms it) ----------
 // Codes live in memory for 2 minutes, are single use and carry the waiting device's headers so the new

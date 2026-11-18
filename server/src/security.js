@@ -130,6 +130,6 @@ export function startExpirySweeper(emitToChat) {
       emitToChat(r.chat_id, 'message:delete', { chatId: r.chat_id, messageId: r.id });
     }
   };
-  setInterval(tick, 30_000).unref();
+  setInterval(tick, 5_000).unref(); // 5 s so «delete after reading» timers feel exact
   tick();
 }

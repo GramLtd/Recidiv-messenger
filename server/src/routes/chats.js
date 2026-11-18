@@ -236,6 +236,12 @@ r.post('/chats/:id/read', (req, res) => {
     if (c.type === 'channel') {
       db.prepare('UPDATE messages SET views = views + 1 WHERE chat_id = ? AND id > ? AND id <= ?').run(c.id, m.last_read_id, upTo);
     } else emitToChat(c.id, 'read', { chatId: c.id, userId: req.user.id, messageId: upTo }, req.user.id);
+    // start burn timers of «delete after reading» messages the reader has just seen
+    const burn = db.prepare('SELECT id FROM messages WHERE chat_id = ? AND id > ? AND id <= ? AND ttl > 0 AND expires_at IS NULL AND sender_id != ? AND deleted = 0').all(c.id, m.last_read_id, upTo, req.user.id);
+    for (const b of burn) {
+      db.prepare('UPDATE messages SET expires_at = ? + ttl * 1000 WHERE id = ?').run(now(), b.id);
+      emitToChat(c.id, 'message:update', { message: serializeMessage(db.prepare('SELECT * FROM messages WHERE id = ?').get(b.id)) });
+    }
   }
   res.json({ ok: true });
 });
@@ -293,7 +299,9 @@ export function sendMessageAs(user, chatId, body) {
   }
   let replyTo = body.replyTo ? Number(body.replyTo) : null;
   if (replyTo && !db.prepare('SELECT 1 FROM messages WHERE id = ? AND chat_id = ?').get(replyTo, c.id)) replyTo = null;
-  const msg = createMessage({ chatId: c.id, senderId: user.id, type, text: type === 'secret' ? '' : text, media: type === 'secret' ? body._media : media, replyTo, silent: !!body.silent });
+  // «delete after reading»: 5 s … 1 week, the countdown starts when the other side reads it
+  const ttl = [5, 10, 30, 60, 300, 3600, 86400, 604800].includes(Number(body.ttl)) && c.type !== 'channel' ? Number(body.ttl) : 0;
+  const msg = createMessage({ chatId: c.id, senderId: user.id, type, text: type === 'secret' ? '' : text, media: type === 'secret' ? body._media : media, replyTo, silent: !!body.silent, ttl });
   if (c.type === 'private') {
     const peerId = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').get(c.id, user.id)?.user_id;
     const bot = INTERACTIVE_BOTS.get(peerId);
@@ -388,6 +396,8 @@ r.post('/messages/:id/forward', (req, res) => {
   if (!src || src.deleted) fail(404, 'Сообщение не найдено');
   const srcChat = loadChat(src.chat_id);
   if (!getMember(src.chat_id, req.user.id) && !srcChat.is_public) fail(403, 'Нет доступа');
+  if (srcChat.protected) fail(403, 'В этом чате запрещено пересылать сообщения');
+  if (src.ttl) fail(403, 'Самоуничтожающиеся сообщения нельзя пересылать');
   const target = loadChat(req.body.chatId);
   const m = requireMember(target.id, req.user.id);
   if (!canPost(target, m)) fail(403, 'Нет прав на публикацию');
@@ -429,6 +439,19 @@ r.delete('/messages/:id', (req, res) => {
 });
 
 /** Disappearing messages: 0 (off), 1 hour, 1 day, 1 week, 1 month. Private chats — either side; groups/channels — admins. */
+// protected content: no forwarding / copying / screenshots (enforced by the server for forwards, by clients for the rest)
+r.post('/chats/:id/protect', (req, res) => {
+  const c = loadChat(req.params.id);
+  const m = getMember(c.id, req.user.id);
+  if (!m) fail(403, 'Нет доступа');
+  if (c.type !== 'private' && m.role === 'member') fail(403, 'Только администраторы могут менять защиту');
+  const on = req.body.on ? 1 : 0;
+  db.prepare('UPDATE chats SET protected = ? WHERE id = ?').run(on, c.id);
+  systemMessage(c.id, on ? `${req.user.display_name} включил(а) защиту чата: нельзя пересылать, копировать и делать скриншоты` : `${req.user.display_name} выключил(а) защиту чата`);
+  for (const uid of chatMemberIds(c.id)) emitToUser(uid, 'chat:update', { chat: serializeChat(c.id, uid) });
+  res.json({ chat: serializeChat(c.id, req.user.id) });
+});
+
 r.post('/chats/:id/auto-delete', (req, res) => {
   const c = loadChat(req.params.id);
   const m = getMember(c.id, req.user.id);

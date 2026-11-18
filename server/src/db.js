@@ -506,6 +506,10 @@ CREATE TABLE IF NOT EXISTS price_points (
 CREATE INDEX IF NOT EXISTS idx_price_points ON price_points(gift_id, created_at);`);
 addColumn('users', 'daily_streak', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('post_comments', 'reply_to', 'INTEGER');
+addColumn('messages', 'ttl', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('chats', 'protected', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('users', 'pw_hash', 'TEXT');
+addColumn('users', 'pw_hint', 'TEXT');
 addColumn('posts', 'paid', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('users', 'sub_price', 'INTEGER NOT NULL DEFAULT 0');
 db.exec(`CREATE TABLE IF NOT EXISTS comment_likes (comment_id INTEGER NOT NULL, user_id INTEGER NOT NULL, PRIMARY KEY (comment_id, user_id));
