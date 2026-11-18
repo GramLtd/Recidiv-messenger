@@ -87,6 +87,8 @@ function SeedInputs({ words, setWords }) {
 }
 
 export default function Auth() {
+  const [pwStep, setPwStep] = useState(null);
+  const [pw, setPw] = useState('');
   const login = useStore((s) => s.login);
   const [mode, setMode] = useState('welcome');
   const [step, setStep] = useState('email');
@@ -164,6 +166,12 @@ export default function Auth() {
       if (!isValidMnemonic(phrase)) throw new Error('Неверная сид-фраза: проверьте слова и их порядок');
       const authKey = await deriveAuthKey(phrase);
       const r = await api('/auth/login', { body: { authKey } });
+      if (r.needPassword) { setPwStep({ ticket: r.ticket, hint: r.hint }); return; }
+      login(r.token, r.user);
+    });
+  const doPassword = () =>
+    run(async () => {
+      const r = await api('/auth/login/password', { body: { ticket: pwStep.ticket, password: pw } });
       login(r.token, r.user);
     });
 
@@ -207,6 +215,24 @@ export default function Auth() {
           <h1>Вход по QR-коду</h1>
           <p className="lead">Без сид-фразы — подтвердите вход на телефоне, где вы уже вошли.</p>
           <QrLogin />
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === 'login' && pwStep) {
+    return (
+      <div className="auth-page">
+        <Backdrop />
+        <div className="auth-card step" key="pw">
+          {back(() => { setPwStep(null); setPw(''); })}
+          <Logo small />
+          <h1>Облачный пароль</h1>
+          <p className="lead">На аккаунте включена двухэтапная защита. Введите пароль, который вы задали в настройках.</p>
+          <input className="input" type="password" autoFocus placeholder="Пароль" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && pw && doPassword()} />
+          {pwStep.hint && <div className="small muted">Подсказка: {pwStep.hint}</div>}
+          {err}
+          <button className="btn block" disabled={busy || !pw} onClick={doPassword}>{busy ? 'Проверяем…' : 'Войти'}</button>
         </div>
       </div>
     );

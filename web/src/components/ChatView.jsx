@@ -4,7 +4,7 @@ import { StatusBadge } from './StatusModal.jsx';
 import { Poll, PollModal, LinkPreview, Translation, translateMessage } from './MessageExtras.jsx';
 import {
   ArrowLeft, Timer, Search, MoreVertical, Paperclip, Smile, Send, Mic, X, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck,
-  FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square, ChevronLeft, Clock, Languages, BarChart3, Image as ImageIcon,
+  FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square, ChevronLeft, Clock, Languages, BarChart3, Image as ImageIcon, Flame, ShieldCheck,
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, upload, mediaUrl } from '../api.js';
@@ -120,6 +120,15 @@ function MessageContent({ m, chat, onOpenMedia, out }) {
   );
 }
 
+/** 🔥 «delete after reading»: shows the timer before reading, a live countdown after. */
+function BurnBadge({ m }) {
+  const [, tick] = useState(0);
+  useEffect(() => { if (!m.expiresAt) return undefined; const i = setInterval(() => tick((x) => x + 1), 1000); return () => clearInterval(i); }, [m.expiresAt]);
+  const fmt = (s) => (s >= 86400 ? `${Math.round(s / 86400)} д` : s >= 3600 ? `${Math.round(s / 3600)} ч` : s >= 60 ? `${Math.round(s / 60)} мин` : `${s} с`);
+  const left = m.expiresAt ? Math.max(0, Math.ceil((m.expiresAt - Date.now()) / 1000)) : m.ttl;
+  return <span className={`burn ${m.expiresAt ? 'live' : ''}`}><Flame size={11} /> {fmt(left)} · </span>;
+}
+
 function linkify(text) {
   const parts = text.split(/(https?:\/\/[^\s]+|@[a-zA-Z][a-zA-Z0-9_]{2,31})/g);
   return parts.map((p, i) => {
@@ -156,7 +165,7 @@ function Message({ m, chat, me, grouped, groupedNext, onContext, onOpenMedia, hi
   const react = (emoji) => api(`/messages/${m.id}/react`, { body: { emoji } }).then((r) => useStore.getState().patchMessage(r.message));
   return (
     <div
-      className={`msg-row ${out ? 'out' : 'in'} ${grouped ? 'grouped' : ''} ${groupedNext ? 'grouped-next' : ''} ${isChannel ? 'channel-post' : ''} ${highlight ? 'highlight' : ''} ${fresh ? 'fresh' : ''}`}
+      className={`msg-row ${chat.protected ? 'no-copy' : ''} ${out ? 'out' : 'in'} ${grouped ? 'grouped' : ''} ${groupedNext ? 'grouped-next' : ''} ${isChannel ? 'channel-post' : ''} ${highlight ? 'highlight' : ''} ${fresh ? 'fresh' : ''}`}
       data-mid={m.id}
       onContextMenu={(e) => { e.preventDefault(); onContext(e, m); }}
       onDoubleClick={() => !m.deleted && react('❤️')}
@@ -182,6 +191,7 @@ function Message({ m, chat, me, grouped, groupedNext, onContext, onOpenMedia, hi
         )}
         <MessageContent m={m} chat={chat} onOpenMedia={onOpenMedia} out={out} />
         <span className="meta">
+          {m.ttl > 0 && !m.deleted && <BurnBadge m={m} />}
           {m.edited && !m.deleted && 'изменено · '}
           {isChannel && <span className="views"><Eye size={13} /> {m.views}</span>}
           {timeHM(m.createdAt)}
@@ -220,9 +230,9 @@ function MessageMenu({ m, x, y, chat, me, onClose, onReply, onEdit }) {
           <div className="react-strip">{QUICK_REACTIONS.map((e) => <button key={e} onClick={() => react(e)}>{e}</button>)}</div>
         )}
         {canReply && !m.deleted && <button className="menu-item" onClick={act(() => onReply(m))}><Reply size={18} /> Ответить</button>}
-        {m.text && !m.deleted && <button className="menu-item" onClick={act(() => { navigator.clipboard?.writeText(m.text); toast('Скопировано'); })}><Copy size={18} /> Копировать</button>}
+        {m.text && !m.deleted && !chat.protected && !m.ttl && <button className="menu-item" onClick={act(() => { navigator.clipboard?.writeText(m.text); toast('Скопировано'); })}><Copy size={18} /> Копировать</button>}
         {m.text && !m.deleted && m.type !== 'poll' && <button className="menu-item" onClick={act(() => translateMessage(m))}><Languages size={18} /> Перевести</button>}
-        {!m.deleted && m.type !== 'gift' && m.type !== 'transfer' && <button className="menu-item" onClick={act(() => openModal('forward', { messageId: m.id }))}><Forward size={18} /> Переслать</button>}
+        {!m.deleted && m.type !== 'gift' && m.type !== 'transfer' && !chat.protected && !m.ttl && <button className="menu-item" onClick={act(() => openModal('forward', { messageId: m.id }))}><Forward size={18} /> Переслать</button>}
         {own && !m.deleted && ['text', 'image', 'video', 'file'].includes(m.type) && <button className="menu-item" onClick={act(() => onEdit(m))}><Pencil size={18} /> Изменить</button>}
         {canDelete && !m.deleted && (
           <button className="menu-item danger" onClick={act(() => confirm('Удалить сообщение для всех?') && api.del(`/messages/${m.id}`))}><Trash2 size={18} className="danger" /> Удалить</button>
@@ -328,7 +338,7 @@ function Composer({ chat }) {
         window.__sentAt = Date.now();
         setFire((x) => x + 1);
         playSend();
-        await sendMessage(chat.id, { text: t, replyTo: reply?.id, silent: opts.silent });
+        await sendMessage(chat.id, { text: t, replyTo: reply?.id, silent: opts.silent, ttl: opts.ttl });
       }
       setReply(null);
       setText('');
@@ -566,6 +576,12 @@ function Composer({ chat }) {
                 <div className="ctx-menu send-menu" style={{ '--origin': 'bottom right' }}>
                   <button className="menu-item" onClick={() => { setSendMenu(false); sendWith({ silent: true }); }}><BellOff size={18} /> Отправить без звука</button>
                   <button className="menu-item" onClick={() => { setSendMenu(false); setSchedOpen(true); }}><Clock size={18} /> Отложить…</button>
+                  <div className="small muted" style={{ padding: '6px 12px 2px' }}>Удалить после прочтения</div>
+                  <div className="burn-row">
+                    {[[10, '10 с'], [60, '1 мин'], [3600, '1 ч'], [86400, '1 д']].map(([v, l]) => (
+                      <button key={v} className="chip" onClick={() => { setSendMenu(false); sendWith({ ttl: v }); }}><Flame size={13} /> {l}</button>
+                    ))}
+                  </div>
                 </div>
               </>
             )}
@@ -764,6 +780,11 @@ export default function ChatView() {
                       {l}{(chat.autoDelete || 0) === v && <Check size={16} className="accent" style={{ marginLeft: 'auto' }} />}
                     </button>
                   ))}
+                  <div className="menu-sep" />
+                  <button className="menu-item" onClick={async () => { setTimerMenu(false); try { upsertChat((await api(`/chats/${chat.id}/protect`, { body: { on: !chat.protected } })).chat); } catch (e) { useStore.getState().toast(e.message, 'error'); } }}>
+                    <ShieldCheck size={18} /> Защита чата{chat.protected && <Check size={16} className="accent" style={{ marginLeft: 'auto' }} />}
+                  </button>
+                  <div className="tiny muted" style={{ padding: '0 12px 6px', maxWidth: 230 }}>Нельзя пересылать, копировать и делать скриншоты в приложении</div>
                 </div>
               </>
             )}

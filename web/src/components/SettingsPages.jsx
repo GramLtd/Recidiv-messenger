@@ -173,6 +173,45 @@ export function DevicesPage() {
 }
 
 // ---------------- security ----------------
+function CloudPasswordGroup() {
+  const me = useStore((s) => s.me);
+  const setMe = useStore((s) => s.setMe);
+  const toast = useStore((s) => s.toast);
+  const [form, setForm] = useState(null); // null | { current, password, repeat, hint }
+  const save = async (remove = false) => {
+    try {
+      if (!remove && form.password !== form.repeat) { toast('Пароли не совпадают', 'error'); return; }
+      const r = await api('/me/password', { body: { current: form?.current || '', password: remove ? null : form.password, hint: form?.hint } });
+      setMe(r.user); setForm(null); toast(remove ? 'Облачный пароль выключен' : 'Облачный пароль сохранён');
+    } catch (e) { toast(e.message, 'error'); }
+  };
+  return (
+    <Group title="Облачный пароль" footer="Второй шаг входа: после сид-фразы на новом устройстве понадобится этот пароль. Хранится на сервере только в виде стойкого хэша.">
+      {!form ? (
+        <>
+          <Row icon={KeyRound} color="#34c759" title={me.hasPassword ? 'Сменить пароль' : 'Включить облачный пароль'} value={me.hasPassword ? 'вкл.' : 'выкл.'} onClick={() => setForm({ current: '', password: '', repeat: '', hint: me.passwordHint || '' })} />
+          {me.hasPassword && <Row title={<span className="danger">Выключить пароль</span>} onClick={() => setForm({ current: '', password: '', repeat: '', hint: '', remove: true })} />}
+        </>
+      ) : (
+        <div className="col" style={{ gap: 8, padding: 12 }}>
+          {me.hasPassword && <input className="input" type="password" placeholder="Текущий пароль" value={form.current} onChange={(e) => setForm({ ...form, current: e.target.value })} />}
+          {!form.remove && (
+            <>
+              <input className="input" type="password" placeholder="Новый пароль (от 6 символов)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+              <input className="input" type="password" placeholder="Повторите пароль" value={form.repeat} onChange={(e) => setForm({ ...form, repeat: e.target.value })} />
+              <input className="input" placeholder="Подсказка (необязательно)" value={form.hint} onChange={(e) => setForm({ ...form, hint: e.target.value })} />
+            </>
+          )}
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn secondary grow" onClick={() => setForm(null)}>Отмена</button>
+            <button className={`btn grow ${form.remove ? 'danger-btn' : ''}`} onClick={() => save(!!form.remove)}>{form.remove ? 'Выключить' : 'Сохранить'}</button>
+          </div>
+        </div>
+      )}
+    </Group>
+  );
+}
+
 export function SecurityPage() {
   const enabled = useLock((s) => s.enabled);
   const autoLock = useLock((s) => s.autoLock);
@@ -197,6 +236,7 @@ export function SecurityPage() {
         )}
         {enabled && <Row title="Заблокировать сейчас" onClick={() => lockState.lock()} />}
       </Group>
+      <CloudPasswordGroup />
       <Group title="Удаление аккаунта" footer="Сообщения, посты, истории, файлы, юзернеймы и контакты будут стёрты с сервера безвозвратно. Войти по этой сид-фразе будет нельзя.">
         <Row icon={Trash2} color="#ff453a" title={<span className="danger">Удалить аккаунт навсегда</span>} onClick={async () => {
           const word = prompt('Это нельзя отменить. Чтобы удалить аккаунт, введите слово УДАЛИТЬ');

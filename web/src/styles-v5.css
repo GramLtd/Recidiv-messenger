@@ -1361,3 +1361,12 @@ html.perf .modal-body > *, html.perf .page-body > *, html.perf .post, html.perf 
 .seg.n4 { grid-template-columns: repeat(4, 1fr); }
 .seg.n4 button { font-size: .86em; padding: 0 2px; white-space: nowrap; }
 .seg.n4 .seg-ind { width: calc((100% - 8px) / 4); }
+
+/* burn-after-reading, protected chats */
+.burn { display: inline-flex; align-items: center; gap: 2px; color: #ff9f40; font-weight: 700; }
+.burn.live { color: #ff5a3c; animation: burnPulse 1s ease-in-out infinite; }
+@keyframes burnPulse { 50% { opacity: .55; } }
+.burn-row { display: flex; gap: 4px; padding: 4px 8px 8px; flex-wrap: wrap; }
+.burn-row .chip { padding: 4px 9px; font-size: .8em; }
+.menu-sep { height: .5px; margin: 4px 8px; background: rgba(255, 255, 255, .12); }
+.msg-row.no-copy .bubble { -webkit-user-select: none; user-select: none; }
