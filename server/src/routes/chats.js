@@ -2,7 +2,7 @@ import { deleteMessageFiles, AUTO_DELETE, autoDeleteLabel } from '../security.js
 import { Router } from 'express';
 import crypto from 'node:crypto';
 import { db, tx } from '../db.js';
-import { fail } from '../auth.js';
+import { fail, requestContext } from '../auth.js';
 import { isPremium, isContact, isBlocked, privacyOf } from '../privacy.js';
 import { INTERACTIVE_BOTS } from '../bots.js';
 import {
@@ -282,7 +282,7 @@ export function sendMessageAs(user, chatId, body) {
   const media = sanitizeMedia(body.media);
   if (!text.trim() && !media && !body.e2e) fail(400, 'Пустое сообщение');
   let type = 'text';
-  if (media) type = ['image', 'video', 'voice', 'audio', 'file', 'sticker', 'gif', 'album'].includes(media.kind) ? media.kind : 'file';
+  if (media) type = ['image', 'video', 'voice', 'audio', 'file', 'sticker', 'gif', 'album', 'poll'].includes(media.kind) ? media.kind : 'file';
   if (body.e2e && c.type === 'private') {
     // end-to-end encrypted: server stores only {n: nonce, c: ciphertext}; text is opaque
     const e = body.e2e;
@@ -340,6 +340,48 @@ r.post('/scheduled/:id/send-now', (req, res) => {
   db.prepare('DELETE FROM scheduled_messages WHERE id = ?').run(x.id);
   res.json({ message: sendMessageAs(req.user, x.chat_id, JSON.parse(x.payload)) });
 });
+
+// ---------- polls ----------
+r.post('/messages/:id/vote', (req, res) => {
+  const msg = db.prepare('SELECT * FROM messages WHERE id = ?').get(Number(req.params.id));
+  if (!msg || msg.deleted || msg.type !== 'poll') fail(404, 'Опрос не найден');
+  const c = loadChat(msg.chat_id);
+  if (!getMember(c.id, req.user.id) && !c.is_public) fail(403, 'Нет доступа');
+  const p = JSON.parse(msg.media);
+  if (p.closed) fail(400, 'Опрос завершён');
+  const opts = [...new Set((Array.isArray(req.body.options) ? req.body.options : [req.body.option]).map(Number))].filter((i) => Number.isInteger(i) && i >= 0 && i < p.options.length);
+  const had = db.prepare('SELECT 1 FROM poll_votes WHERE message_id = ? AND user_id = ?').get(msg.id, req.user.id);
+  if (p.quiz && had) fail(400, 'В викторине ответ можно дать только один раз');
+  if (!opts.length && !p.quiz) db.prepare('DELETE FROM poll_votes WHERE message_id = ? AND user_id = ?').run(msg.id, req.user.id); // retract
+  else {
+    if (!opts.length) fail(400, 'Выберите вариант');
+    tx(() => {
+      db.prepare('DELETE FROM poll_votes WHERE message_id = ? AND user_id = ?').run(msg.id, req.user.id);
+      for (const o of p.multiple ? opts : opts.slice(0, 1)) db.prepare('INSERT INTO poll_votes (message_id, user_id, option) VALUES (?, ?, ?)').run(msg.id, req.user.id, o);
+    });
+  }
+  pushPollUpdate(msg);
+  res.json({ message: serializeMessage(db.prepare('SELECT * FROM messages WHERE id = ?').get(msg.id)) });
+});
+
+r.post('/messages/:id/close-poll', (req, res) => {
+  const msg = loadOwnMessage(req.params.id, req.user.id, true);
+  if (msg.type !== 'poll') fail(400, 'Это не опрос');
+  const p = JSON.parse(msg.media);
+  p.closed = true;
+  db.prepare('UPDATE messages SET media = ? WHERE id = ?').run(JSON.stringify(p), msg.id);
+  pushPollUpdate(msg);
+  res.json({ message: serializeMessage(db.prepare('SELECT * FROM messages WHERE id = ?').get(msg.id)) });
+});
+
+/** Results are per-viewer (own votes, hidden quiz answer), so every member gets their own copy. */
+function pushPollUpdate(msg) {
+  const row = db.prepare('SELECT * FROM messages WHERE id = ?').get(msg.id);
+  for (const uid of chatMemberIds(msg.chat_id)) {
+    const viewer = getUser(uid);
+    requestContext.run({ user: viewer }, () => emitToUser(uid, 'message:update', { message: serializeMessage(row) }));
+  }
+}
 
 r.post('/messages/:id/forward', (req, res) => {
   const src = db.prepare('SELECT * FROM messages WHERE id = ?').get(Number(req.params.id));

@@ -472,6 +472,12 @@ addColumn('messages', 'silent', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('chat_members', 'archived', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('users', 'status_text', 'TEXT');
 addColumn('users', 'status_until', 'INTEGER');
+db.exec(`CREATE TABLE IF NOT EXISTS poll_votes (
+  message_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  option INTEGER NOT NULL,
+  PRIMARY KEY (message_id, user_id, option)
+);`);
 db.exec(`CREATE TABLE IF NOT EXISTS scheduled_messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   chat_id INTEGER NOT NULL,

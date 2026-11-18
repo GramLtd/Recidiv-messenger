@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { RichText, stripFormatting, wrapSelection } from '../richtext.jsx';
 import { StatusBadge } from './StatusModal.jsx';
+import { Poll, PollModal, LinkPreview, Translation, translateMessage } from './MessageExtras.jsx';
 import {
   ArrowLeft, Timer, Search, MoreVertical, Paperclip, Smile, Send, Mic, X, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck,
-  FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square, ChevronLeft, Clock,
+  FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square, ChevronLeft, Clock, Languages, BarChart3, Image as ImageIcon,
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, upload, mediaUrl } from '../api.js';
@@ -63,7 +64,7 @@ function Album({ items, onOpen }) {
   );
 }
 
-function MessageContent({ m, chat, onOpenMedia }) {
+function MessageContent({ m, chat, onOpenMedia, out }) {
   const openModal = useStore((s) => s.openModal);
   if (m.deleted) return <span className="deleted-text">Сообщение удалено</span>;
   const media = m.media;
@@ -103,7 +104,10 @@ function MessageContent({ m, chat, onOpenMedia }) {
           <div className="small muted">Перевод</div>
         </div>
       )}
-      {m.text && m.type !== 'gift' && <span><RichText text={m.text} plain={linkify} /></span>}
+      {m.type === 'poll' && media?.options && <Poll m={m} out={out} />}
+      {m.text && m.type !== 'gift' && m.type !== 'poll' && <span><RichText text={m.text} plain={linkify} /></span>}
+      {m.text && m.type !== 'poll' && <Translation id={m.id} />}
+      {m.type === 'text' && m.text && <LinkPreview text={m.text} />}
       {m.media?.buttons?.length > 0 && (
         <div className="bot-buttons">
           {m.media.buttons.map((b) => (
@@ -176,7 +180,7 @@ function Message({ m, chat, me, grouped, groupedNext, onContext, onOpenMedia, hi
             <span>{stripFormatting(m.replyTo.text) || (m.replyTo.type !== 'text' ? 'Медиа' : '')}</span>
           </div>
         )}
-        <MessageContent m={m} chat={chat} onOpenMedia={onOpenMedia} />
+        <MessageContent m={m} chat={chat} onOpenMedia={onOpenMedia} out={out} />
         <span className="meta">
           {m.edited && !m.deleted && 'изменено · '}
           {isChannel && <span className="views"><Eye size={13} /> {m.views}</span>}
@@ -217,6 +221,7 @@ function MessageMenu({ m, x, y, chat, me, onClose, onReply, onEdit }) {
         )}
         {canReply && !m.deleted && <button className="menu-item" onClick={act(() => onReply(m))}><Reply size={18} /> Ответить</button>}
         {m.text && !m.deleted && <button className="menu-item" onClick={act(() => { navigator.clipboard?.writeText(m.text); toast('Скопировано'); })}><Copy size={18} /> Копировать</button>}
+        {m.text && !m.deleted && m.type !== 'poll' && <button className="menu-item" onClick={act(() => translateMessage(m))}><Languages size={18} /> Перевести</button>}
         {!m.deleted && m.type !== 'gift' && m.type !== 'transfer' && <button className="menu-item" onClick={act(() => openModal('forward', { messageId: m.id }))}><Forward size={18} /> Переслать</button>}
         {own && !m.deleted && ['text', 'image', 'video', 'file'].includes(m.type) && <button className="menu-item" onClick={act(() => onEdit(m))}><Pencil size={18} /> Изменить</button>}
         {canDelete && !m.deleted && (
@@ -299,6 +304,8 @@ function Composer({ chat }) {
     }
   };
 
+  const [attachMenu, setAttachMenu] = useState(false);
+  const [pollOpen, setPollOpen] = useState(false);
   // send options (Telegram): silent / scheduled
   const [sendMenu, setSendMenu] = useState(false);
   const [schedOpen, setSchedOpen] = useState(false);
@@ -443,6 +450,7 @@ function Composer({ chat }) {
   const quote = edit || reply;
   return (
     <div className="composer-wrap" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files.length) sendFiles([...e.dataTransfer.files]); }}>
+      {pollOpen && <PollModal chatId={chat.id} onClose={() => setPollOpen(false)} />}
       {schedOpen && <ScheduleModal onClose={() => setSchedOpen(false)} onPick={(at, silent) => { setSchedOpen(false); sendWith({ scheduleAt: at, silent }); }} />}
       {scheduled.length > 0 && (
         <div className="sched-bar">
@@ -525,7 +533,20 @@ function Composer({ chat }) {
                   }}
                   onPaste={(e) => { const files = [...e.clipboardData.files]; if (files.length) { e.preventDefault(); sendFiles(files); } }}
                 />
-                {!edit && <button className="icon-btn" onClick={() => fileRef.current.click()}><Paperclip size={22} /></button>}
+                {!edit && (
+                  <div style={{ position: 'relative' }}>
+                    <button className="icon-btn" onClick={() => setAttachMenu(!attachMenu)}><Paperclip size={22} /></button>
+                    {attachMenu && (
+                      <>
+                        <div style={{ position: 'fixed', inset: 0, zIndex: 60 }} onClick={() => setAttachMenu(false)} />
+                        <div className="ctx-menu attach-menu" style={{ '--origin': 'bottom right' }}>
+                          <button className="menu-item" onClick={() => { setAttachMenu(false); fileRef.current.click(); }}><ImageIcon size={18} /> Фото, видео или файл</button>
+                          <button className="menu-item" onClick={() => { setAttachMenu(false); setPollOpen(true); }}><BarChart3 size={18} /> Опрос или викторина</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
                 <input ref={fileRef} type="file" multiple hidden onChange={(e) => { sendFiles([...e.target.files]); e.target.value = ''; }} />
               </>
             )}

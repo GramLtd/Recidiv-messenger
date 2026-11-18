@@ -127,6 +127,22 @@ export function pushBalance(...userIds) {
 }
 
 // ---------------- messages ----------------
+/** Poll results for the current viewer: counts, own votes, voters (if not anonymous); quiz answer only after voting. */
+function pollView(m, p) {
+  const viewer = currentViewer();
+  const rows = db.prepare('SELECT user_id, option FROM poll_votes WHERE message_id = ?').all(m.id);
+  const counts = p.options.map((_, i) => rows.filter((r) => r.option === i).length);
+  const voters = new Set(rows.map((r) => r.user_id));
+  const mine = viewer ? rows.filter((r) => r.user_id === viewer.id).map((r) => r.option) : [];
+  const closed = !!p.closed;
+  const out = { ...p, counts, total: voters.size, mine, closed };
+  if (p.quiz && !mine.length && !closed) { delete out.correct; delete out.explanation; }
+  if (!p.anonymous) {
+    out.voters = p.options.map((_, i) => rows.filter((r) => r.option === i).slice(0, 3).map((r) => lightUser(getUser(r.user_id))));
+  }
+  return out;
+}
+
 export function serializeMessage(m) {
   if (!m) return null;
   const sender = m.sender_id ? db.prepare('SELECT * FROM users WHERE id = ?').get(m.sender_id) : null;
@@ -139,13 +155,15 @@ export function serializeMessage(m) {
     .prepare('SELECT emoji, COUNT(*) count, GROUP_CONCAT(user_id) users FROM reactions WHERE message_id = ? GROUP BY emoji ORDER BY count DESC')
     .all(m.id)
     .map((r) => ({ emoji: r.emoji, count: r.count, users: String(r.users).split(',').map(Number) }));
+  let media = m.deleted ? null : parse(m.media);
+  if (media?.kind === 'poll') media = pollView(m, media);
   return {
     id: m.id,
     chatId: m.chat_id,
     sender: lightUser(sender),
     type: m.type,
     text: m.deleted ? '' : m.text,
-    media: m.deleted ? null : parse(m.media),
+    media,
     replyTo: reply,
     forwardFrom: m.forward_from ? lightUser(getUser(m.forward_from)) : null,
     gift: m.user_gift_id ? serializeUserGift(m.user_gift_id) : null,
@@ -193,6 +211,7 @@ export function messagePreview(m) {
   if (m.deleted) return 'Сообщение удалено';
   const labels = { album: '🖼 Альбом', secret: '🔒 Зашифрованное сообщение', gif: 'GIF', post: '📰 Пост', audio: '🎵 Музыка', transfer: '💸 Перевод', image: '🖼 Фото', video: '🎬 Видео', file: '📎 Файл', voice: '🎤 Голосовое', gift: '🎁 Подарок', sticker: 'Стикер' };
   if (m.type === 'text' || m.type === 'system') return m.text;
+  if (m.type === 'poll') { const p = typeof m.media === 'string' ? JSON.parse(m.media || '{}') : m.media || {}; return `📊 ${p.quiz ? 'Викторина' : 'Опрос'}: ${p.question || ''}`; }
   if (m.type === 'gift') return m.text ? (/^\p{Extended_Pictographic}/u.test(m.text) ? m.text : `🎁 ${m.text}`) : labels.gift;
   return m.text ? `${labels[m.type] || ''} ${m.text}` : labels[m.type] || m.type;
 }
@@ -402,6 +421,15 @@ const GIF_RE = /^https:\/\/media\d*\.tenor\.com\/[A-Za-z0-9_\-./]+\.(mp4|gif|web
 export function sanitizeMedia(media) {
   if (!media) return null;
   const kind = String(media.kind || 'file').slice(0, 16);
+  if (kind === 'poll') {
+    // poll / quiz: question + 2–10 options; quiz has exactly one correct option
+    const question = String(media.question || '').trim().slice(0, 255);
+    const options = (Array.isArray(media.options) ? media.options : []).map((o) => String(o || '').trim().slice(0, 100)).filter(Boolean).slice(0, 10);
+    if (!question || options.length < 2) return null;
+    const quiz = !!media.quiz;
+    const correct = quiz ? Math.max(0, Math.min(options.length - 1, Number(media.correct) || 0)) : undefined;
+    return { kind, question, options, multiple: !quiz && !!media.multiple, anonymous: media.anonymous !== false, quiz, correct, explanation: quiz && media.explanation ? String(media.explanation).slice(0, 200) : undefined };
+  }
   if (kind === 'album') {
     // Telegram-style album: up to 10 photos / videos in one message
     const items = (Array.isArray(media.items) ? media.items : []).slice(0, 10).map((it) => sanitizeMedia(it)).filter((it) => it && ['image', 'video'].includes(it.kind));

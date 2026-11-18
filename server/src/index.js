@@ -14,6 +14,7 @@ import { initRealtime } from './realtime.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import chatRoutes, { sendMessageAs } from './routes/chats.js';
+import toolRoutes from './routes/tools.js';
 import storyRoutes from './routes/stories.js';
 import giftRoutes from './routes/gifts.js';
 import marketRoutes from './routes/market.js';
@@ -38,6 +39,7 @@ app.use('/api/upload', rateLimit({ windowMs: 10 * 60_000, max: 200 }));
 app.use('/api/webhooks', webhooks);
 app.use('/api/admin', requireAuth, requireAdmin, adminRoutes);
 app.use('/api', requireAuth, userRoutes, chatRoutes, storyRoutes, giftRoutes, marketRoutes, walletRoutes, musicRoutes, walletLinkRoutes, socialRoutes, stickerRoutes);
+app.use('/api', requireAuth, rateLimit({ windowMs: 60_000, max: 60, key: (req) => `tools:${req.user?.id || req.ip}` }), toolRoutes);
 // TonConnect manifest for whatever domain the app is opened on (wallets check it for ton_proof).
 app.get('/tonconnect-manifest.json', (req, res) => {
   const origin = `${req.protocol}://${req.get('host')}`;
