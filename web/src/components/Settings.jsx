@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from 'react';
 import { PushLayer } from './Push.jsx';
 import {
-  Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone, User as UserIcon, AtSign, Bookmark, Music2, RefreshCw, Smile, CalendarCheck, Gift, CreditCard, Wallet as WalletIcon,
+  Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone, User as UserIcon, AtSign, Bookmark, Music2, RefreshCw, Smile, CalendarCheck, Star, Gift, CreditCard, Wallet as WalletIcon,
   Globe, Hand, MonitorSmartphone, Contrast, Type, HardDrive, Shield, MapPin,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -257,6 +257,7 @@ export function SettingsModal({ tab: initialTab }) {
 function SettingsHome({ open }) {
   const t = useT();
   const me = useStore((s) => s.me);
+  const setMeS = useStore((s) => s.setMe);
   const chats = useStore((s) => s.chats);
   const openModal = useStore((s) => s.openModal);
   const openChat = useStore((s) => s.openChat);
@@ -284,6 +285,11 @@ function SettingsHome({ open }) {
       </button>
       <Group>
         <Row icon={UserIcon} color="#ff3b30" title={t('Мой профиль')} onClick={() => setTab('profile')} />
+        <Row icon={Star} color="#ffb340" title="Платная подписка" value={me.subPrice ? `${me.subPrice} ✦/мес` : 'выкл.'} onClick={async () => {
+          const v = prompt('Цена подписки на ваши посты в месяц (0 — выключить). Подписчики увидят посты «для подписчиков».', String(me.subPrice || ''));
+          if (v == null) return;
+          try { setMeS((await api('/me/subscription-price', { body: { price: Number(v) || 0 } })).user); } catch (e) { useStore.getState().toast(e.message, 'error'); }
+        }} />
         <Row icon={Smile} color="#ff9f0a" title="Статус" value={me.emojiStatus ? `${me.emojiStatus} ${me.statusText || ''}`.trim() : 'не задан'} onClick={() => openModal('status')} />
         <Row icon={AtSign} color="#0a84ff" title={t('Юзернеймы')} value={me.username ? `@${me.username}` : ''} onClick={() => open('usernames')} />
         <Row icon={Music2} color="#ff2d55" title={t('Музыка')} onClick={() => setTab('music')} />

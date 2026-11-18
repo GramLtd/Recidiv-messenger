@@ -212,7 +212,7 @@ r.post('/craft', (req, res) => {
 
 /* ---------------- daily rewards ---------------- */
 const DEFAULT_REWARDS = [10, 15, 20, 30, 40, 60, 100];
-const rewards = () => { try { const v = JSON.parse(getSetting('daily_rewards') || 'null'); return Array.isArray(v) && v.length ? v.map(Number) : DEFAULT_REWARDS; } catch { return DEFAULT_REWARDS; } };
+const rewards = () => { try { const v = JSON.parse(getSetting('cfg_daily_rewards') || 'null'); return Array.isArray(v) && v.length ? v.map(Number) : DEFAULT_REWARDS; } catch { return DEFAULT_REWARDS; } };
 const dayKey = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
 function dailyState(u) {
   const today = dayKey(); const yesterday = dayKey(Date.now() - 86400_000);
@@ -224,7 +224,7 @@ function dailyState(u) {
 }
 r.get('/daily', (req, res) => res.json(dailyState(req.user)));
 r.post('/daily/claim', (req, res) => {
-  if (getSetting('daily_enabled') === '0') fail(400, 'Ежедневные награды отключены');
+  if (getSetting('cfg_daily_enabled') === 'false') fail(400, 'Ежедневные награды отключены');
   const out = tx(() => {
     const u = getUser(req.user.id);
     const st = dailyState(u);

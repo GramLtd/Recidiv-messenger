@@ -13,15 +13,23 @@ const r = Router();
 const TAG_RE = /#([\p{L}\p{N}_]{2,40})/gu;
 const tagsOf = (text) => [...new Set([...String(text).matchAll(TAG_RE)].map((m) => m[1].toLowerCase()))].slice(0, 10);
 
+/** Paid subscription to an author: active if `until` is in the future. */
+export const isSubscribed = (subscriberId, authorId) => subscriberId === authorId || !!db.prepare('SELECT 1 FROM subscriptions WHERE subscriber_id = ? AND author_id = ? AND until > ?').get(subscriberId, authorId, now());
+
 function serializePost(p, viewerId, depth = 0) {
   if (!p) return null;
   const author = getUser(p.user_id);
+  const locked = !!p.paid && !p.deleted && !isSubscribed(viewerId, p.user_id) && !getUser(viewerId)?.is_admin;
   const repost = p.repost_of && depth === 0 ? serializePost(db.prepare('SELECT * FROM posts WHERE id = ?').get(p.repost_of), viewerId, 1) : null;
   return {
     id: p.id,
     author: lightUser(author),
-    text: p.deleted ? '' : p.text,
-    media: p.deleted ? [] : parseJson(p.media, []),
+    text: p.deleted ? '' : locked ? `${p.text.slice(0, 60)}${p.text.length > 60 ? '…' : ''}` : p.text,
+    media: p.deleted || locked ? [] : parseJson(p.media, []),
+    paid: !!p.paid,
+    locked,
+    lockedMedia: locked ? parseJson(p.media, []).length : 0,
+    subPrice: locked ? author?.sub_price || 0 : undefined,
     deleted: !!p.deleted,
     repost,
     likes: db.prepare('SELECT COUNT(*) c FROM post_likes WHERE post_id = ?').get(p.id).c,
@@ -62,6 +70,14 @@ r.get('/feed', (req, res) => {
   let rows;
   if (tab === 'following') {
     rows = db.prepare(`SELECT p.* FROM posts p WHERE p.deleted = 0 AND p.created_at < @before AND (p.user_id IN (SELECT followee_id FROM follows WHERE follower_id = @me) OR p.user_id = @me) AND ${notBlocked} ORDER BY p.created_at DESC LIMIT ${PAGE}`).all({ me, before });
+  } else if (tab === 'top') {
+    // «Тренды»: hot posts of the last 3 days — engagement decayed by age
+    const pool = db.prepare(`SELECT p.*, (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) l, (SELECT COUNT(*) FROM post_comments WHERE post_id = p.id) c, (SELECT COUNT(*) FROM posts r WHERE r.repost_of = p.id AND r.deleted = 0) rp
+      FROM posts p JOIN users u ON u.id = p.user_id AND u.is_banned = 0 WHERE p.deleted = 0 AND p.created_at > @since AND ${notBlocked} LIMIT 500`).all({ me, since: now() - 3 * 86400_000 });
+    const score = (p) => (p.l * 3 + p.c * 4 + p.rp * 5 + p.views * 0.05 + 1) / Math.pow((now() - p.created_at) / 3600_000 + 2, 1.3);
+    const page = Number(req.query.page) || 0;
+    rows = pool.sort((a, b) => score(b) - score(a)).slice(page * PAGE, page * PAGE + PAGE);
+    return res.json({ posts: rows.map((p) => ({ kind: 'post', ...serializePost(p, me) })), hasMore: pool.length > (page + 1) * PAGE, page: page + 1 });
   } else if (tab === 'tag' && tag) {
     rows = db.prepare(`SELECT p.* FROM posts p JOIN post_tags t ON t.post_id = p.id AND t.tag = @tag WHERE p.deleted = 0 AND p.created_at < @before AND ${notBlocked} ORDER BY p.created_at DESC LIMIT ${PAGE}`).all({ me, before, tag });
   } else {
@@ -115,7 +131,8 @@ r.post('/posts', (req, res) => {
   if (repostOf && !db.prepare('SELECT 1 FROM posts WHERE id = ? AND deleted = 0').get(repostOf)) fail(404, 'Пост не найден');
   if (!text && !media.length && !repostOf) fail(400, 'Пустой пост');
   const id = tx(() => {
-    const ins = db.prepare('INSERT INTO posts (user_id, text, media, repost_of, created_at) VALUES (?, ?, ?, ?, ?)').run(req.user.id, text, media.length ? JSON.stringify(media) : null, repostOf, now());
+    const paid = req.body.paid && req.user.sub_price > 0 && !repostOf ? 1 : 0;
+    const ins = db.prepare('INSERT INTO posts (user_id, text, media, repost_of, created_at, paid) VALUES (?, ?, ?, ?, ?, ?)').run(req.user.id, text, media.length ? JSON.stringify(media) : null, repostOf, now(), paid);
     const pid = Number(ins.lastInsertRowid);
     for (const t of tagsOf(text)) db.prepare('INSERT OR IGNORE INTO post_tags (post_id, tag, created_at) VALUES (?, ?, ?)').run(pid, t, now());
     return pid;
@@ -176,9 +193,29 @@ r.post('/posts/views', (req, res) => {
   res.json({ ok: true });
 });
 
+const serializeComment = (c, viewerId) => {
+  const parent = c.reply_to ? db.prepare('SELECT user_id FROM post_comments WHERE id = ?').get(c.reply_to) : null;
+  return {
+    id: c.id, text: c.text, author: lightUser(getUser(c.user_id)), createdAt: c.created_at, mine: c.user_id === viewerId,
+    replyTo: c.reply_to || null, replyToName: parent ? getUser(parent.user_id)?.display_name : null,
+    likes: db.prepare('SELECT COUNT(*) n FROM comment_likes WHERE comment_id = ?').get(c.id).n,
+    liked: !!db.prepare('SELECT 1 FROM comment_likes WHERE comment_id = ? AND user_id = ?').get(c.id, viewerId),
+  };
+};
+
 r.get('/posts/:id/comments', (req, res) => {
-  const rows = db.prepare('SELECT * FROM post_comments WHERE post_id = ? ORDER BY id LIMIT 300').all(Number(req.params.id));
-  res.json({ comments: rows.map((c) => ({ id: c.id, text: c.text, author: lightUser(getUser(c.user_id)), createdAt: c.created_at, mine: c.user_id === req.user.id })) });
+  const p = db.prepare('SELECT * FROM posts WHERE id = ?').get(Number(req.params.id));
+  if (p?.paid && !isSubscribed(req.user.id, p.user_id) && !req.user.is_admin) return res.json({ comments: [], locked: true });
+  const rows = db.prepare('SELECT * FROM post_comments WHERE post_id = ? ORDER BY id LIMIT 500').all(Number(req.params.id));
+  res.json({ comments: rows.map((c) => serializeComment(c, req.user.id)) });
+});
+
+r.post('/comments/:id/like', (req, res) => {
+  const c = db.prepare('SELECT * FROM post_comments WHERE id = ?').get(Number(req.params.id));
+  if (!c) fail(404, 'Комментарий не найден');
+  if (db.prepare('SELECT 1 FROM comment_likes WHERE comment_id = ? AND user_id = ?').get(c.id, req.user.id)) db.prepare('DELETE FROM comment_likes WHERE comment_id = ? AND user_id = ?').run(c.id, req.user.id);
+  else db.prepare('INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)').run(c.id, req.user.id);
+  res.json({ comment: serializeComment(c, req.user.id) });
 });
 
 r.post('/posts/:id/comments', (req, res) => {
@@ -189,8 +226,13 @@ r.post('/posts/:id/comments', (req, res) => {
   if (!text) fail(400, 'Пустой комментарий');
   const last = db.prepare('SELECT created_at FROM post_comments WHERE user_id = ? ORDER BY id DESC LIMIT 1').get(req.user.id)?.created_at || 0;
   if (now() - last < 3000) fail(429, 'Слишком часто');
-  const id = Number(db.prepare('INSERT INTO post_comments (post_id, user_id, text, created_at) VALUES (?, ?, ?, ?)').run(p.id, req.user.id, text, now()).lastInsertRowid);
-  res.json({ comment: { id, text, author: lightUser(req.user), createdAt: now(), mine: true } });
+  if (p.paid && !isSubscribed(req.user.id, p.user_id) && !req.user.is_admin) fail(403, 'Комментировать могут только подписчики автора');
+  let replyTo = req.body.replyTo ? Number(req.body.replyTo) : null;
+  const parent = replyTo ? db.prepare('SELECT * FROM post_comments WHERE id = ? AND post_id = ?').get(replyTo, p.id) : null;
+  if (!parent) replyTo = null;
+  const id = Number(db.prepare('INSERT INTO post_comments (post_id, user_id, text, created_at, reply_to) VALUES (?, ?, ?, ?, ?)').run(p.id, req.user.id, text, now(), replyTo).lastInsertRowid);
+  if (parent && parent.user_id !== req.user.id) notify(parent.user_id, `💬 ${req.user.display_name} ответил(а) на ваш комментарий: «${text.slice(0, 120)}»`);
+  res.json({ comment: serializeComment(db.prepare('SELECT * FROM post_comments WHERE id = ?').get(id), req.user.id) });
 });
 
 r.delete('/comments/:id', (req, res) => {
@@ -198,6 +240,33 @@ r.delete('/comments/:id', (req, res) => {
   if (!c || (c.user_id !== req.user.id && c.author !== req.user.id && !req.user.is_admin)) fail(404, 'Не найдено');
   db.prepare('DELETE FROM post_comments WHERE id = ?').run(c.id);
   res.json({ ok: true });
+});
+
+// ---------------- paid subscriptions to authors ----------------
+r.post('/me/subscription-price', (req, res) => {
+  const price = Math.max(0, Math.min(1_000_000, Math.floor(Number(req.body.price) || 0)));
+  db.prepare('UPDATE users SET sub_price = ? WHERE id = ?').run(price, req.user.id);
+  res.json({ user: meUser(getUser(req.user.id)) });
+});
+
+r.post('/users/:id/subscribe', (req, res) => {
+  const a = getUser(Number(req.params.id));
+  if (!a || a.is_bot || a.id === req.user.id) fail(400, 'Нельзя подписаться');
+  if (!a.sub_price) fail(400, 'Автор не принимает платные подписки');
+  if (isBlocked(a.id, req.user.id)) fail(403, 'Автор ограничил вам доступ');
+  const fee = Math.floor((a.sub_price * (Number(getSetting('cfg_sub_fee_percent')) || 10)) / 100);
+  const out = tx(() => {
+    const cur = db.prepare('SELECT until FROM subscriptions WHERE subscriber_id = ? AND author_id = ?').get(req.user.id, a.id)?.until || 0;
+    const until = Math.max(cur, now()) + 30 * 86400_000;
+    changeBalance(req.user.id, -a.sub_price, 'subscription', `Подписка на ${a.display_name} (30 дней)`, `sub:${a.id}`);
+    changeBalance(a.id, a.sub_price - fee, 'subscription_in', `Подписка от ${req.user.display_name} (комиссия ${fee})`, `sub:${req.user.id}`);
+    db.prepare('INSERT INTO subscriptions (subscriber_id, author_id, until, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(subscriber_id, author_id) DO UPDATE SET until = excluded.until').run(req.user.id, a.id, until, now());
+    db.prepare('INSERT OR IGNORE INTO follows (follower_id, followee_id, created_at) VALUES (?, ?, ?)').run(req.user.id, a.id, now());
+    return until;
+  });
+  pushBalance(req.user.id, a.id);
+  notify(a.id, `⭐ ${req.user.display_name} оформил(а) платную подписку на вас: +${a.sub_price - fee} ${getSetting('currency_symbol') || '✦'}`);
+  res.json({ until: out });
 });
 
 /** Share a post into a chat. */

@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Heart, MessageCircle, Repeat2, Send, Eye, MoreHorizontal, ImagePlus, X, Trash2, Link2, Hash, Share2, Pencil } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Heart, MessageCircle, Repeat2, Send, Eye, MoreHorizontal, ImagePlus, X, Trash2, Link2, Hash, Share2, Pencil, Lock, Star, Quote } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, upload, mediaUrl, PUBLIC_ORIGIN } from '../api.js';
-import { Avatar, Modal, Spinner, Verified, PremiumStar, StyledName, useAction } from './common.jsx';
+import { Avatar, Modal, Spinner, Verified, PremiumStar, StyledName, useAction, Spark } from './common.jsx';
 import { useT } from '../i18n.js';
 import { fmtNum } from '../util.js';
 
@@ -115,6 +115,7 @@ export function PostCard({ post, onChange, onRemove, onTag, index = 0, embedded 
                 <div className="ctx-menu" style={{ position: 'absolute', right: 0, top: 40, left: 'auto', zIndex: 10, '--origin': 'top right' }}>
                   <button className="menu-item" onClick={() => { setMenu(false); navigator.clipboard?.writeText(`${PUBLIC_ORIGIN}/post/${post.id}`); toast('Ссылка скопирована'); }}><Link2 size={18} /> {t('Скопировать ссылку')}</button>
                   <button className="menu-item" onClick={repost}><Repeat2 size={18} /> {t('Репост')}</button>
+                  <button className="menu-item" onClick={() => { setMenu(false); openModal('createPost', { quote: post.repost && !post.text ? post.repost : post }); }}><Quote size={18} /> Цитировать</button>
                   <button className="menu-item" onClick={() => { setMenu(false); openModal('sharePost', { post }); }}><Share2 size={18} /> {t('Поделиться')}</button>
                   {post.mine && !post.repost && <button className="menu-item" onClick={editPost}><Pencil size={18} /> Изменить</button>}
                   {(post.mine || me.isAdmin) && <button className="menu-item danger" onClick={remove}><Trash2 size={18} className="danger" /> {t('Удалить')}</button>}
@@ -124,7 +125,22 @@ export function PostCard({ post, onChange, onRemove, onTag, index = 0, embedded 
           </div>
         )}
       </div>
-      {body.text && <div className="post-text selectable"><RichText text={body.text} onTag={onTag} /></div>}
+      {body.text && <div className={`post-text selectable ${body.locked ? 'locked-text' : ''}`}><RichText text={body.text} onTag={onTag} /></div>}
+      {body.locked && (
+        <div className="post-locked" onClick={(e) => e.stopPropagation()}>
+          <div className="pl-blur">{Array.from({ length: Math.max(1, body.lockedMedia) }, (_, i) => <i key={i} />)}</div>
+          <div className="pl-cta">
+            <Lock size={22} />
+            <b>Только для подписчиков</b>
+            <span className="small muted">{body.lockedMedia ? `${body.lockedMedia} медиа · ` : ''}Подписка открывает все платные посты автора на 30 дней</span>
+            <button className="btn sm" onClick={async () => {
+              if (!confirm(`Подписаться на ${body.author.displayName} за ${body.subPrice} в месяц?`)) return;
+              try { await api(`/users/${body.author.id}/subscribe`, { body: {} }); onChange?.((await api(`/posts/${post.id}`)).post); toast('Подписка оформлена ⭐'); } catch (er) { toast(er.message, 'error'); }
+            }}>Подписаться за <Spark amount={body.subPrice} />/мес</button>
+          </div>
+        </div>
+      )}
+      {body.paid && !body.locked && <div className="post-paid-tag"><Star size={12} /> для подписчиков</div>}
       {body.media?.length > 0 && (
         <div className={`post-media n${Math.min(body.media.length, 4)}`}>
           {body.media.map((m, i) => (m.kind === 'video'
@@ -153,13 +169,16 @@ export function PostList({ source, onTag, header, emptyText }) {
   const [posts, setPosts] = useState(null);
   const [more, setMore] = useState(false);
   const [loading, setLoading] = useState(false);
+  const pageRef = useRef(null);
   const load = useCallback(async (before) => {
     setLoading(true);
     try {
       const sep = source.includes('?') ? '&' : '?';
-      const r = await api(`${source}${before ? `${sep}before=${before}` : ''}`);
+      const cursor = typeof before === 'string' ? before : before ? `before=${before}` : '';
+      const r = await api(`${source}${cursor ? `${sep}${cursor}` : ''}`);
       setPosts((p) => (before ? [...(p || []), ...r.posts] : r.posts));
       setMore(r.hasMore);
+      pageRef.current = r.page != null ? `page=${r.page}` : null;
     } finally {
       setLoading(false);
     }
@@ -173,7 +192,7 @@ export function PostList({ source, onTag, header, emptyText }) {
   const sentinel = useRef();
   useEffect(() => {
     if (!sentinel.current || !more) return undefined;
-    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting && !loading && posts?.length) load(posts[posts.length - 1].createdAt); }, { rootMargin: '400px' });
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting && !loading && posts?.length) load(pageRef.current || posts[posts.length - 1].createdAt); }, { rootMargin: '400px' });
     io.observe(sentinel.current);
     return () => io.disconnect();
   }, [more, loading, posts, load]);
@@ -191,7 +210,7 @@ export function PostList({ source, onTag, header, emptyText }) {
 }
 
 // ---------------- composer ----------------
-export function Composer({ autoOpen, onDone }) {
+export function Composer({ autoOpen, onDone, quote }) {
   const t = useT();
   const me = useStore((s) => s.me);
   const toast = useStore((s) => s.toast);
@@ -199,6 +218,7 @@ export function Composer({ autoOpen, onDone }) {
   const [media, setMedia] = useState([]);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(!!autoOpen);
+  const [paid, setPaid] = useState(false);
   const pick = async (files) => {
     for (const f of [...files].slice(0, 4 - media.length)) {
       if (!/^(image|video)\//.test(f.type)) continue;
@@ -211,7 +231,7 @@ export function Composer({ autoOpen, onDone }) {
   const submit = async () => {
     setBusy(true);
     try {
-      const r = await api('/posts', { body: { text, media } });
+      const r = await api('/posts', { body: { text, media, paid, repostOf: quote?.id } });
       window.dispatchEvent(new CustomEvent('post:new', { detail: r.post }));
       setText(''); setMedia([]); setOpen(!!autoOpen);
       onDone?.(r.post);
@@ -222,6 +242,7 @@ export function Composer({ autoOpen, onDone }) {
       <Avatar src={me.avatar} name={me.displayName} id={me.id} size={40} />
       <div className="grow">
         <textarea autoFocus={autoOpen} placeholder={t('Что нового?')} value={text} onFocus={() => setOpen(true)} onChange={(e) => setText(e.target.value)} maxLength={2000} rows={open ? 3 : 1} />
+        {quote && <div className="post-quote"><PostCard post={quote} embedded /></div>}
         {media.length > 0 && (
           <div className="composer-media">
             {media.map((m, i) => (
@@ -236,8 +257,9 @@ export function Composer({ autoOpen, onDone }) {
           <div className="row" style={{ marginTop: 8 }}>
             <label className="icon-btn" title="Фото / видео"><ImagePlus size={20} /><input type="file" accept="image/*,video/*" multiple hidden onChange={(e) => { pick(e.target.files); e.target.value = ''; }} /></label>
             <span className="tiny muted">{text.length}/2000</span>
+            {me.subPrice > 0 && !quote && <label className={`chip ${paid ? 'on' : ''}`} style={{ cursor: 'pointer' }}><input type="checkbox" hidden checked={paid} onChange={(e) => setPaid(e.target.checked)} /><Star size={13} /> Для подписчиков</label>}
             <span className="spacer" />
-            <button className="btn sm" disabled={busy || (!text.trim() && !media.length)} onClick={submit}>{t('Опубликовать')}</button>
+            <button className="btn sm" disabled={busy || (!text.trim() && !media.length && !quote)} onClick={submit}>{t('Опубликовать')}</button>
           </div>
         )}
       </div>
@@ -253,13 +275,13 @@ export function FeedPage() {
   const [tags, setTags] = useState(null);
   useEffect(() => { if (tab === 'tags' && !tags) api('/tags/trending').then((r) => setTags(r.tags)).catch(() => setTags([])); }, [tab, tags]);
   const openTag = (tg) => { setTab('tags'); setTag(tg); };
-  const idx = ['all', 'following', 'tags'].indexOf(tab);
+  const idx = ['all', 'top', 'following', 'tags'].indexOf(tab);
   return (
     <div className="page feed-page">
       <div className="feed-head">
-        <div className="seg">
+        <div className="seg n4">
           <span className="seg-ind" style={{ transform: `translateX(${idx * 100}%)` }} />
-          {[['all', t('Лента')], ['following', t('Подписки')], ['tags', t('Теги')]].map(([k, l]) => (
+          {[['all', t('Лента')], ['top', 'Тренды'], ['following', t('Подписки')], ['tags', t('Теги')]].map(([k, l]) => (
             <button key={k} className={tab === k ? 'on' : ''} onClick={() => { setTab(k); if (k !== 'tags') setTag(null); }}>{l}</button>
           ))}
         </div>
@@ -276,7 +298,7 @@ export function FeedPage() {
           </div>
         ) : (
           <PostList
-            source={tab === 'following' ? '/feed?tab=following' : tag ? `/feed?tab=tag&tag=${encodeURIComponent(tag)}` : '/feed'}
+            source={tab === 'following' ? '/feed?tab=following' : tab === 'top' ? '/feed?tab=top' : tag ? `/feed?tab=tag&tag=${encodeURIComponent(tag)}` : '/feed'}
             onTag={openTag}
             header={tag ? <div className="row tag-head"><Hash size={20} className="accent" /><b className="grow">{tag}</b><button className="btn sm secondary" onClick={() => setTag(null)}>Все теги</button></div> : <Composer />}
             emptyText={tab === 'following' ? 'Подпишитесь на людей — их посты появятся здесь' : undefined}
@@ -301,10 +323,22 @@ export function PostModal({ postId, initial, onChange, onRemove, focus }) {
     api(`/posts/${postId}/comments`).then((r) => setComments(r.comments)).catch(() => setComments([]));
   }, [postId]); // eslint-disable-line react-hooks/exhaustive-deps
   const change = (p) => { setPost(p); onChange?.(p); };
+  const [replyTo, setReplyTo] = useState(null);
+  const likeComment = async (c) => {
+    setComments((x) => x.map((y) => (y.id === c.id ? { ...y, liked: !y.liked, likes: y.likes + (y.liked ? -1 : 1) } : y)));
+    try { const r = await api(`/comments/${c.id}/like`, { body: {} }); setComments((x) => x.map((y) => (y.id === c.id ? r.comment : y))); } catch {}
+  };
+  const thread = useMemo(() => {
+    if (!comments) return null;
+    const top = comments.filter((c) => !c.replyTo || !comments.some((p) => p.id === c.replyTo));
+    const rootOf = (c) => { let cur = c; const seen = new Set(); while (cur.replyTo && !seen.has(cur.id)) { seen.add(cur.id); const p = comments.find((x) => x.id === cur.replyTo); if (!p) break; cur = p; } return cur.id; };
+    return top.map((t) => ({ ...t, replies: comments.filter((c) => c.id !== t.id && c.replyTo && rootOf(c) === t.id) }));
+  }, [comments]);
   const send = () => run(async () => {
-    const r = await api(`/posts/${postId}/comments`, { body: { text } });
+    const r = await api(`/posts/${postId}/comments`, { body: { text, replyTo: replyTo?.id } });
     setComments((c) => [...(c || []), r.comment]);
     setText('');
+    setReplyTo(null);
     change({ ...post, comments: post.comments + 1 });
   });
   const delComment = (c) => run(async () => {
@@ -314,21 +348,33 @@ export function PostModal({ postId, initial, onChange, onRemove, focus }) {
   });
   return (
     <Modal title={t('Комментарии')} footer={
+      <div className="col" style={{ width: '100%', gap: 6 }}>
+        {replyTo && <div className="reply-chip">Ответ для <b>{replyTo.author.displayName}</b><button className="icon-btn" onClick={() => setReplyTo(null)}><X size={14} /></button></div>}
       <div className="row" style={{ width: '100%' }}>
-        <input className="input grow" autoFocus={focus} placeholder={t('Написать комментарий…')} value={text} maxLength={1000} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && text.trim() && send()} />
+        <input className="input grow" autoFocus={focus} placeholder={replyTo ? `Ответить ${replyTo.author.displayName}…` : t('Написать комментарий…')} value={text} maxLength={1000} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && text.trim() && send()} />
         <button className="send-btn" style={{ width: 46, height: 46 }} disabled={busy || !text.trim()} onClick={send}><Send size={20} /></button>
+      </div>
       </div>
     }>
       {post ? <PostCard post={post} onChange={change} onRemove={(p) => { onRemove?.(p); close(); }} /> : <Spinner />}
       <div className="comments">
-        {!comments ? <div className="center" style={{ padding: 20 }}><Spinner size={22} /></div> : !comments.length ? <div className="muted small center" style={{ padding: 20 }}>Комментариев пока нет</div> : comments.map((c, i) => (
-          <div key={c.id} className="comment" style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}>
-            <Avatar src={c.author.avatar} name={c.author.displayName} id={c.author.id} size={32} />
-            <div className="grow">
-              <div className="row" style={{ gap: 4 }}><b className="small row" style={{ gap: 4 }}><StyledName user={c.author} />{c.author.premium && <PremiumStar size={12} />}</b><span className="tiny muted">{ago(c.createdAt)}</span></div>
-              <div className="selectable" style={{ whiteSpace: 'pre-wrap' }}><RichText text={c.text} /></div>
-            </div>
-            {(c.mine || post?.mine) && <button className="icon-btn" onClick={() => delComment(c)}><Trash2 size={16} /></button>}
+        {!thread ? <div className="center" style={{ padding: 20 }}><Spinner size={22} /></div> : !thread.length ? <div className="muted small center" style={{ padding: 20 }}>Комментариев пока нет</div> : thread.map((c, i) => (
+          <div key={c.id} style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }} className="comment-thread">
+            {[c, ...c.replies].map((x, k) => (
+              <div key={x.id} className={`comment ${k ? 'reply' : ''}`}>
+                <Avatar src={x.author.avatar} name={x.author.displayName} id={x.author.id} size={k ? 26 : 32} />
+                <div className="grow">
+                  <div className="row" style={{ gap: 4 }}><b className="small row" style={{ gap: 4 }}><StyledName user={x.author} />{x.author.premium && <PremiumStar size={12} />}</b><span className="tiny muted">{ago(x.createdAt)}</span></div>
+                  {k > 0 && x.replyToName && <div className="tiny muted">↳ {x.replyToName}</div>}
+                  <div className="selectable" style={{ whiteSpace: 'pre-wrap' }}><RichText text={x.text} /></div>
+                  <div className="comment-actions">
+                    <button className={`c-like ${x.liked ? 'on' : ''}`} onClick={() => likeComment(x)}><Heart size={13} fill={x.liked ? 'currentColor' : 'none'} />{x.likes > 0 && x.likes}</button>
+                    <button onClick={() => { setReplyTo(x); document.querySelector('.modal-foot input, .modal .input')?.focus(); }}>Ответить</button>
+                  </div>
+                </div>
+                {(x.mine || post?.mine) && <button className="icon-btn" onClick={() => delComment(x)}><Trash2 size={15} /></button>}
+              </div>
+            ))}
           </div>
         ))}
       </div>
@@ -410,12 +456,12 @@ function ChannelCard({ item, index, onTag }) {
   );
 }
 
-export function CreatePostModal() {
+export function CreatePostModal({ quote }) {
   const close = useStore((s) => s.closeModal);
   const setTab = useStore((s) => s.setTab);
   return (
-    <Modal title="Новый пост">
-      <Composer autoOpen onDone={() => { close(); setTab('feed'); useStore.getState().toast('Пост опубликован'); }} />
+    <Modal title={quote ? 'Цитировать' : 'Новый пост'}>
+      <Composer autoOpen quote={quote} onDone={() => { close(); setTab('feed'); useStore.getState().toast('Пост опубликован'); }} />
       <div className="tiny muted" style={{ marginTop: 10 }}>Добавьте #теги — по ним пост найдут во вкладке «Теги».</div>
     </Modal>
   );

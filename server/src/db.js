@@ -505,6 +505,11 @@ CREATE TABLE IF NOT EXISTS price_points (
 );
 CREATE INDEX IF NOT EXISTS idx_price_points ON price_points(gift_id, created_at);`);
 addColumn('users', 'daily_streak', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('post_comments', 'reply_to', 'INTEGER');
+addColumn('posts', 'paid', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('users', 'sub_price', 'INTEGER NOT NULL DEFAULT 0');
+db.exec(`CREATE TABLE IF NOT EXISTS comment_likes (comment_id INTEGER NOT NULL, user_id INTEGER NOT NULL, PRIMARY KEY (comment_id, user_id));
+CREATE TABLE IF NOT EXISTS subscriptions (subscriber_id INTEGER NOT NULL, author_id INTEGER NOT NULL, until INTEGER NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (subscriber_id, author_id));`);
 addColumn('users', 'daily_last', 'TEXT');
 addColumn('gifts', 'sale_until', 'INTEGER');
 // seed price history from past market sales (once)

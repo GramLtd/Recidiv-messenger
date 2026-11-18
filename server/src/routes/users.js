@@ -170,6 +170,9 @@ r.get('/users/:id', (req, res) => {
     isBlocked: isBlocked(req.user.id, u.id),
     blockedMe: isBlocked(u.id, req.user.id),
     premiumUntil: u.id === req.user.id ? u.premium_until || null : undefined,
+    subPrice: u.sub_price || 0,
+    subscribedUntil: db.prepare('SELECT until FROM subscriptions WHERE subscriber_id = ? AND author_id = ? AND until > ?').get(req.user.id, u.id, now())?.until || null,
+    subscribers: u.id === req.user.id ? db.prepare('SELECT COUNT(*) n FROM subscriptions WHERE author_id = ? AND until > ?').get(u.id, now()).n : undefined,
   };
   const giftsCount = db.prepare('SELECT COUNT(*) c FROM user_gifts WHERE owner_id = ? AND converted = 0 AND hidden = 0').get(u.id).c;
   const usernames = db.prepare('SELECT display FROM usernames WHERE user_id = ? AND display != ?').all(u.id, u.username || '').map((x) => x.display);

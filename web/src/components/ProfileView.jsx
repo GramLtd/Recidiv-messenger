@@ -2,8 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBadge } from './StatusModal.jsx';
 import {
   X, Pencil, Shield, MessageCircle, Gift, Send, Pin, Eye, CalendarDays, Hash, Filter, Play, Pause, ChevronRight, Music2, Megaphone, Check, Phone,
-  MoreHorizontal, UserPlus, UserMinus, UserCheck, Ban, Link2, MapPin, Coins, AtSign, Copy, Store,
-} from 'lucide-react';
+  MoreHorizontal, UserPlus, UserMinus, UserCheck, Ban, Link2, MapPin, Coins, AtSign, Copy, Store, Star } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, mediaUrl, PUBLIC_ORIGIN } from '../api.js';
 import { Avatar, Verified, Modal, useAsync, Spinner, WornGift, Spark, PremiumStar, nameStyleCss, useAction, StyledName, SparkIcon } from './common.jsx';
@@ -459,6 +458,16 @@ export function ProfileView({ userId, onClose }) {
         <>
           {(u.isBlocked || u.blockedMe) && (
             <div className="pv-blocked">{u.isBlocked ? <>Вы заблокировали этого пользователя. <button onClick={toggleBlock}>Разблокировать</button></> : 'Пользователь ограничил вам доступ к профилю и сообщениям.'}</div>
+          )}
+          {u.subPrice > 0 && !u.blockedMe && (
+            <button className={`pv-sub ${u.subscribedUntil ? 'on' : ''}`} onClick={() => run(async () => {
+              if (!confirm(u.subscribedUntil ? `Продлить подписку на ${u.displayName} ещё на 30 дней за ${u.subPrice}?` : `Платная подписка на ${u.displayName}: ${u.subPrice} за 30 дней. Откроет все посты «для подписчиков».`)) return;
+              const r = await api(`/users/${u.id}/subscribe`, { body: {} });
+              patchU({ subscribedUntil: r.until, isFollowing: true });
+            }, 'Подписка оформлена ⭐')}>
+              <Star size={16} fill={u.subscribedUntil ? 'currentColor' : 'none'} />
+              {u.subscribedUntil ? <>Подписка до {new Date(u.subscribedUntil).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} · продлить</> : <>Платная подписка · <Spark amount={u.subPrice} />/мес</>}
+            </button>
           )}
           <div className="pv-bar">
             <button className="btn pv-bar-main" onClick={() => openPrivate(u.id)}><MessageCircle size={18} />{t('Написать')}</button>

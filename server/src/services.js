@@ -102,7 +102,7 @@ export function lightUser(u) {
 }
 
 export function meUser(u) {
-  return { ...publicUser(u), email: u.email, balance: u.balance, isBanned: !!u.is_banned, createdAt: u.created_at, profileTrackId: u.profile_track_id, personalChannelId: u.personal_channel_id, isTester: !!u.is_tester, wallpaper: parseJson(u.wallpaper, null), premiumUntil: u.premium_until || null, privacy: privacyOf(u), showBalance: !!u.show_balance, ...presenceSelf(u) };
+  return { ...publicUser(u), subPrice: u.sub_price || 0, email: u.email, balance: u.balance, isBanned: !!u.is_banned, createdAt: u.created_at, profileTrackId: u.profile_track_id, personalChannelId: u.personal_channel_id, isTester: !!u.is_tester, wallpaper: parseJson(u.wallpaper, null), premiumUntil: u.premium_until || null, privacy: privacyOf(u), showBalance: !!u.show_balance, ...presenceSelf(u) };
 }
 
 // ---------------- ledger ----------------

@@ -247,7 +247,7 @@ r.put('/settings', (req, res) => {
 const CFG = {
   pay_ton: 'bool', ton_wallet: 'str', toncenter_key: 'secret',
   pay_xrocket: 'bool', xrocket_key: 'secret', test_payments: 'tri',
-  registration: 'bool', email_verification: 'bool', anon_registration: 'bool', daily_enabled: 'bool', daily_rewards: 'str', admin_emails: 'str',
+  registration: 'bool', email_verification: 'bool', anon_registration: 'bool', daily_enabled: 'bool', daily_rewards: 'str', sub_fee_percent: 'str', admin_emails: 'str',
   tenor_key: 'secret',
   smtp_host: 'str', smtp_port: 'str', smtp_secure: 'tri', smtp_user: 'str', smtp_pass: 'secret', smtp_from: 'str',
 };
