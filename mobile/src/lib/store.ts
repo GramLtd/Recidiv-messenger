@@ -29,7 +29,7 @@ type State = {
   refreshChats: () => Promise<void>;
   openChat: (id: number | null) => void;
   loadMessages: (chatId: number, older?: boolean) => Promise<void>;
-  send: (chat: Chat, payload: { text?: string; replyTo?: number; media?: any; secret?: boolean }) => Promise<void>;
+  send: (chat: Chat, payload: { text?: string; replyTo?: number; media?: any; secret?: boolean; silent?: boolean }) => Promise<void>;
   upsertMessage: (m: Msg) => void;
   setMe: (u: any) => void;
   upsertChat: (c: Chat) => void;
@@ -107,7 +107,7 @@ export const useStore = create<State>((set, get) => ({
     if (last && !older) api(`/chats/${chatId}/read`, { body: { messageId: last.id } }).catch(() => {});
   },
   async send(chat, p) {
-    let body: any = { text: p.text, replyTo: p.replyTo, media: p.media };
+    let body: any = { text: p.text, replyTo: p.replyTo, media: p.media, silent: p.silent || undefined };
     if (p.secret && chat.type === 'private' && chat.peer) body = { e2e: await encryptFor(chat.peer.id, p.text || ''), replyTo: p.replyTo };
     const { message } = await api(`/chats/${chat.id}/messages`, { body });
     get().upsertMessage(message);
@@ -164,7 +164,7 @@ function afterLogin() {
     s.upsertMessage(message);
     if (message.sender?.id !== s.me?.id && !chat.muted) {
       if (s.activeChatId === message.chatId) api(`/chats/${chat.id}/read`, { body: { messageId: message.id } }).catch(() => {});
-      notifyMessage(chat.title, message.type === 'secret' ? '🔒 Зашифрованное сообщение' : message.text || 'Новое сообщение', chat.id);
+      if (!message.silent) notifyMessage(chat.title, message.type === 'secret' ? '🔒 Зашифрованное сообщение' : message.text || 'Новое сообщение', chat.id);
     }
   });
   on('message:update', ({ message }) => st().upsertMessage(message));

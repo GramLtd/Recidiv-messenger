@@ -4,7 +4,7 @@ import { ActionSheetIOS, Alert, FlatList, Platform, RefreshControl, ScrollView, 
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Bookmark, Check, CheckCheck, Megaphone, Pin, Plus, Search, SquarePen, Users, VolumeX, X } from 'lucide-react-native';
+import { Archive, Bookmark, Check, CheckCheck, ChevronLeft, Megaphone, Pin, Plus, Search, SquarePen, Users, VolumeX, X } from 'lucide-react-native';
 import { useStore } from '../../lib/store';
 import { api } from '../../lib/api';
 import { useCached } from '../../lib/useCached';
@@ -54,8 +54,10 @@ const ChatRow = React.memo(function ChatRow({ c, index, meId, editing, onAction 
   const read = own && c.peerReadId >= lm.id;
   const typing = useStore((s) => (s.typing[c.id] || 0) > Date.now());
   const menu = () => {
-    const opts: [string, string][] = [['pin', c.pinned ? 'Открепить' : 'Закрепить'], ['mute', c.muted ? 'Включить звук' : 'Без звука'], ['leave', c.type === 'private' ? 'Удалить чат' : c.type === 'channel' ? 'Покинуть канал' : 'Покинуть группу']];
-    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ options: [...opts.map((o) => o[1]), 'Отмена'], cancelButtonIndex: 3, destructiveButtonIndex: 2 }, (i) => opts[i] && onAction(c, opts[i][0]));
+    const opts: [string, string][] = [['pin', c.pinned ? 'Открепить' : 'Закрепить'], ['mute', c.muted ? 'Включить звук' : 'Без звука'],
+      ...(c.type !== 'saved' ? [['archive', c.archived ? 'Вернуть из архива' : 'В архив'] as [string, string]] : []),
+      ['leave', c.type === 'private' ? 'Удалить чат' : c.type === 'channel' ? 'Покинуть канал' : 'Покинуть группу']];
+    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ options: [...opts.map((o) => o[1]), 'Отмена'], cancelButtonIndex: opts.length, destructiveButtonIndex: opts.length - 1 }, (i) => opts[i] && onAction(c, opts[i][0]));
     else Alert.alert(c.title, '', [...opts.map(([k, l]) => ({ text: l, onPress: () => onAction(c, k) })), { text: 'Отмена', style: 'cancel' as const }]);
   };
   return (
@@ -68,6 +70,7 @@ const ChatRow = React.memo(function ChatRow({ c, index, meId, editing, onAction 
               {c.type === 'group' && <Users size={15} color={C.text2} />}
               {c.type === 'channel' && <Megaphone size={15} color={C.text2} />}
               {c.peer ? <StyledName user={{ ...c.peer, displayName: c.title }} w={600} /> : <T w={600} numberOfLines={1} style={{ flexShrink: 1 }}>{c.title}</T>}
+              {!!c.peer?.emojiStatus && <T size={15}>{c.peer.emojiStatus}</T>}
               {c.peer?.verified && <Verified size={15} />}
               {c.peer?.premium && <PremiumStar size={14} />}
               {c.peer?.wornGift && <WornGift gift={c.peer.wornGift} size={18} />}
@@ -113,7 +116,7 @@ export default function Chats() {
   const action = async (c: any, kind: string) => {
     try {
       if (kind === 'leave') { await api(`/chats/${c.id}/leave`, { body: {} }); useStore.setState({ chats: useStore.getState().chats.filter((x) => x.id !== c.id) }); return; }
-      const r = await api(`/chats/${c.id}/settings`, { body: kind === 'pin' ? { pinned: !c.pinned } : { muted: !c.muted } });
+      const r = await api(`/chats/${c.id}/settings`, { body: kind === 'pin' ? { pinned: !c.pinned } : kind === 'archive' ? { archived: !c.archived } : { muted: !c.muted } });
       useStore.getState().upsertChat(r.chat);
       refresh().catch(() => {});
     } catch (e: any) { Alert.alert(e.message); }
@@ -130,7 +133,10 @@ export default function Chats() {
     if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ options: [...items.map((i) => i[0]), 'Отмена'], cancelButtonIndex: items.length }, (i) => items[i]?.[1]());
     else Alert.alert('Создать', '', [...items.map(([t, f]) => ({ text: t, onPress: f })), { text: 'Отмена', style: 'cancel' as const }]);
   };
-  const local = q ? chats.filter((c) => c.title?.toLowerCase().includes(q.toLowerCase())) : chats;
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const archived = chats.filter((c) => c.archived);
+  const archUnread = archived.reduce((n, c) => n + (c.unread || 0), 0);
+  const local = q ? chats.filter((c) => c.title?.toLowerCase().includes(q.toLowerCase())) : chats.filter((c) => !!c.archived === archiveOpen);
   if (!me) return null;
   const header = (
     <View>
@@ -148,7 +154,24 @@ export default function Chats() {
           </View>
         </Rise>
       )}
-      {!q && <StoriesBar />}
+      {!q && !archiveOpen && <StoriesBar />}
+      {!q && archiveOpen && (
+        <Rise duration={260} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, paddingBottom: 8 }}>
+          <Press scale={0.9} onPress={() => setArchiveOpen(false)}><Glass radius={19} style={{ width: 38, height: 38, alignItems: 'center', justifyContent: 'center' }}><ChevronLeft size={20} color={C.text} /></Glass></Press>
+          <T w={800} size={17}>Архив</T>
+        </Rise>
+      )}
+      {!q && !archiveOpen && archived.length > 0 && (
+        <Press scale={0.97} onPress={() => setArchiveOpen(true)} style={st.row}>
+          <View style={st.archIco}><Archive size={24} color="#fff" /></View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <T w={600}>Архив</T>
+            <T size={14} dim numberOfLines={1}>{archived.map((c) => c.title).join(', ')}</T>
+          </View>
+          {archUnread > 0 && <View style={[st.badge, { backgroundColor: C.text3 }]}><T w={600} size={11.7} color="#fff">{archUnread}</T></View>}
+        </Press>
+      )}
+      {!q && archiveOpen && !archived.length && <T dim center style={{ padding: 30 }}>Архив пуст</T>}
       {q && local.length > 0 && <T w={600} size={12.8} dim style={st.section}>Чаты</T>}
     </View>
   );
@@ -191,6 +214,7 @@ export default function Chats() {
 }
 
 const st = StyleSheet.create({
+  archIco: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#55555a', alignItems: 'center', justifyContent: 'center' },
   head: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 6, paddingTop: 8, paddingBottom: 6, minHeight: 58 },
   pill: { height: 40, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },

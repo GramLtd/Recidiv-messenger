@@ -338,6 +338,28 @@ export default function ChatScreen() {
       else { await send(chat, { text: t, replyTo: reply?.id, secret }); setReply(null); toBottom(); }
     } catch (e: any) { setText(t); alert(e.message); }
   };
+  // long-press on send (Telegram): silent / scheduled
+  const sendOptions = () => {
+    const t = text.trim();
+    if (!t || !chat) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const at = (h: number, m = 0, plusDays = 0) => { const d = new Date(); d.setDate(d.getDate() + plusDays); d.setHours(h, m, 0, 0); if (d.getTime() < Date.now() + 60_000) d.setDate(d.getDate() + 1); return d.getTime(); };
+    const schedule = async (when: number) => {
+      try {
+        await api(`/chats/${chat.id}/messages`, { body: { text: t, replyTo: reply?.id, scheduleAt: when } });
+        setText(''); setReply(null);
+        Alert.alert('Сообщение отложено', `Отправится ${new Date(when).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`);
+      } catch (e: any) { Alert.alert(e.message); }
+    };
+    const items: [string, () => void][] = [
+      ['Отправить без звука', async () => { setText(''); playSend(); try { await send(chat, { text: t, replyTo: reply?.id, silent: true }); setReply(null); toBottom(); } catch (e: any) { setText(t); Alert.alert(e.message); } }],
+      ['Отложить на час', () => schedule(Date.now() + 3600_000)],
+      ['Отложить до 20:00', () => schedule(at(20))],
+      ['Отложить до завтра, 9:00', () => schedule(at(9, 0, 1))],
+    ];
+    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ options: [...items.map((i) => i[0]), 'Отмена'], cancelButtonIndex: items.length }, (i) => items[i]?.[1]());
+    else Alert.alert('Отправка', '', [...items.map(([l, f]) => ({ text: l, onPress: f })), { text: 'Отмена', style: 'cancel' as const }]);
+  };
   const sendMedia = async (media: any) => {
     sentAt.current = Date.now();
     try { await send(chat, { media, replyTo: reply?.id }); playSend(); setReply(null); toBottom(); } catch (e: any) { alert(e.message); }
@@ -502,7 +524,7 @@ export default function ChatScreen() {
                 )}
               </Glass>
               {text.trim() || edit ? (
-                <Press scale={0.9} onPress={submit}>
+                <Press scale={0.9} onPress={submit} onLongPress={edit ? undefined : sendOptions}>
                   <AccentFill radius={25} style={st.send}>{edit ? <Check size={24} color="#fff" /> : <Send size={22} color="#fff" style={{ marginLeft: 2 }} />}</AccentFill>
                 </Press>
               ) : (
@@ -545,6 +567,7 @@ export default function ChatScreen() {
                 <T w={700} numberOfLines={1} style={{ flexShrink: 1 }}>{chat.title}</T>
                 {chat.peer?.verified && <Verified size={15} />}
                 {chat.peer?.premium && <PremiumStar size={14} />}
+                {!!chat.peer?.emojiStatus && <T size={14}>{chat.peer.emojiStatus}</T>}
                 {chat.peer?.wornGift && <WornGift gift={chat.peer.wornGift} size={18} />}
                 {chat.muted && <BellOff size={13} color={C.text2} />}
               </View>

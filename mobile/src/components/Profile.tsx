@@ -380,7 +380,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
 
   if (!data || !me) return <View style={{ flex: 1, backgroundColor: C.bg }} />;
   const isMe = data.id === me.id;
-  const u = isMe ? { ...data, displayName: me.displayName, avatar: me.avatar, nameStyle: me.nameStyle, premium: me.premium, banner: me.banner, blurBg: me.blurBg, username: me.username, anonNumber: me.anonNumber, bio: me.bio, location: me.location } : data;
+  const u = isMe ? { ...data, displayName: me.displayName, avatar: me.avatar, nameStyle: me.nameStyle, premium: me.premium, banner: me.banner, blurBg: me.blurBg, username: me.username, anonNumber: me.anonNumber, bio: me.bio, location: me.location, emojiStatus: me.emojiStatus, statusText: me.statusText } : data;
   const worn = u.wornGift;
   const glow = worn?.center || C.accent;
   const blur = u.blurBg || { mode: 'avatar' };
@@ -451,6 +451,7 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
           <StyledName user={u} size={22.5} w={900} />
           {u.verified && <Verified size={20} />}
           {u.premium && <PremiumStar size={20} />}
+          {!!u.emojiStatus && <T size={20} onPress={isMe ? () => router.push('/status') : undefined}>{u.emojiStatus}</T>}
           {worn && (
             <Press onPress={() => router.push({ pathname: '/gift/[id]', params: { id: String(worn.id) } })} style={{ marginLeft: 2 }}>
               <WornBubble worn={worn} />
