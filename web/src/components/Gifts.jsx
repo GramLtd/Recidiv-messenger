@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { UpgradeReveal } from './UpgradeReveal.jsx';
-import { Sparkles, Send, Tag, Tag as TagIcon, EyeOff, Eye, Repeat, Pin, ArrowUpCircle, Info, Search, X, Link2, Gem, Crown, MoreHorizontal, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { SeasonBadge, findCraftSet, CRAFT_N } from './Economy.jsx';
+import { Sparkles, Send, Tag, Tag as TagIcon, Gavel, Hammer, EyeOff, Eye, Repeat, Pin, ArrowUpCircle, Info, Search, X, Link2, Gem, Crown, MoreHorizontal, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, PUBLIC_ORIGIN } from '../api.js';
 import { Avatar, Modal, Spark, Switch, Spinner, useAsync, useAction, Verified } from './common.jsx';
@@ -117,6 +118,7 @@ export function GiftShopModal({ toUser: initialTo, toChat }) {
               {g.limited && <span className="ribbon">{g.remaining === 0 ? 'sold' : 'limited'}</span>}
               <div className="gift-card-art"><GiftArt gift={g} size="74%" height="74%" /></div>
               <div className="gift-card-name ellipsis">{g.name}</div>
+              <SeasonBadge gift={g} />
               <span className="price"><Spark amount={g.price} /></span>
               {g.limited && <div className="tiny muted" style={{ marginTop: 2 }}>{g.remaining ? `${fmtNum(g.remaining)} из ${fmtNum(g.supply)}` : 'распродано'}</div>}
             </div>
@@ -206,6 +208,16 @@ function GiftSheet({ userGiftId, dir, nav }) {
       setJustUpgraded(true);
       document.querySelector('.gift-sheet .modal-body')?.scrollTo({ top: 0, behavior: 'smooth' });
     }).finally(() => setRevealing(false));
+  };
+  const craft = async () => {
+    try {
+      const set = await findCraftSet(me.id, ug.gift.id);
+      const ids = [ug.id, ...set.map((g) => g.id).filter((id) => id !== ug.id)].slice(0, CRAFT_N);
+      if (ids.length < CRAFT_N) { toast(`Для крафта нужно ${CRAFT_N} одинаковых обычных подарка «${ug.gift.name}» — у вас ${set.length}`, 'error'); return; }
+      if (!confirm(`Крафт: ${CRAFT_N} подарков «${ug.gift.name}» превратятся в 1 коллекционный — бесплатно, без оплаты улучшения. Продолжить?`)) return;
+      if (attrs.data?.models?.length) setUpg({ request: api('/craft', { body: { userGiftIds: ids } }) });
+      else { const r = await api('/craft', { body: { userGiftIds: ids } }); setData({ userGift: r.userGift }); setJustUpgraded(true); }
+    } catch (e) { toast(e.message, 'error'); }
   };
   const upgradeDone = (userGift) => {
     setUpg(null);
@@ -300,11 +312,13 @@ function GiftSheet({ userGiftId, dir, nav }) {
             ) : (
               <button onClick={() => openModal('sell', { userGift: ug, onDone: (l) => setData({ userGift: { ...ug, listing: l } }) })}><TagIcon size={22} />продать</button>
             )}
+            {!ug.listing && <button onClick={() => openModal('auctionCreate', { userGift: ug })}><Gavel size={22} />аукцион</button>}
           </div>
         )}
         {mine && !col && (
           <div className="gs-actions">
             <button disabled={busy || !ug.gift.upgradable} onClick={upgrade}><ArrowUpCircle size={22} />{revealing ? 'улучшаем…' : 'улучшить'}</button>
+            {ug.gift.upgradable && <button disabled={busy} onClick={craft} title={`${CRAFT_N} одинаковых обычных подарков → 1 коллекционный бесплатно`}><Hammer size={22} />крафт</button>}
             <button disabled={busy} onClick={convert}><Repeat size={22} />в {useStore.getState().currency.symbol}</button>
             <button disabled={busy} onClick={() => visibility({ hidden: !ug.hidden })}>{ug.hidden ? <Eye size={22} /> : <EyeOff size={22} />}{ug.hidden ? 'показать' : 'скрыть'}</button>
           </div>

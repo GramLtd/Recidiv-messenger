@@ -110,6 +110,7 @@ function giftFields(b, prev = {}) {
     convert_value: num(val('convertValue', prev.convert_value)) ?? Math.floor(price * 0.85),
     enabled: val('enabled', prev.enabled ?? true) ? 1 : 0,
     sort: num(val('sort', prev.sort)) ?? 0,
+    sale_until: val('saleUntil', prev.sale_until) ? Math.floor(Number(val('saleUntil', prev.sale_until))) || null : null,
   };
 }
 
@@ -118,8 +119,8 @@ r.post('/gifts', (req, res) => {
   const assets = giftAssets(f.emoji);
   const id = tx(() => {
     const ins = db
-      .prepare('INSERT INTO gifts (name, emoji, image, animation, price, supply, upgrade_price, convert_value, enabled, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(f.name, f.emoji, f.image || assets.image, assets.animation, f.price, f.supply, f.upgrade_price, f.convert_value, f.enabled, f.sort, now());
+      .prepare('INSERT INTO gifts (name, emoji, image, animation, price, supply, upgrade_price, convert_value, enabled, sort, sale_until, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(f.name, f.emoji, f.image || assets.image, assets.animation, f.price, f.supply, f.upgrade_price, f.convert_value, f.enabled, f.sort, f.sale_until, now());
     seedModelsForGift(ins.lastInsertRowid, f.emoji);
     return ins.lastInsertRowid;
   });
@@ -131,8 +132,8 @@ r.patch('/gifts/:id', (req, res) => {
   if (!g) fail(404, 'Не найден');
   const f = giftFields(req.body, g);
   if (f.supply != null && f.supply < g.sold) fail(400, `Тираж не может быть меньше проданного (${g.sold})`);
-  db.prepare('UPDATE gifts SET name = ?, emoji = ?, image = ?, price = ?, supply = ?, upgrade_price = ?, convert_value = ?, enabled = ?, sort = ? WHERE id = ?').run(
-    f.name, f.emoji, f.image, f.price, f.supply, f.upgrade_price, f.convert_value, f.enabled, f.sort, g.id,
+  db.prepare('UPDATE gifts SET name = ?, emoji = ?, image = ?, price = ?, supply = ?, upgrade_price = ?, convert_value = ?, enabled = ?, sort = ?, sale_until = ? WHERE id = ?').run(
+    f.name, f.emoji, f.image, f.price, f.supply, f.upgrade_price, f.convert_value, f.enabled, f.sort, f.sale_until, g.id,
   );
   if (f.emoji !== g.emoji) {
     db.prepare('UPDATE gift_models SET emoji = ? WHERE gift_id = ? AND emoji = ?').run(f.emoji, g.id, g.emoji);
@@ -246,7 +247,7 @@ r.put('/settings', (req, res) => {
 const CFG = {
   pay_ton: 'bool', ton_wallet: 'str', toncenter_key: 'secret',
   pay_xrocket: 'bool', xrocket_key: 'secret', test_payments: 'tri',
-  registration: 'bool', email_verification: 'bool', anon_registration: 'bool', admin_emails: 'str',
+  registration: 'bool', email_verification: 'bool', anon_registration: 'bool', daily_enabled: 'bool', daily_rewards: 'str', admin_emails: 'str',
   tenor_key: 'secret',
   smtp_host: 'str', smtp_port: 'str', smtp_secure: 'tri', smtp_user: 'str', smtp_pass: 'secret', smtp_from: 'str',
 };

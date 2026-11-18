@@ -1305,3 +1305,36 @@ html.perf .modal-body > *, html.perf .page-body > *, html.perf .post, html.perf 
 .lp-img { margin-top: 6px; width: 100%; max-height: 180px; object-fit: cover; border-radius: 8px; }
 .translation { display: flex; gap: 6px; align-items: flex-start; margin-top: 6px; padding-top: 6px; border-top: .5px solid rgba(255, 255, 255, .15); font-size: .92em; opacity: .9; animation: fade .3s; }
 .translation svg { flex-shrink: 0; margin-top: 3px; opacity: .7; }
+
+/* economy: auctions, price chart, daily reward, seasonal */
+.auction-card { position: relative; }
+.auc-timer { position: absolute; top: 8px; left: 8px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 10px; font-size: .74em; font-weight: 700; color: #fff; background: rgba(0, 0, 0, .55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.auc-timer.static { position: static; color: var(--text); background: rgba(255, 255, 255, .08); }
+.auc-timer.hot { background: rgba(255, 45, 61, .85); color: #fff; animation: aucPulse 1s ease-in-out infinite; }
+.auc-price { margin-top: 6px; display: inline-flex; align-items: center; gap: 5px; font-size: .82em; font-weight: 700; color: var(--accent); padding: 3px 10px; border-radius: 12px; background: rgba(var(--accent-rgb), .15); }
+.auc-big { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 16px; background: rgba(255, 255, 255, .06); }
+.auc-big small { display: block; color: var(--text-2); font-size: .78em; }
+.auc-big b { font-size: 1.35em; }
+.auc-hist { padding: 4px 2px; animation: itemIn .3s var(--ease) both; }
+@keyframes aucPulse { 50% { transform: scale(1.06); } }
+.price-chart { padding: 12px 14px; border-radius: 18px; background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .1); margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; animation: riseIn .4s var(--ease) both; }
+.pc-svg { width: 100%; height: 70px; display: block; }
+.pc-line { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: pcDraw 1.2s cubic-bezier(.32, .72, 0, 1) forwards; }
+@keyframes pcDraw { to { stroke-dashoffset: 0; } }
+.pc-change { display: inline-flex; align-items: center; gap: 4px; font-size: .78em; font-weight: 700; padding: 3px 8px; border-radius: 10px; }
+.pc-change.up { color: #34c759; background: rgba(52, 199, 89, .12); }
+.pc-change.down { color: #ff453a; background: rgba(255, 69, 58, .12); }
+.daily-hero { position: relative; width: 84px; height: 84px; border-radius: 26px; display: flex; align-items: center; justify-content: center; color: #fff; background: linear-gradient(160deg, #34c759, #1e8f3d); box-shadow: 0 14px 34px rgba(52, 199, 89, .35); animation: authLogo .5s var(--spring); }
+.daily-hero.got { animation: dailyGot .7s var(--spring); }
+.daily-plus { position: absolute; top: -10px; right: -18px; padding: 4px 9px; border-radius: 12px; background: var(--accent); font-weight: 800; font-size: .9em; animation: dailyPlus 1s var(--spring) both; }
+.daily-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; width: 100%; }
+.daily-day { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 2px; border-radius: 14px; background: rgba(255, 255, 255, .05); font-size: .8em; font-weight: 700; animation: itemIn .35s var(--ease) both; }
+.daily-day small { color: var(--text-2); font-weight: 500; font-size: .82em; }
+.daily-day.done { background: rgba(52, 199, 89, .15); color: #34c759; }
+.daily-day.next { box-shadow: inset 0 0 0 1.5px var(--accent); background: rgba(var(--accent-rgb), .12); animation: itemIn .35s var(--ease) both, aucPulse 1.6s 1s ease-in-out infinite; }
+.daily-dot { padding: 2px 8px; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 700; font-size: .8em; }
+@keyframes dailyGot { 30% { transform: scale(1.15) rotate(-6deg); } 60% { transform: scale(.96) rotate(3deg); } }
+@keyframes dailyPlus { from { opacity: 0; transform: translateY(10px) scale(.5); } }
+.season-badge { position: relative; z-index: 2; display: inline-block; margin: 2px 0; padding: 2px 7px; border-radius: 8px; font-size: .68em; font-weight: 700; color: #ffb340; background: rgba(255, 179, 64, .14); }
+.season-badge.ended { color: var(--text-2); background: rgba(255, 255, 255, .07); }
+.gs-actions:has(> :nth-child(4)) { grid-template-columns: repeat(4, 1fr); }

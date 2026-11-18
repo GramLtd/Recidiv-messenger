@@ -73,12 +73,14 @@ r.post('/market/listings', (req, res) => {
     if (!ug || ug.owner_id !== req.user.id || ug.converted) fail(404, 'Подарок не найден');
     if (!ug.upgraded_at) fail(400, 'Продавать можно только коллекционные подарки');
     if (db.prepare("SELECT 1 FROM listings WHERE kind = 'gift' AND user_gift_id = ? AND status = 'active'").get(ug.id)) fail(400, 'Уже выставлен');
+    if (db.prepare("SELECT 1 FROM auctions WHERE kind = 'gift' AND user_gift_id = ? AND status = 'active'").get(ug.id)) fail(400, 'Подарок на аукционе');
     ins = db.prepare('INSERT INTO listings (seller_id, kind, user_gift_id, price, created_at) VALUES (?, ?, ?, ?, ?)').run(req.user.id, 'gift', ug.id, price, now());
   } else if (req.body.kind === 'username') {
     const name = String(req.body.username || '').toLowerCase();
     const row = db.prepare('SELECT * FROM usernames WHERE name = ? AND user_id = ?').get(name, req.user.id);
     if (!row) fail(404, 'Вы не владеете этим юзернеймом');
     if (db.prepare("SELECT 1 FROM listings WHERE kind = 'username' AND LOWER(username) = ? AND status = 'active'").get(name)) fail(400, 'Уже выставлен');
+    if (db.prepare("SELECT 1 FROM auctions WHERE kind = 'username' AND LOWER(username) = ? AND status = 'active'").get(name)) fail(400, 'Юзернейм на аукционе');
     ins = db.prepare('INSERT INTO listings (seller_id, kind, username, price, created_at) VALUES (?, ?, ?, ?, ?)').run(req.user.id, 'username', row.display, price, now());
   } else fail(400, 'Неизвестный тип лота');
   res.json({ listing: serializeListing(db.prepare('SELECT * FROM listings WHERE id = ?').get(ins.lastInsertRowid), req.user.id) });
@@ -132,6 +134,7 @@ r.post('/market/listings/:id/buy', (req, res) => {
       if (!req.user.username) db.prepare('UPDATE users SET username = ? WHERE id = ?').run(row.display, req.user.id);
     }
     db.prepare("UPDATE listings SET status = 'sold', buyer_id = ?, closed_at = ? WHERE id = ?").run(req.user.id, now(), l.id);
+    if (l.kind === 'gift') db.prepare("INSERT INTO price_points (gift_id, price, source, created_at) SELECT gift_id, ?, 'market', ? FROM user_gifts WHERE id = ?").run(l.price, now(), l.user_gift_id);
     return { l, label, fee };
   });
   pushBalance(req.user.id, result.l.seller_id);

@@ -32,6 +32,7 @@ r.get('/gifts/:id/attributes', (req, res) => {
 r.post('/gifts/:id/buy', (req, res) => {
   const g = db.prepare('SELECT * FROM gifts WHERE id = ? AND enabled = 1').get(Number(req.params.id));
   if (!g) fail(404, 'Подарок не найден');
+  if (g.sale_until && Date.now() > g.sale_until) fail(400, 'Продажи этого сезонного подарка завершены — ищите его на маркете');
   if (req.body.toChatId) return buyForChat(req, res, g);
   const to = getUser(Number(req.body.toUserId || req.user.id));
   if (!to || to.is_bot) fail(404, 'Получатель не найден');
@@ -119,6 +120,9 @@ function loadOwned(id, userId) {
 function assertNotListed(ugId) {
   if (db.prepare("SELECT 1 FROM listings WHERE kind = 'gift' AND user_gift_id = ? AND status = 'active'").get(ugId)) {
     fail(400, 'Сначала снимите подарок с продажи');
+  }
+  if (db.prepare("SELECT 1 FROM auctions WHERE kind = 'gift' AND user_gift_id = ? AND status = 'active'").get(ugId)) {
+    fail(400, 'Подарок сейчас на аукционе');
   }
 }
 

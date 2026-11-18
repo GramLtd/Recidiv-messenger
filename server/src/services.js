@@ -330,6 +330,9 @@ export function serializeGift(g) {
     upgradable: g.upgrade_price != null,
     convertValue: g.convert_value,
     enabled: !!g.enabled,
+    saleUntil: g.sale_until || null,
+    seasonal: !!g.sale_until,
+    saleEnded: !!g.sale_until && Date.now() > g.sale_until,
   };
 }
 

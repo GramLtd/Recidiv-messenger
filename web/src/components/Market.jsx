@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Search, Tag, History, AtSign, Gift } from 'lucide-react';
+import { Search, Tag, History, AtSign, Gift, Gavel } from 'lucide-react';
+import { AuctionsView, AuctionDetails, PriceChart } from './Economy.jsx';
 import { useStore } from '../store.js';
 import { api } from '../api.js';
 import { Avatar, Modal, Spark, Spinner, useAction } from './common.jsx';
@@ -76,6 +77,7 @@ export function MarketModal({ kind: initialKind = '', giftId: initialGiftId, q: 
   const [view, setView] = useState('all'); // all | mine | history
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [auctionId, setAuctionId] = useState(null);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -87,6 +89,7 @@ export function MarketModal({ kind: initialKind = '', giftId: initialGiftId, q: 
     return () => clearTimeout(t);
   }, [kind, sort, q, giftId, view, tick]);
 
+  if (auctionId) return <AuctionDetails id={auctionId} onBack={() => setAuctionId(null)} />;
   if (selected) return <ListingDetails l={selected} onBack={() => setSelected(null)} onChanged={() => { setSelected(null); setTick((x) => x + 1); }} />;
 
   return (
@@ -94,9 +97,11 @@ export function MarketModal({ kind: initialKind = '', giftId: initialGiftId, q: 
       <div className="tabs">
         <button className={view === 'all' ? 'on' : ''} onClick={() => setView('all')}>Все лоты</button>
         <button className={view === 'mine' ? 'on' : ''} onClick={() => setView('mine')}><Tag size={14} style={{ verticalAlign: -2 }} /> Мои</button>
+        <button className={view === 'auctions' ? 'on' : ''} onClick={() => setView('auctions')}><Gavel size={14} style={{ verticalAlign: -2 }} /> Аукционы</button>
         <button className={view === 'history' ? 'on' : ''} onClick={() => setView('history')}><History size={14} style={{ verticalAlign: -2 }} /> История</button>
       </div>
-      {view !== 'history' && (
+      {view === 'auctions' && <AuctionsView onOpen={setAuctionId} />}
+      {view !== 'history' && view !== 'auctions' && (
         <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
           <div className="search-box" style={{ minWidth: 200 }}><Search size={18} /><input placeholder="Название, @username или номер" value={q} onChange={(e) => setQ(e.target.value)} /></div>
           <select className="input" style={{ width: 170, height: 42 }} value={sort} onChange={(e) => setSort(e.target.value)}>
@@ -107,7 +112,7 @@ export function MarketModal({ kind: initialKind = '', giftId: initialGiftId, q: 
           </select>
         </div>
       )}
-      {view !== 'history' && (
+      {view !== 'history' && view !== 'auctions' && (
         <div className="row" style={{ gap: 6, marginBottom: 12, overflowX: 'auto', paddingBottom: 4 }}>
           <button className={`chip ${!kind && !giftId ? 'on' : ''}`} onClick={() => { setKind(''); setGiftId(null); }}>Все</button>
           <button className={`chip ${kind === 'gift' && !giftId ? 'on' : ''}`} onClick={() => { setKind('gift'); setGiftId(null); }}><Gift size={14} /> Подарки</button>
@@ -125,7 +130,8 @@ export function MarketModal({ kind: initialKind = '', giftId: initialGiftId, q: 
           <button className="btn sm secondary" onClick={() => openModal('settings', { tab: 'usernames' })}><AtSign size={15} /> Выставить юзернейм</button>
         </div>
       )}
-      {!data ? <div className="center" style={{ padding: 40 }}><Spinner /></div> : data.listings.length === 0 ? (
+      {view === 'all' && giftId && <PriceChart giftId={giftId} />}
+      {view === 'auctions' ? null : !data ? <div className="center" style={{ padding: 40 }}><Spinner /></div> : data.listings.length === 0 ? (
         <div className="muted center" style={{ padding: 40, flexDirection: 'column', gap: 6 }}>Лотов нет<div className="small">Улучшите подарок до коллекционного и выставьте его на продажу</div></div>
       ) : view === 'history' ? (
         data.listings.map((l) => (

@@ -472,6 +472,47 @@ addColumn('messages', 'silent', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('chat_members', 'archived', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('users', 'status_text', 'TEXT');
 addColumn('users', 'status_until', 'INTEGER');
+db.exec(`CREATE TABLE IF NOT EXISTS auctions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  seller_id INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  user_gift_id INTEGER,
+  username TEXT,
+  start_price INTEGER NOT NULL,
+  min_step INTEGER NOT NULL DEFAULT 1,
+  bid INTEGER NOT NULL DEFAULT 0,
+  bidder_id INTEGER,
+  bids INTEGER NOT NULL DEFAULT 0,
+  ends_at INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at INTEGER NOT NULL,
+  closed_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_auctions_status ON auctions(status, ends_at);
+CREATE TABLE IF NOT EXISTS auction_bids (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  auction_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  amount INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS price_points (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  gift_id INTEGER NOT NULL,
+  price INTEGER NOT NULL,
+  source TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_price_points ON price_points(gift_id, created_at);`);
+addColumn('users', 'daily_streak', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('users', 'daily_last', 'TEXT');
+addColumn('gifts', 'sale_until', 'INTEGER');
+// seed price history from past market sales (once)
+if (!db.prepare('SELECT 1 FROM price_points LIMIT 1').get()) {
+  db.prepare(`INSERT INTO price_points (gift_id, price, source, created_at)
+    SELECT ug.gift_id, l.price, 'market', l.closed_at FROM listings l JOIN user_gifts ug ON ug.id = l.user_gift_id
+    WHERE l.kind = 'gift' AND l.status = 'sold' AND l.closed_at IS NOT NULL`).run();
+}
 db.exec(`CREATE TABLE IF NOT EXISTS poll_votes (
   message_id INTEGER NOT NULL,
   user_id INTEGER NOT NULL,

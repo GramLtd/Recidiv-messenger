@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from 'react';
 import { PushLayer } from './Push.jsx';
 import {
-  Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone, User as UserIcon, AtSign, Bookmark, Music2, RefreshCw, Smile, Gift, CreditCard, Wallet as WalletIcon,
+  Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone, User as UserIcon, AtSign, Bookmark, Music2, RefreshCw, Smile, CalendarCheck, Gift, CreditCard, Wallet as WalletIcon,
   Globe, Hand, MonitorSmartphone, Contrast, Type, HardDrive, Shield, MapPin,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -205,6 +205,13 @@ const PAGES = {
 };
 
 /** Desktop app: current version + manual update check (the app also checks by itself every few hours). */
+function DailyBadge() {
+  const [d, setD] = useState(null);
+  useEffect(() => { api('/daily').then(setD).catch(() => {}); }, []);
+  if (!d) return null;
+  return d.canClaim ? <span className="daily-dot">+{d.nextReward}</span> : <span className="muted small">серия {d.streak}</span>;
+}
+
 function DesktopUpdateRow() {
   const toast = useStore((s) => s.toast);
   const [ver, setVer] = useState('');
@@ -284,6 +291,7 @@ function SettingsHome({ open }) {
       </Group>
       <Group>
         <Row icon={Bell} color="#ff453a" title={t('Уведомления')} onClick={() => open('notifications')} />
+        <Row icon={CalendarCheck} color="#34c759" title="Ежедневная награда" value={<DailyBadge />} onClick={() => openModal('daily')} />
         <Row icon={Gift} color="#af52de" title={t('Магазин')} onClick={() => openModal('giftShop')} />
         <Row icon={Tag} color="#0a84ff" title={t('Маркет')} onClick={() => openModal('market')} />
         <Row icon={SparkIcon} color="#ff3b5c" title="Recidivist Premium" value={me.premium ? 'активен' : ''} onClick={() => open('premium')} />
