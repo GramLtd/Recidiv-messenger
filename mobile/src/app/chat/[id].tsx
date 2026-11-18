@@ -15,7 +15,7 @@ import { playSend } from '../../lib/sound';
 import { useLock } from '../../lib/lock';
 import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withSpring, withTiming, withDelay } from 'react-native-reanimated';
 import {
-  BellOff, Camera, Check, Timer, CheckCheck, ChevronLeft, Copy, Eye, FileText, Forward, Gift as GiftIcon, Mic, Paperclip, Pause, Pencil, Play, Reply, Search, Send, Smile, Trash2, X, Lock,
+  BellOff, Camera, Check, Timer, CheckCheck, ChevronLeft, Copy, Eye, FileText, Forward, Gift as GiftIcon, Mic, Paperclip, Pause, Pencil, Play, Reply, Search, Send, Smile, Trash2, X, Lock, Languages,
 } from 'lucide-react-native';
 import { useStore, sendTyping } from '../../lib/store';
 import { api, upload } from '../../lib/api';
@@ -25,6 +25,7 @@ import { usePerf } from '../../lib/perf';
 import { usePlayer, fmtTime } from '../../lib/player';
 import { AudioMsg } from '../../components/Music';
 import { richText, stripFormatting } from '../../lib/richtext';
+import { PollView, LinkPreview, TranslationView, translateMessage } from '../../components/MessageExtras';
 import { useFont, fontStyle } from '../../lib/fonts';
 import { colorFor, dayLabel, fileSize, lastSeen, membersLabel, timeHM } from '../../lib/util';
 import { C, webSpring } from '../../lib/theme';
@@ -100,6 +101,7 @@ function Content({ m, chat, out }: { m: any; chat: any; out: boolean }) {
   if (m.deleted) return <T dim style={{ fontStyle: 'italic' }}>Сообщение удалено</T>;
   switch (m.type) {
     case 'album': return md?.items ? <Album items={md.items} /> : null;
+    case 'poll': return md?.options ? <PollView m={m} out={out} /> : null;
     case 'image': return md ? (
       <Pressable onPress={() => router.push({ pathname: '/media', params: { url: md.url, kind: 'image' } })}>
         <Image source={{ uri: mediaUrl(md.url) }} style={{ width: Math.min(W * 0.66, 280), height: Math.min(W * 0.66, 280) * (md.height && md.width ? Math.min(1.4, md.height / md.width) : 1), borderRadius: 12, backgroundColor: '#111' }} contentFit="cover" cachePolicy="memory-disk" transition={120} />
@@ -222,7 +224,7 @@ const Bubble = React.memo(function Bubble({ m, chat, meId, grouped, groupedNext,
       {showTicks && (read ? <CheckCheck size={15} color={mediaOnly || sticker ? '#fff' : metaColor} /> : <Check size={15} color={mediaOnly || sticker ? '#fff' : metaColor} />)}
     </View>
   );
-  const text = m.type === 'secret' ? <SecretText m={m} peerId={chat.peer?.id} /> : m.type !== 'gift' && !m.deleted && m.text ? richText(m.text) : '';
+  const text = m.type === 'secret' ? <SecretText m={m} peerId={chat.peer?.id} /> : m.type !== 'gift' && m.type !== 'poll' && !m.deleted && m.text ? richText(m.text) : '';
   const onPress = () => {
     const now = Date.now();
     if (now - lastTap.current < 280 && !m.deleted) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onReact(m, '❤️'); }
@@ -248,6 +250,8 @@ const Bubble = React.memo(function Bubble({ m, chat, meId, grouped, groupedNext,
             <T size={10.8} color="transparent">{'\u00A0\u00A0'}{metaText.trimEnd()}{showTicks ? '\u00A0\u00A0\u00A0\u00A0\u00A0' : ''}</T>
           </T>
         ) : null}
+        {!!m.text && !m.deleted && m.type !== 'poll' && <TranslationView id={m.id} out={out} />}
+        {m.type === 'text' && !!m.text && !m.deleted && <LinkPreview text={m.text} out={out} />}
         {text || (!mediaOnly && !sticker && m.type !== 'gift' && m.type !== 'transfer') ? <View style={st.metaAbs}>{meta}</View> : (mediaOnly || sticker) ? meta : <View style={{ alignSelf: 'flex-end', marginTop: 2 }}>{meta}</View>}
         {m.reactions?.length > 0 && (
           <View style={st.reactions}>
@@ -364,7 +368,12 @@ export default function ChatScreen() {
     sentAt.current = Date.now();
     try { await send(chat, { media, replyTo: reply?.id }); playSend(); setReply(null); toBottom(); } catch (e: any) { alert(e.message); }
   };
-  const attach = async () => {
+  const attach = () => {
+    const items: [string, () => void][] = [['Фото или видео', pickMedia], ['Опрос или викторина', () => router.push({ pathname: '/poll-new', params: { chatId: String(chat!.id) } })]];
+    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ options: [...items.map((i) => i[0]), 'Отмена'], cancelButtonIndex: items.length }, (i) => items[i]?.[1]());
+    else Alert.alert('Прикрепить', '', [...items.map(([l, f]) => ({ text: l, onPress: f })), { text: 'Отмена', style: 'cancel' as const }]);
+  };
+  const pickMedia = async () => {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], quality: 0.85, allowsMultipleSelection: true, selectionLimit: 10 });
     if (r.canceled) return;
     setBusy(true);
@@ -432,6 +441,7 @@ export default function ChatScreen() {
     if (kind === 'reply') setReply(m);
     if (kind === 'edit') { setEdit(m); setText(m.text || ''); }
     if (kind === 'copy') Clipboard.setStringAsync(m.text || '');
+    if (kind === 'translate') translateMessage(m);
     if (kind === 'forward') router.push({ pathname: '/forward', params: { messageId: String(m.id) } });
     if (kind === 'delete') await api.del(`/messages/${m.id}`).catch((e) => alert(e.message));
   };
@@ -625,6 +635,7 @@ function MenuSheet({ m, own, chat, onReact, onAct }: any) {
   const items = [
     canReply && !m.deleted && ['reply', 'Ответить', Reply],
     m.text && !m.deleted && m.type !== 'secret' && ['copy', 'Копировать', Copy],
+    m.text && !m.deleted && m.type !== 'secret' && m.type !== 'poll' && ['translate', 'Перевести', Languages],
     !m.deleted && m.type !== 'gift' && m.type !== 'transfer' && m.type !== 'secret' && ['forward', 'Переслать', Forward],
     own && !m.deleted && ['text', 'image', 'video', 'file'].includes(m.type) && ['edit', 'Изменить', Pencil],
     canDelete && !m.deleted && ['delete', 'Удалить', Trash2],
