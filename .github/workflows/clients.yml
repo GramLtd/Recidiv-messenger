@@ -199,3 +199,39 @@ jobs:
         with:
           files: artifacts/*
           fail_on_unmatched_files: false
+
+  # Branch builds: always keep fresh installers at a stable public link
+  # https://github.com/GramLtd/Recidiv-messenger/releases/tag/latest
+  latest:
+    name: Publish "latest" installers
+    if: ${{ always() && !startsWith(github.ref, 'refs/tags/') && needs.desktop.result == 'success' }}
+    needs: [android, desktop]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: Recidivist-*
+          merge-multiple: true
+
+      - run: ls -la artifacts
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          target_commitish: ${{ github.sha }}
+          name: Recidivist — свежая сборка
+          prerelease: true
+          make_latest: false
+          body: |
+            Автоматическая сборка из ветки ${{ github.ref_name }} (${{ github.sha }}).
+            Windows: Recidivist-Setup-1.0.0-x64.exe (установка) или Recidivist-Portable-1.0.0-x64.exe (без установки).
+          files: |
+            artifacts/*.exe
+            artifacts/*.dmg
+            artifacts/*.AppImage
+            artifacts/*.apk
+          fail_on_unmatched_files: false
+          overwrite_files: true
