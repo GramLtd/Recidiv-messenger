@@ -25,12 +25,13 @@
     },
     "files": [
       "main.js",
+      "preload.js",
       "build/icon.png",
       "web-dist/**/*",
       "package.json"
     ],
     "asar": true,
-    "artifactName": "Recidivist-${version}-${os}-${arch}.${ext}",
+    "artifactName": "Recidivist-${os}-${arch}.${ext}",
     "win": {
       "icon": "build/icon.png",
       "target": [
@@ -54,10 +55,10 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "shortcutName": "Recidivist",
-      "artifactName": "Recidivist-Setup-${version}-x64.${ext}"
+      "artifactName": "Recidivist-Setup-x64.${ext}"
     },
     "portable": {
-      "artifactName": "Recidivist-Portable-${version}-x64.${ext}"
+      "artifactName": "Recidivist-Portable-x64.${ext}"
     },
     "mac": {
       "icon": "build/icon.png",
@@ -75,7 +76,8 @@
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Микрофон нужен для голосовых сообщений и распознавания музыки.",
         "NSCameraUsageDescription": "Камера нужна для фото и видео в чатах и аватарки."
-      }
+      },
+      "artifactName": "Recidivist-mac.${ext}"
     },
     "linux": {
       "icon": "build/icon.png",
@@ -90,13 +92,22 @@
         }
       ],
       "syncDesktopName": true,
-      "executableName": "recidivist"
+      "executableName": "recidivist",
+      "artifactName": "Recidivist-linux-x86_64.${ext}"
     },
-    "publish": null
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://github.com/GramLtd/Recidiv-messenger/releases/download/latest"
+      }
+    ]
   },
   "devDependencies": {
     "electron": "44.11.3",
     "electron-builder": "26.18.0"
   },
-  "desktopName": "recidivist.desktop"
+  "desktopName": "recidivist.desktop",
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  }
 }

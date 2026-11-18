@@ -1,7 +1,7 @@
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { PushLayer } from './Push.jsx';
 import {
-  Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone, User as UserIcon, AtSign, Bookmark, Music2, Gift, CreditCard, Wallet as WalletIcon,
+  Camera, Check, Plus, Tag, Bell, LogOut, ShieldCheck, Phone, User as UserIcon, AtSign, Bookmark, Music2, RefreshCw, Gift, CreditCard, Wallet as WalletIcon,
   Globe, Hand, MonitorSmartphone, Contrast, Type, HardDrive, Shield, MapPin,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -204,6 +204,25 @@ const PAGES = {
   storage: ['Память', () => <StoragePage />],
 };
 
+/** Desktop app: current version + manual update check (the app also checks by itself every few hours). */
+function DesktopUpdateRow() {
+  const toast = useStore((s) => s.toast);
+  const [ver, setVer] = useState('');
+  const [st, setSt] = useState(null);
+  useEffect(() => {
+    window.recidivist.version?.().then(setVer).catch(() => {});
+    return window.recidivist.onUpdate?.((i) => setSt(i));
+  }, []);
+  const label = st?.state === 'downloading' ? `загрузка${st.percent != null ? ` ${st.percent}%` : '…'}`
+    : st?.state === 'ready' ? `готово: ${st.version}` : st?.state === 'available' ? `доступна ${st.version}` : ver ? `v${ver}` : '';
+  const check = async () => {
+    const r = await window.recidivist.checkUpdates?.();
+    if (r?.state === 'latest') toast('У вас последняя версия');
+    else if (r?.state === 'error') toast(`Не удалось проверить: ${r.message}`, 'error');
+  };
+  return <Row icon={RefreshCw} color="#30b0c7" title="Обновления" value={label} onClick={check} />;
+}
+
 export function SettingsModal({ tab: initialTab }) {
   const t = useT();
   const [page, setPage] = useState(initialTab && PAGES[initialTab] ? initialTab : null);
@@ -278,6 +297,7 @@ function SettingsHome({ open }) {
         <Row icon={Contrast} color="#3a3a3c" title={t('Оформление')} onClick={() => open('theme')} />
         <Row icon={Type} color="#0a84ff" title={t('Шрифты')} value={font.name} onClick={() => open('fonts')} />
         <Row icon={HardDrive} color="#8e8e93" title={t('Память')} onClick={() => open('storage')} />
+        {window.recidivist?.desktop && <DesktopUpdateRow />}
       </Group>
       <Group>
         {me.isAdmin && <Row icon={Shield} color="#ff3b30" title={t('Админ-панель')} onClick={() => navigate('/admin')} />}

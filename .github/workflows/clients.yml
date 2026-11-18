@@ -171,6 +171,12 @@ jobs:
           npm ci --prefix web
           npm ci --prefix desktop
 
+      # every CI build gets a higher version so installed apps can see and fetch the update
+      - name: Set app version
+        working-directory: desktop
+        shell: bash
+        run: npm version --no-git-tag-version --allow-same-version "1.0.${{ github.run_number }}"
+
       - name: Build web app + package
         working-directory: desktop
         run: npm run dist
@@ -183,6 +189,8 @@ jobs:
             desktop/dist/*.dmg
             desktop/dist/*.AppImage
             desktop/dist/*.zip
+            desktop/dist/latest*.yml
+            desktop/dist/*.blockmap
           if-no-files-found: error
 
   release:
@@ -230,11 +238,13 @@ jobs:
           make_latest: false
           body: |
             Автоматическая сборка из ветки ${{ github.ref_name }} (${{ github.sha }}).
-            Windows: Recidivist-Setup-1.0.0-x64.exe (установка) или Recidivist-Portable-1.0.0-x64.exe (без установки).
+            Windows: Recidivist-Setup-x64.exe (установка, обновляется сама) или Recidivist-Portable-x64.exe (без установки). macOS: Recidivist-mac.dmg. Linux: Recidivist-linux-x86_64.AppImage.
           files: |
             artifacts/*.exe
             artifacts/*.dmg
             artifacts/*.AppImage
             artifacts/*.apk
+            artifacts/latest*.yml
+            artifacts/*.blockmap
           fail_on_unmatched_files: false
           overwrite_files: true

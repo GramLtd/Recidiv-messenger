@@ -1,5 +1,6 @@
 import { loadTheme } from './theme.js';
 import { create } from 'zustand';
+import { stripFormatting } from './richtext.jsx';
 import { io } from 'socket.io-client';
 import { api, setToken, getToken, API_ORIGIN } from './api.js';
 
@@ -229,7 +230,7 @@ function notifyBrowser(chat, message) {
   const th = loadTheme();
   if ((chat.type === 'group' && th.notifyGroups === false) || (chat.type === 'channel' && th.notifyChannels === false) || (chat.type === 'private' && th.notifyPrivate === false)) return;
   try {
-    const body = th.notifyPreview === false ? 'Новое сообщение' : message.text || 'Новое сообщение';
+    const body = th.notifyPreview === false ? 'Новое сообщение' : stripFormatting(message.text) || 'Новое сообщение';
     const n = new Notification(chat.title, { body, icon: '/icon-192.png', tag: `chat-${chat.id}` });
     n.onclick = () => {
       window.focus();
@@ -239,3 +240,15 @@ function notifyBrowser(chat, message) {
 }
 
 export const useCurrency = () => useStore((s) => s.currency);
+
+// unread counter on the app icon: desktop app (taskbar / dock badge) and installed PWA
+if (typeof window !== 'undefined') {
+  let lastBadge = -1;
+  useStore.subscribe((s) => {
+    const n = (s.chats || []).reduce((a, c) => a + (c.muted ? 0 : c.unread || 0), 0);
+    if (n === lastBadge) return;
+    lastBadge = n;
+    try { window.recidivist?.setBadge?.(n); } catch {}
+    try { if (navigator.setAppBadge) (n ? navigator.setAppBadge(n) : navigator.clearAppBadge?.()).catch?.(() => {}); } catch {}
+  });
+}
