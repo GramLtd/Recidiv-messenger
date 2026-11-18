@@ -1,12 +1,13 @@
 import React from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ActionSheetIOS, Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AtSign, Bell, Bookmark, Contrast, CreditCard, Gift, Globe, Hand, HardDrive, LogOut, MonitorSmartphone, Network, Shield, ShieldCheck, Tag, Type,
-  User, Wallet, Music2, Smile, CalendarCheck,
+  User, Wallet, Music2, Smile, CalendarCheck, Star,
 } from 'lucide-react-native';
 import { useStore } from '../../lib/store';
+import { api } from '../../lib/api';
 import { useFont, FONTS } from '../../lib/fonts';
 import { kv } from '../../lib/db';
 import { C } from '../../lib/theme';
@@ -40,6 +41,12 @@ export default function Settings() {
       </Rise>
       <Group delay={60}>
         <Row index={0} icon={User} color="#ff3b30" title="Мой профиль" onPress={() => router.push('/profile')} />
+        <Row index={1} icon={Star} color="#ffb340" title="Платная подписка" value={me.subPrice ? `✦ ${me.subPrice}/мес` : 'выкл.'} onPress={() => {
+          const set = async (price: number) => { try { useStore.getState().setMe((await api('/me/subscription-price', { body: { price } })).user); } catch (e: any) { Alert.alert(e.message); } };
+          const opts: [string, () => void][] = [[`Выключить`, () => set(0)], ...[25, 50, 100, 250, 500].map((p) => [`✦ ${p} в месяц`, () => set(p)] as [string, () => void])];
+          if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ title: 'Цена подписки на ваши посты', message: 'Подписчики увидят посты «для подписчиков»', options: [...opts.map((o) => o[0]), 'Отмена'], cancelButtonIndex: opts.length }, (i) => opts[i]?.[1]());
+          else Alert.alert('Цена подписки', '', [...opts.slice(0, 2).map(([l, f]) => ({ text: l, onPress: f })), { text: 'Отмена', style: 'cancel' as const }]);
+        }} />
         <Row index={1} icon={Smile} color="#ff9f0a" title="Статус" value={me.emojiStatus ? `${me.emojiStatus} ${me.statusText || ''}`.trim() : 'не задан'} onPress={() => router.push('/status')} />
         <Row index={1} icon={AtSign} color="#0a84ff" title="Юзернеймы" value={me.username ? `@${me.username}` : ''} onPress={() => go('usernames')} />
         <Row index={2} icon={Music2} color="#ff2d55" title="Музыка" onPress={() => router.push('/music')} />

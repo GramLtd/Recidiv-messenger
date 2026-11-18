@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
-import { Ellipsis, Eye, Heart, MessageCircle, Repeat2, Send } from 'lucide-react-native';
+import { Ellipsis, Eye, Heart, MessageCircle, Repeat2, Send, Lock, Star } from 'lucide-react-native';
 import { api } from '../lib/api';
 import { mediaUrl } from '../lib/config';
 import { useStore } from '../lib/store';
@@ -90,7 +90,18 @@ export function PostCard({ p: post, onChange, onRemove, index = 0, embedded }: {
         </View>
         {!embedded && <Press scale={0.85} onPress={menu} style={st.more}><Ellipsis size={18} color={C.text2} /></Press>}
       </View>
-      {!!body.text && <View style={{ marginTop: 8, marginLeft: embedded ? 0 : 52 }}><RichText text={body.text} /></View>}
+      {!!body.text && <View style={{ marginTop: 8, marginLeft: embedded ? 0 : 52, opacity: body.locked ? 0.6 : 1 }}><RichText text={body.text} /></View>}
+      {body.locked && (
+        <View style={[st.locked, { marginLeft: embedded ? 0 : 52 }]}>
+          <Lock size={22} color="#fff" />
+          <T w={700} color="#fff">Только для подписчиков</T>
+          <T size={12} color="rgba(255,255,255,0.75)" center>{body.lockedMedia ? `${body.lockedMedia} медиа · ` : ''}Подписка открывает все платные посты автора на 30 дней</T>
+          <Press scale={0.95} onPress={() => Alert.alert(`Подписка на ${body.author.displayName}`, `✦ ${body.subPrice} за 30 дней`, [{ text: 'Отмена' }, { text: 'Подписаться', onPress: async () => {
+            try { await api(`/users/${body.author.id}/subscribe`, { body: {} }); onChange?.((await api(`/posts/${post.id}`)).post); } catch (e: any) { Alert.alert(e.message); }
+          } }])} style={st.subBtn}><T w={700} size={13} color="#fff">Подписаться · ✦ {body.subPrice}/мес</T></Press>
+        </View>
+      )}
+      {body.paid && !body.locked && <View style={[st.paidTag, { marginLeft: embedded ? 0 : 52 }]}><Star size={11} color="#ffb340" /><T w={700} size={11} color="#ffb340">для подписчиков</T></View>}
       {media.length > 0 && (
         <View style={[st.media, { marginLeft: embedded ? 0 : 52 }]}>
           {media.length === 1
@@ -122,6 +133,9 @@ const st = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   more: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   media: { marginTop: 10, borderRadius: 18, overflow: 'hidden' },
+  locked: { marginTop: 10, borderRadius: 18, padding: 18, alignItems: 'center', gap: 6, backgroundColor: 'rgba(120,40,90,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  subBtn: { marginTop: 6, paddingHorizontal: 16, height: 36, borderRadius: 18, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
+  paidTag: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 6, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: 'rgba(255,179,64,0.12)' },
   repostLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 52, marginBottom: 6 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, marginLeft: 44 },
   pa: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 10, borderRadius: 18 },

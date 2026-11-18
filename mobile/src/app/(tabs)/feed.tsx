@@ -11,20 +11,20 @@ import { Avatar, Glass, Press, Rise, T } from '../../components/ui';
 import { PostCard, RichText, ago } from '../../components/Post';
 
 const W = Dimensions.get('window').width;
-const TABS: [string, string][] = [['all', 'Лента'], ['following', 'Подписки'], ['tags', 'Теги']];
+const TABS: [string, string][] = [['all', 'Лента'], ['top', 'Тренды'], ['following', 'Подписки'], ['tags', 'Теги']];
 
 /** Web `.seg`: glass segmented control with a sliding glossy indicator. */
 function Seg({ tab, onChange }: { tab: string; onChange: (t: string) => void }) {
   const idx = TABS.findIndex((t) => t[0] === tab);
   const x = useSharedValue(idx);
   useEffect(() => { x.value = withTiming(idx, { duration: 450, easing: Easing.bezier(0.32, 0.72, 0, 1) }); }, [idx]);
-  const w = (W - 28 - 8) / 3;
+  const w = (W - 28 - 8) / TABS.length;
   const ind = useAnimatedStyle(() => ({ transform: [{ translateX: x.value * w }] }));
   return (
     <Glass radius={999} style={st.seg} shadow={false}>
       <Animated.View style={[st.segInd, { width: w }, ind]} />
       {TABS.map(([k, l]) => (
-        <Press key={k} scale={0.95} onPress={() => onChange(k)} style={st.segBtn}><T w={700} color={tab === k ? C.text : C.text2}>{l}</T></Press>
+        <Press key={k} scale={0.95} onPress={() => onChange(k)} style={st.segBtn}><T w={700} size={13.5} numberOfLines={1} color={tab === k ? C.text : C.text2}>{l}</T></Press>
       ))}
     </Glass>
   );
@@ -75,7 +75,7 @@ export default function Feed() {
   const [tags, setTags] = useState<any[] | null>(null);
   const [posts, setPosts] = useState<any[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const source = tab === 'following' ? '/feed?tab=following' : tag ? `/feed?tab=tag&tag=${encodeURIComponent(tag)}` : '/feed';
+  const source = tab === 'following' ? '/feed?tab=following' : tab === 'top' ? '/feed?tab=top' : tag ? `/feed?tab=tag&tag=${encodeURIComponent(tag)}` : '/feed';
   const load = useCallback(async () => {
     const r = await api(source);
     setPosts(r.posts);

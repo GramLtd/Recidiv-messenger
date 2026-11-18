@@ -13,8 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import {
   CalendarDays, ChevronLeft, ChevronRight, Eye, Filter, Gift, Hash, Link2, MapPin, Megaphone, MessageCircle, Music2, Pause, Pencil, Phone,
-  Pin, Play, Shield, UserCheck, UserPlus, Ellipsis,
-} from 'lucide-react-native';
+  Pin, Play, Shield, UserCheck, UserPlus, Ellipsis, Star } from 'lucide-react-native';
 import { api } from '../lib/api';
 import { cache } from '../lib/db';
 import { mediaUrl } from '../lib/config';
@@ -498,6 +497,16 @@ export function ProfileView({ userId, own }: { userId: number; own?: boolean }) 
           {u.personalChannel && <ChannelCard chat={u.personalChannel} />}
         </View>
 
+        {!isMe && !u.isBot && u.subPrice > 0 && !u.blockedMe && (
+          <Rise delay={190} style={{ paddingHorizontal: 14, marginTop: 10 }}>
+            <Press scale={0.97} onPress={() => Alert.alert(u.subscribedUntil ? 'Продлить подписку?' : `Подписка на ${u.displayName}`, `✦ ${u.subPrice} за 30 дней. Откроет все посты «для подписчиков».`, [{ text: 'Отмена' }, { text: u.subscribedUntil ? 'Продлить' : 'Подписаться', onPress: async () => {
+              try { const r = await api(`/users/${u.id}/subscribe`, { body: {} }); patch({ subscribedUntil: r.until, isFollowing: true }); } catch (e: any) { Alert.alert(e.message); }
+            } }])} style={[st.paidSub, u.subscribedUntil && { backgroundColor: '#ff9a2e' }]}>
+              <Star size={16} color={u.subscribedUntil ? '#fff' : '#ffb340'} fill={u.subscribedUntil ? '#fff' : 'none'} />
+              <T w={700} color={u.subscribedUntil ? '#fff' : '#ffb340'}>{u.subscribedUntil ? `Подписка до ${new Date(u.subscribedUntil).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} · продлить` : `Платная подписка · ✦ ${u.subPrice}/мес`}</T>
+            </Press>
+          </Rise>
+        )}
         {!isMe && !u.isBot && (
           <Rise delay={200} style={st.bar}>
             <Btn title="Написать" icon={<MessageCircle size={18} color="#fff" />} onPress={write} style={{ flex: 1.15 }} />
@@ -613,6 +622,7 @@ function TabLine({ index, width }: { index: number; width: number }) {
 }
 
 const st = StyleSheet.create({
+  paidSub: { height: 44, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(255,179,64,0.12)', borderWidth: 1, borderColor: 'rgba(255,179,64,0.3)' },
   banner: { position: 'absolute', top: 0, left: 0, right: 0 },
   top: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, minHeight: 40, zIndex: 4 },
   stage: { width: STAGE_W, height: STAGE_H, alignSelf: 'center', marginTop: -18, alignItems: 'center', justifyContent: 'center' },
