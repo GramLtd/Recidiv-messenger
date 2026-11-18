@@ -6,6 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { fail } from '../auth.js';
+import { iceConfig } from '../calls.js';
 
 /*
  * Link previews and message translation. Everything goes through the server, so third-party sites never see the
@@ -118,5 +119,8 @@ r.post('/translate', async (req, res) => {
   tcache.set(k, out);
   res.json(out);
 });
+
+// WebRTC ICE servers (STUN + optional TURN relay from the admin panel)
+r.get('/calls/config', (_req, res) => res.json(iceConfig()));
 
 export default r;

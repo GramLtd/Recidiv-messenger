@@ -2,6 +2,11 @@ import { Server } from 'socket.io';
 import { db } from './db.js';
 import { verifyToken } from './auth.js';
 import { canSeeLastSeen } from './privacy.js';
+import { wireCalls } from './calls.js';
+
+let createMessageRef = null;
+/** services.js registers createMessage here (avoids an import cycle). */
+export const setCreateMessage = (fn) => { createMessageRef = fn; };
 
 let io;
 const online = new Map(); // userId -> socket count
@@ -65,6 +70,8 @@ export function initRealtime(httpServer) {
       if (!member) return;
       emitToChat(chatId, 'typing', { chatId, userId: uid, name: socket.data.user.display_name, action: action || 'typing' }, uid);
     });
+
+    wireCalls(io, socket, { emitToUser, chatMemberIds, createMessage: (a) => createMessageRef?.(a) });
 
     socket.on('disconnect', () => {
       const c = (online.get(uid) || 1) - 1;

@@ -2,9 +2,10 @@ import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 
 import { RichText, stripFormatting, wrapSelection } from '../richtext.jsx';
 import { StatusBadge } from './StatusModal.jsx';
 import { Poll, PollModal, LinkPreview, Translation, translateMessage } from './MessageExtras.jsx';
+import { startCall, joinRoom, leaveRoom, useRoom, useRoomCounts } from './Calls.jsx';
 import {
   ArrowLeft, Timer, Search, MoreVertical, Paperclip, Smile, Send, Mic, X, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck,
-  FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square, ChevronLeft, Clock, Languages, BarChart3, Image as ImageIcon, Flame, ShieldCheck,
+  FileText, ChevronDown, Eye, Megaphone, Bell, BellOff, Gift, Square, ChevronLeft, Clock, Languages, BarChart3, Image as ImageIcon, Flame, ShieldCheck, Phone, Video, Headphones,
 } from 'lucide-react';
 import { useStore } from '../store.js';
 import { api, upload, mediaUrl } from '../api.js';
@@ -127,6 +128,18 @@ function BurnBadge({ m }) {
   const fmt = (s) => (s >= 86400 ? `${Math.round(s / 86400)} д` : s >= 3600 ? `${Math.round(s / 3600)} ч` : s >= 60 ? `${Math.round(s / 60)} мин` : `${s} с`);
   const left = m.expiresAt ? Math.max(0, Math.ceil((m.expiresAt - Date.now()) / 1000)) : m.ttl;
   return <span className={`burn ${m.expiresAt ? 'live' : ''}`}><Flame size={11} /> {fmt(left)} · </span>;
+}
+
+/** Group voice room: join button with the number of people inside. */
+function RoomButton({ chat }) {
+  const users = useRoomCounts((s) => s[chat.id]) || [];
+  const inRoom = useRoom((s) => s.chatId === chat.id);
+  return (
+    <button className={`lg tg-round ${inRoom || users.length ? 'on' : ''}`} style={users.length ? { color: '#34c759', width: 'auto', padding: '0 12px', gap: 4 } : undefined}
+      onClick={() => (inRoom ? leaveRoom() : joinRoom(chat))} title={inRoom ? 'Выйти из голосовой комнаты' : 'Голосовая комната'}>
+      <Headphones size={18} />{users.length > 0 && <b style={{ fontSize: '.8em' }}>{users.length}</b>}
+    </button>
+  );
 }
 
 function linkify(text) {
@@ -790,6 +803,13 @@ export default function ChatView() {
             )}
           </div>
         )}
+        {!searchOpen && chat.type === 'private' && chat.peer && !chat.peer.isBot && (
+          <>
+            <button className="lg tg-round" onClick={() => startCall(chat, false)} aria-label="Позвонить" title="Позвонить"><Phone size={18} /></button>
+            <button className="lg tg-round hide-narrow" onClick={() => startCall(chat, true)} aria-label="Видеозвонок" title="Видеозвонок"><Video size={19} /></button>
+          </>
+        )}
+        {!searchOpen && chat.type === 'group' && <RoomButton chat={chat} />}
         {!searchOpen && <button className="lg tg-round" onClick={() => setSearchOpen(true)} aria-label="Поиск"><Search size={19} /></button>}
         <button className="tg-avatar" onClick={() => setRightPanel(!rightPanel)} aria-label="Профиль">
           <Avatar src={chat.avatar} name={chat.title} id={chat.peer?.id || chat.id} size={44} saved={chat.type === 'saved'} />

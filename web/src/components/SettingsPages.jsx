@@ -173,6 +173,17 @@ export function DevicesPage() {
 }
 
 // ---------------- security ----------------
+function CallsPrivacyGroup() {
+  const [relay, setRelay] = useState(() => { try { return localStorage.getItem('calls.relayOnly') === '1'; } catch { return false; } });
+  const [has, setHas] = useState(null);
+  useEffect(() => { api('/calls/config').then((r) => setHas(r.hasRelay)).catch(() => setHas(false)); }, []);
+  return (
+    <Group title="Звонки" footer={has === false ? 'Администратор ещё не настроил ретранслятор — звонки идут напрямую, собеседник может узнать ваш IP-адрес.' : 'Звонок пойдёт через сервер-ретранслятор: собеседник не узнает ваш IP-адрес. Качество может быть чуть ниже.'}>
+      <Row icon={ShieldCheck} color="#5856d6" title="Только через ретранслятор" right={<Switch on={relay} onChange={(v) => { setRelay(v); try { localStorage.setItem('calls.relayOnly', v ? '1' : '0'); } catch {} }} />} />
+    </Group>
+  );
+}
+
 function CloudPasswordGroup() {
   const me = useStore((s) => s.me);
   const setMe = useStore((s) => s.setMe);
@@ -237,6 +248,7 @@ export function SecurityPage() {
         {enabled && <Row title="Заблокировать сейчас" onClick={() => lockState.lock()} />}
       </Group>
       <CloudPasswordGroup />
+      <CallsPrivacyGroup />
       <Group title="Удаление аккаунта" footer="Сообщения, посты, истории, файлы, юзернеймы и контакты будут стёрты с сервера безвозвратно. Войти по этой сид-фразе будет нельзя.">
         <Row icon={Trash2} color="#ff453a" title={<span className="danger">Удалить аккаунт навсегда</span>} onClick={async () => {
           const word = prompt('Это нельзя отменить. Чтобы удалить аккаунт, введите слово УДАЛИТЬ');

@@ -1,5 +1,5 @@
 import { db, SYSTEM_USER_ID, NUMBERS_BOT_ID, getSetting } from './db.js';
-import { emitToUser, emitToChat, isOnline, chatMemberIds } from './realtime.js';
+import { emitToUser, emitToChat, isOnline, chatMemberIds, setCreateMessage } from './realtime.js';
 import { fail, currentViewer } from './auth.js';
 import { privacyOf, isPremium, canSeeLastSeen, parseJson as pj } from './privacy.js';
 
@@ -467,3 +467,5 @@ export function sanitizeMedia(media) {
 }
 
 export { emitToUser, emitToChat, chatMemberIds };
+
+setCreateMessage(createMessage);

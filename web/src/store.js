@@ -5,6 +5,10 @@ import { io } from 'socket.io-client';
 import { api, setToken, getToken, API_ORIGIN } from './api.js';
 
 let socket = null;
+export const getSocket = () => socket;
+const socketListeners = [];
+/** Lets other modules (calls) subscribe to socket events, also across reconnects. */
+export const onSocket = (ev, fn) => { socketListeners.push([ev, fn]); socket?.on(ev, fn); return () => socket?.off(ev, fn); };
 const sortChats = (list) =>
   [...list].sort((a, b) => (b.pinned - a.pinned) || ((b.lastMessage?.id || 0) - (a.lastMessage?.id || 0)) || (b.id - a.id));
 
@@ -61,6 +65,7 @@ export const useStore = create((set, get) => ({
   connect() {
     socket?.disconnect();
     socket = io(API_ORIGIN || undefined, { auth: { token: getToken() }, transports: ['websocket', 'polling'] });
+    for (const [ev, fn] of socketListeners) socket.on(ev, fn);
     const s = socket;
     s.on('connect', () => get().loadChats());
     s.on('toast', ({ text }) => text && get().toast(text, 'error'));

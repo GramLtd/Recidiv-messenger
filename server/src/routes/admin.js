@@ -249,6 +249,7 @@ const CFG = {
   pay_xrocket: 'bool', xrocket_key: 'secret', test_payments: 'tri',
   registration: 'bool', email_verification: 'bool', anon_registration: 'bool', daily_enabled: 'bool', daily_rewards: 'str', sub_fee_percent: 'str', admin_emails: 'str',
   tenor_key: 'secret',
+  turn_url: 'str', turn_user: 'str', turn_pass: 'secret',
   smtp_host: 'str', smtp_port: 'str', smtp_secure: 'tri', smtp_user: 'str', smtp_pass: 'secret', smtp_from: 'str',
 };
 const mask = (v) => (v ? `••••${String(v).slice(-4)}` : '');

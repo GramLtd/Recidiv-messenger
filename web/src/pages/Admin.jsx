@@ -419,6 +419,15 @@ function ConfigPage() {
           <div className="field"><label>Tenor API key</label><input className="input" value={val.tenor_key} onChange={set('tenor_key')} placeholder="AIza…" /></div>
         </div>
         <div className="card col">
+          <b>Звонки: TURN-ретранслятор</b>
+          <div className="small muted">Без ретранслятора звонки идут напрямую между устройствами и могут не соединиться за строгими NAT. С ним пользователи смогут включить «звонки только через ретранслятор» — собеседник не увидит их IP. Подойдёт свой coturn.</div>
+          <div className="field"><label>TURN URL (через запятую)</label><input className="input" value={val.turn_url} onChange={set('turn_url')} placeholder="turn:turn.example.com:3478,turns:turn.example.com:5349" /></div>
+          <div className="row" style={{ gap: 8 }}>
+            <div className="field grow"><label>Логин</label><input className="input" value={val.turn_user} onChange={set('turn_user')} /></div>
+            <div className="field grow"><label>Пароль</label><input className="input" value={val.turn_pass} onChange={set('turn_pass')} /></div>
+          </div>
+        </div>
+        <div className="card col">
           <div className="row"><KeyRound size={18} className="accent" /><b className="grow">Вход и регистрация</b></div>
           <div className="row"><span className="grow small">Регистрация новых пользователей открыта</span><Switch on={val.registration !== 'false'} onChange={(on) => set('registration')(on ? 'true' : 'false')} /></div>
           <div className="row"><span className="grow small">Подтверждать почту кодом</span><Switch on={val.email_verification !== 'false'} onChange={(on) => set('email_verification')(on ? 'true' : 'false')} /></div>
