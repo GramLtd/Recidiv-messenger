@@ -16,7 +16,7 @@ import { playSend } from '../../lib/sound';
 import { useLock } from '../../lib/lock';
 import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withSpring, withTiming, withDelay } from 'react-native-reanimated';
 import {
-  BellOff, Camera, Check, Timer, CheckCheck, ChevronLeft, Copy, Eye, FileText, Forward, Gift as GiftIcon, Mic, Paperclip, Pause, Pencil, Play, Reply, Search, Send, Smile, Trash2, X, Lock, Languages,
+  BellOff, Camera, Check, Timer, CheckCheck, ChevronLeft, Copy, Eye, FileText, Forward, Gift as GiftIcon, Mic, Paperclip, Pause, Pencil, Play, Reply, Search, Send, Smile, Trash2, X, Lock, Languages, Phone, Headphones,
 } from 'lucide-react-native';
 import { useStore, sendTyping } from '../../lib/store';
 import { api, upload } from '../../lib/api';
@@ -27,6 +27,7 @@ import { usePlayer, fmtTime } from '../../lib/player';
 import { AudioMsg } from '../../components/Music';
 import { richText, stripFormatting } from '../../lib/richtext';
 import { PollView, LinkPreview, TranslationView, translateMessage } from '../../components/MessageExtras';
+import { startCall, joinRoom, leaveRoom, useRoom, useRoomCounts } from '../../lib/calls';
 import { useFont, fontStyle } from '../../lib/fonts';
 import { colorFor, dayLabel, fileSize, lastSeen, membersLabel, timeHM } from '../../lib/util';
 import { C, webSpring } from '../../lib/theme';
@@ -450,6 +451,8 @@ export default function ChatScreen() {
     if (kind === 'delete') await api.del(`/messages/${m.id}`).catch((e) => alert(e.message));
   };
 
+  const roomUsers = useRoomCounts((s) => (chat ? s[chat.id] : undefined)) || [];
+  const inRoom = useRoom((s) => s.chatId === chat?.id);
   useEffect(() => {
     if (!chat?.protected || Platform.OS === 'web') return undefined;
     ScreenCapture.preventScreenCaptureAsync(`chat-${chat.id}`).catch(() => {});
@@ -597,6 +600,16 @@ export default function ChatScreen() {
         )}
         {search === null && (chat.type === 'private' || chat.type === 'saved' || chat.role === 'owner' || chat.role === 'admin') && (
           <Press onPress={timerMenu} scale={0.92}><Glass radius={21} style={st.round}><Timer size={19} color={chat.autoDelete ? C.accent : C.text} /></Glass></Press>
+        )}
+        {search === null && chat.type === 'private' && chat.peer && !chat.peer.isBot && (
+          <Press onPress={() => (Platform.OS === 'ios' ? ActionSheetIOS.showActionSheetWithOptions({ options: ['Аудиозвонок', 'Видеозвонок', 'Отмена'], cancelButtonIndex: 2 }, (i) => (i < 2 ? startCall(chat, i === 1) : null)) : startCall(chat, false))} scale={0.92}>
+            <Glass radius={21} style={st.round}><Phone size={18} color={C.text} /></Glass>
+          </Press>
+        )}
+        {search === null && chat.type === 'group' && (
+          <Press onPress={() => (inRoom ? leaveRoom() : joinRoom(chat))} scale={0.92}>
+            <Glass radius={21} style={[st.round, roomUsers.length > 0 && { width: 'auto', paddingHorizontal: 12, flexDirection: 'row', gap: 4 }]}><Headphones size={18} color={roomUsers.length || inRoom ? '#34c759' : C.text} />{roomUsers.length > 0 && <T w={700} size={13} color="#34c759">{roomUsers.length}</T>}</Glass>
+          </Press>
         )}
         {search === null && <Press onPress={() => setSearch('')} scale={0.92}><Glass radius={21} style={st.round}><Search size={19} color={C.text} /></Glass></Press>}
         <Press onPress={() => (chat.peer ? router.push(`/user/${chat.peer.id}`) : undefined)} scale={0.92}>

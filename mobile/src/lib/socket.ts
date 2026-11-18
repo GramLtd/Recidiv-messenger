@@ -26,3 +26,8 @@ export function on(ev: string, h: Handler) {
   return () => { handlers.get(ev)?.delete(h); socket?.off(ev, h); };
 }
 export const emit = (ev: string, payload?: unknown) => socket?.emit(ev, payload);
+/** emit with an acknowledgement (resolves with the server's reply) */
+export const emitAck = <T = any>(ev: string, payload?: unknown) => new Promise<T>((res) => {
+  if (!socket) { res({ error: 'Нет соединения' } as any); return; }
+  socket.emit(ev, payload, (r: T) => res(r || ({} as T)));
+});

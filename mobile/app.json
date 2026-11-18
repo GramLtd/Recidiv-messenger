@@ -76,6 +76,13 @@
           "microphonePermission": "Микрофон нужен для голосовых сообщений и распознавания музыки",
           "enableBackgroundPlayback": true
         }
+      ],
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "Камера нужна для видеозвонков, фото и видео",
+          "microphonePermission": "Микрофон нужен для звонков и голосовых сообщений"
+        }
       ]
     ],
     "scheme": "recidivist",

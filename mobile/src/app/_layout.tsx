@@ -10,6 +10,7 @@ import { onNotificationTap, requestNotifications } from '../lib/notify';
 import { C } from '../lib/theme';
 import { TopFade } from '../components/ui';
 import { LockGate } from '../components/LockScreen';
+import { CallLayer } from '../components/CallLayer';
 import { initLock } from '../lib/lock';
 
 const theme = { ...DarkTheme, colors: { ...DarkTheme.colors, background: C.bg, card: C.bg, primary: C.accent } };
@@ -76,6 +77,7 @@ export default function Root() {
         )}
         {/* dim + blur under the status bar on every screen */}
         <TopFade />
+        {me && <CallLayer />}
         {me && <LockGate />}
       </ThemeProvider>
     </GestureHandlerRootView>
