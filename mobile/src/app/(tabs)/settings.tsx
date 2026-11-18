@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AtSign, Bell, Bookmark, Contrast, CreditCard, Gift, Globe, Hand, HardDrive, LogOut, MonitorSmartphone, Network, Shield, ShieldCheck, Tag, Type,
-  User, Wallet, Music2, Smile,
+  User, Wallet, Music2, Smile, CalendarCheck,
 } from 'lucide-react-native';
 import { useStore } from '../../lib/store';
 import { useFont, FONTS } from '../../lib/fonts';
@@ -47,6 +47,7 @@ export default function Settings() {
       </Group>
       <Group delay={90}>
         <Row index={0} icon={Bell} color="#ff453a" title="Уведомления" onPress={() => go('notifications')} />
+        <Row index={1} icon={CalendarCheck} color="#34c759" title="Ежедневная награда" onPress={() => router.push('/daily')} />
         <Row index={1} icon={Gift} color="#af52de" title="Магазин" onPress={() => router.push('/shop')} />
         <Row index={2} icon={Tag} color="#0a84ff" title="Маркет" onPress={() => router.push('/market')} />
         <Row index={3} icon={(p: any) => <SparkIcon size={18} color="#fff" />} color="#ff3b5c" title="Recidivist Premium" value={me.premium ? 'активен' : ''} onPress={() => go('premium')} />

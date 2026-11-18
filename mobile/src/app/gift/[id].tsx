@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActionSheetIOS, Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { ArrowUpCircle, Crown, Ellipsis, Eye, EyeOff, Gem, Pin, Repeat, Tag, X } from 'lucide-react-native';
+import { ArrowUpCircle, Crown, Ellipsis, Eye, EyeOff, Gavel, Gem, Hammer, Pin, Repeat, Tag, X } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { api } from '../../lib/api';
 import { cache } from '../../lib/db';
@@ -41,6 +41,20 @@ export default function GiftSheet() {
       if (attrs?.models?.length && attrs.backdrops?.length && attrs.symbols?.length) { setUpg(api(`/user-gifts/${ug.id}/upgrade`, { body: {} })); return; }
       try { const r = await api(`/user-gifts/${ug.id}/upgrade`, { body: {} }); m.value = 0.3; setUg(r.userGift); m.value = withSpring(1, webSpring); } catch (e: any) { Alert.alert(e.message); }
     } }]);
+  };
+  // craft: 5 regular copies of this gift → 1 collectible, free (shown with the upgrade reveal)
+  const craft = async () => {
+    try {
+      const { gifts } = await api(`/users/${meId}/gifts`);
+      const same = gifts.filter((g: any) => !g.collectible && g.gift.id === ug.gift.id && !g.listing);
+      const ids = [ug.id, ...same.map((g: any) => g.id).filter((x: number) => x !== ug.id)].slice(0, 5);
+      if (ids.length < 5) { Alert.alert('Не хватает подарков', `Для крафта нужно 5 одинаковых обычных «${ug.gift.name}» — у вас ${same.length}.`); return; }
+      Alert.alert('Крафт', `5 подарков «${ug.gift.name}» превратятся в 1 коллекционный — бесплатно.`, [{ text: 'Отмена' }, { text: 'Скрафтить', onPress: async () => {
+        const req = api('/craft', { body: { userGiftIds: ids } });
+        if (attrs?.models?.length) setUpg(req);
+        else { try { const r = await req; setUg(r.userGift); } catch (e: any) { Alert.alert(e.message); } }
+      } }]);
+    } catch (e: any) { Alert.alert(e.message); }
   };
   const convert = () => Alert.alert('Конвертировать подарок?', `Вы получите ${fmtNum(ug.gift.convertValue)} ✦. Подарок исчезнет из профиля.`, [{ text: 'Отмена' }, { text: 'Конвертировать', style: 'destructive', onPress: async () => {
     try { await api(`/user-gifts/${ug.id}/convert`, { body: {} }); Alert.alert('Подарок конвертирован'); router.back(); } catch (e: any) { Alert.alert(e.message); }
@@ -83,11 +97,13 @@ export default function GiftSheet() {
             {ug.listing
               ? <Act icon={<Tag size={22} color="#fff" />} label="не продавать" onPress={unlist} />
               : <Act icon={<Tag size={22} color="#fff" />} label="продать" onPress={() => router.push({ pathname: '/sell', params: { userGiftId: String(ug.id) } })} />}
+            {!ug.listing && <Act icon={<Gavel size={22} color="#fff" />} label="аукцион" onPress={() => router.push({ pathname: '/auction-new', params: { userGiftId: String(ug.id) } })} />}
           </Rise>
         )}
         {mine && !col && (
           <Rise delay={240} style={st.actions}>
             <Act icon={<ArrowUpCircle size={22} color="#fff" />} label="улучшить" disabled={!ug.gift.upgradable} onPress={upgrade} />
+            {ug.gift.upgradable && <Act icon={<Hammer size={22} color="#fff" />} label="крафт" onPress={craft} />}
             <Act icon={<Repeat size={22} color="#fff" />} label="в ✦" onPress={convert} />
             <Act icon={ug.hidden ? <Eye size={22} color="#fff" /> : <EyeOff size={22} color="#fff" />} label={ug.hidden ? 'показать' : 'скрыть'} onPress={() => act(`/user-gifts/${ug.id}/visibility`, { hidden: !ug.hidden })} />
           </Rise>

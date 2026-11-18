@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Dimensions, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { AtSign, Gift, History, Tag } from 'lucide-react-native';
+import { AtSign, Gift, History, Tag, Gavel } from 'lucide-react-native';
 import { api } from '../lib/api';
 import { cache } from '../lib/db';
 import { useStore } from '../lib/store';
@@ -105,6 +105,7 @@ export default function Market() {
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" scrollEventThrottle={200}
         onScroll={(e) => { const n = e.nativeEvent; if (n.contentOffset.y + n.layoutMeasurement.height > n.contentSize.height - 800) setShown((v) => (v < (data?.listings?.length || 0) ? v + 20 : v)); }}>
         <Glass radius={16} style={st.tabs} shadow={false}>
+          <Press scale={0.96} onPress={() => router.push('/auctions')} style={st.tab}><Gavel size={14} color={C.text2} /><T w={700} size={13} color={C.text2}>Аукционы</T></Press>
           {([['all', 'Все лоты', null], ['mine', 'Мои', Tag], ['history', 'История', History]] as const).map(([k, l, I]) => (
             <Press key={k} scale={0.96} onPress={() => setView(k)} style={[st.tab, view === k && st.tabOn]}>
               {I && <I size={14} color={view === k ? C.text : C.text2} />}<T w={600} size={13.5} color={view === k ? C.text : C.text2}>{l}</T>

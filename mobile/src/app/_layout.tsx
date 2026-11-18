@@ -52,6 +52,9 @@ export default function Root() {
             <Stack.Screen name="settings/[page]" />
             <Stack.Screen name="post/[id]" />
             <Stack.Screen name="music" />
+            <Stack.Screen name="auctions" options={{ presentation: 'formSheet', sheetAllowedDetents: [1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
+            <Stack.Screen name="auction-new" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.8, 1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
+            <Stack.Screen name="daily" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.62], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
             <Stack.Screen name="poll-new" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.9, 1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
             <Stack.Screen name="status" options={{ presentation: 'formSheet', sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, sheetCornerRadius: 28, contentStyle: { backgroundColor: C.bg2 } }} />
             <Stack.Screen name="qr-scan" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />

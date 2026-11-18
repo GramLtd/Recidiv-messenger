@@ -8,6 +8,7 @@ import { useCached } from '../lib/useCached';
 import { useFont, fontStyle } from '../lib/fonts';
 import { fmtNum } from '../lib/util';
 import { playSend } from '../lib/sound';
+import { left } from '../lib/time';
 import { C } from '../lib/theme';
 import { Avatar, Btn, Glass, Press, Rise, Spark, T } from '../components/ui';
 import { GiftModel } from '../components/GiftArt';
@@ -112,6 +113,7 @@ export default function Shop() {
                 {g.limited && <View style={st.ribbon}><T w={800} size={9} color="#fff" center>{g.remaining === 0 ? 'SOLD' : 'LIMITED'}</T></View>}
                 <View style={{ height: cw * 0.85, alignItems: 'center', justifyContent: 'center' }}><GiftModel gift={g} size={cw * 0.7} /></View>
                 <T w={700} size={12.3} numberOfLines={1} center>{g.name}</T>
+                {!!g.saleUntil && <View style={st.season}><T w={700} size={10} color={g.saleEnded ? C.text2 : '#ffb340'}>{g.saleEnded ? 'продажи завершены' : `⏳ ${left(g.saleUntil - Date.now())}`}</T></View>}
                 <View style={st.price}><Spark amount={g.price} size={12} /></View>
                 {g.limited && <T size={10.5} dim center style={{ marginTop: 2 }}>{g.remaining ? `${fmtNum(g.remaining)} из ${fmtNum(g.supply)}` : 'распродано'}</T>}
               </Press>
@@ -145,5 +147,6 @@ const st = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   card: { borderRadius: 18, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingBottom: 10, alignItems: 'center', gap: 4 },
   price: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, backgroundColor: `rgba(${C.accentRgb},0.2)` },
+  season: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(255,179,64,0.14)' },
   ribbon: { position: 'absolute', top: 10, right: -28, width: 100, paddingVertical: 2, backgroundColor: C.accent, transform: [{ rotate: '45deg' }], zIndex: 3 },
 });
